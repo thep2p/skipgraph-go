@@ -22,6 +22,11 @@ func (i Identifier) String() string {
 	return hex.EncodeToString(i[:])
 }
 
+// Bytes returns the byte representation of an Identifier.
+func (i Identifier) Bytes() []byte {
+	return i[:]
+}
+
 // Compare compares two Identifiers and returns 0 if equal, 1 if other > i and -1 if other < i.
 func (i Identifier) Compare(other Identifier) string {
 	cmp := bytes.Compare(i[:], other[:])
@@ -35,33 +40,35 @@ func (i Identifier) Compare(other Identifier) string {
 	}
 }
 
-// ToIdentifier converts a byte slice b to an Identifier.
-// returns error if the length of b is more than Identifier's length i.e., 32 bytes.
-func ToIdentifier(b []byte) (Identifier, error) {
+// ByteToId converts a byte slice b to an Identifier.
+// Returns error if the length of b is more than Identifier's length i.e., 32 bytes.
+// If the length of b is less than 32 bytes, it is zero padded from the left.
+// It follows a big-endian representation where the 0 index of the byte slice corresponds to the most significant byte.
+// Args:
+//
+//	b: the byte slice to be converted to an Identifier
+//
+// Returns:
+//
+//	Identifier: the converted Identifier
+//	error: if the length of b is more than 32 bytes
+func ByteToId(b []byte) (Identifier, error) {
 	res := Identifier{0}
-	if len(b) > 32 {
-		return res, fmt.Errorf("input length must be at most 32 bytes; found: %d", len(b))
+	if len(b) > IdentifierSize {
+		return res, fmt.Errorf("input length must be at most %d bytes; found: %d", IdentifierSize, len(b))
 	}
-	index := 31
-	for i := len(b) - 1; i >= 0; i-- {
-		res[index] = b[i]
-		index--
-	}
+	offset := IdentifierSize - len(b)
+	copy(res[offset:], b)
 	return res, nil
 }
 
-// StringToIdentifier converts a string to an Identifier.
+// StrToId converts a string to an Identifier.
 // returns error if the byte length of the string s is more than Identifier's length i.e., 32 bytes.
-func StringToIdentifier(s string) (Identifier, error) {
-	b := []byte(s)
-	res := Identifier{0}
-	if len(b) > 32 {
-		return res, fmt.Errorf("input length must be at most 32 bytes; found: %d", len(b))
+func StrToId(s string) (Identifier, error) {
+	// converts string to byte
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return Identifier{}, fmt.Errorf("failed to decode hex string: %s", err)
 	}
-	index := 31
-	for i := len(b) - 1; i >= 0; i-- {
-		res[index] = b[i]
-		index--
-	}
-	return res, nil
+	return ByteToId(b)
 }

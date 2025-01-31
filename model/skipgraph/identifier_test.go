@@ -27,31 +27,31 @@ func TestCompare(t *testing.T) {
 
 func TestIdentifier_Bytes(t *testing.T) {
 	// 32 bytes of zero
-	b := bytes.Repeat([]byte{0}, skipgraph.IdentifierSize)
+	b := bytes.Repeat([]byte{0}, skipgraph.IdentifierSizeBytes)
 	id, err := skipgraph.ByteToId(b)
 	require.NoError(t, err)
 	require.Equal(t, b, id.Bytes())
 
 	// 32 bytes of 1
-	b = bytes.Repeat([]byte{255}, skipgraph.IdentifierSize)
+	b = bytes.Repeat([]byte{255}, skipgraph.IdentifierSizeBytes)
 	id, err = skipgraph.ByteToId(b)
 	require.NoError(t, err)
 	require.Equal(t, b, id.Bytes())
 
 	// 32 random bytes
-	b = unittest.RandomBytesFixture(t, skipgraph.IdentifierSize)
+	b = unittest.RandomBytesFixture(t, skipgraph.IdentifierSizeBytes)
 	id, err = skipgraph.ByteToId(b)
 	require.NoError(t, err)
 	require.Equal(t, b, id.Bytes())
 
 	// 31 random bytes should be zero padded
-	b = unittest.RandomBytesFixture(t, skipgraph.IdentifierSize-1)
+	b = unittest.RandomBytesFixture(t, skipgraph.IdentifierSizeBytes-1)
 	id, err = skipgraph.ByteToId(b)
 	require.NoError(t, err)
 	unittest.MustHaveZeroPrefixBytes(t, id.Bytes(), 1, b...)
 
 	// 33 random bytes should return an error
-	b = unittest.RandomBytesFixture(t, skipgraph.IdentifierSize+1)
+	b = unittest.RandomBytesFixture(t, skipgraph.IdentifierSizeBytes+1)
 	_, err = skipgraph.ByteToId(b)
 	require.Error(t, err)
 

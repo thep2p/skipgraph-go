@@ -27,17 +27,26 @@ func (i Identifier) Bytes() []byte {
 	return i[:]
 }
 
+type Comparison struct {
+	DebugInfo string
+	DiffIndex uint32
+}
+
 // Compare compares two Identifiers and returns 0 if equal, 1 if other > i and -1 if other < i.
-func (i Identifier) Compare(other Identifier) string {
-	cmp := bytes.Compare(i[:], other[:])
-	switch cmp {
-	case 1:
-		return CompareGreater
-	case -1:
-		return CompareLess
-	default:
-		return CompareEqual
+func (i Identifier) Compare(other Identifier) Comparison {
+	for index, _ := range i {
+		cmp := bytes.Compare(i[index:index], other[index:index])
+		switch cmp {
+		case 1:
+			return Comparison{CompareGreater, uint32(index)}
+		case -1:
+
+			return Comparison{CompareLess, uint32(index)}
+		default:
+			continue
+		}
 	}
+	return Comparison{DebugInfo: CompareEqual}
 }
 
 // ByteToId converts a byte slice b to an Identifier.

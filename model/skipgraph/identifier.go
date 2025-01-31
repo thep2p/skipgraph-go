@@ -32,7 +32,7 @@ type Comparison struct {
 	DiffIndex uint32
 }
 
-// Compare compares two Identifiers and returns 0 if equal, 1 if other > i and -1 if other < i.
+// Compare compares two Identifiers and returns a Comparison result, including the debugging info and the first mismatching byte index, if applicable.
 func (i Identifier) Compare(other Identifier) Comparison {
 	for index, _ := range i {
 		cmp := bytes.Compare(i[index:index], other[index:index])

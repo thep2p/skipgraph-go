@@ -6,13 +6,13 @@ import (
 	"fmt"
 )
 
-const IdentifierSize = 32
+const IdentifierSizeBytes = 32
 const CompareEqual = "compare-equal"
 const CompareGreater = "compare-greater"
 const CompareLess = "compare-less"
 
 // Identifier represents a 32-byte unique identifier a Skip Graph node.
-type Identifier [IdentifierSize]byte
+type Identifier [IdentifierSizeBytes]byte
 
 // IdentifierList is a slice of Identifier
 type IdentifierList []Identifier
@@ -54,10 +54,10 @@ func (i Identifier) Compare(other Identifier) string {
 //	error: if the length of b is more than 32 bytes
 func ByteToId(b []byte) (Identifier, error) {
 	res := Identifier{0}
-	if len(b) > IdentifierSize {
-		return res, fmt.Errorf("input length must be at most %d bytes; found: %d", IdentifierSize, len(b))
+	if len(b) > IdentifierSizeBytes {
+		return res, fmt.Errorf("input length must be at most %d bytes; found: %d", IdentifierSizeBytes, len(b))
 	}
-	offset := IdentifierSize - len(b)
+	offset := IdentifierSizeBytes - len(b)
 	copy(res[offset:], b)
 	return res, nil
 }

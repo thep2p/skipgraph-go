@@ -34,7 +34,7 @@ type Comparison struct {
 
 // Compare compares two Identifiers and returns a Comparison result, including the debugging info and the first mismatching byte index, if applicable.
 func (i Identifier) Compare(other Identifier) Comparison {
-	for index, _ := range i {
+	for index := range i {
 		cmp := bytes.Compare(i[index:index+1], other[index:index+1])
 		switch cmp {
 		case 1:

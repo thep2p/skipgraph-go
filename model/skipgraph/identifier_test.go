@@ -73,15 +73,17 @@ func TestIdentifierCompare(t *testing.T) {
 	require.Equal(t, uint32(0), comp.DiffIndex)
 	require.Equal(t, "ff > 00 (at byte 0)", fmt.Sprintf("%02x > %02x (at byte %d)", id2[0], id0[0], comp.DiffIndex))
 
-	// two random identifiers composed that differ only in one byte
+	// two random identifiers composed that differ only at index 16th (17th byte)
 	differingByteIndex := skipgraph.IdentifierSizeBytes / 2
-	leftBytes := unittest.RandomBytesFixture(t, differingByteIndex-1)
-	rightBytes := unittest.RandomBytesFixture(t, skipgraph.IdentifierSizeBytes-differingByteIndex)
+	leftBytes := unittest.RandomBytesFixture(t, differingByteIndex)
+	rightBytes := unittest.RandomBytesFixture(t, skipgraph.IdentifierSizeBytes-differingByteIndex-1)
 
+	// randomGreater = random<16>|1|random<15>
 	randomGreater := append(append(leftBytes, 1), rightBytes...)
 	idRandomGreater, err := skipgraph.ByteToId(randomGreater)
 	require.NoError(t, err)
 
+	// randomLess = random<16>|0|random<15>
 	randomLess := append(append(leftBytes, 0), rightBytes...)
 	idRandomLess, err := skipgraph.ByteToId(randomLess)
 	require.NoError(t, err)

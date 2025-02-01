@@ -55,9 +55,7 @@ func MembershipVectorFixture(t *testing.T) skipgraph.MembershipVector {
 	bytes := RandomBytesFixture(t, skipgraph.MembershipVectorSize)
 
 	var mv skipgraph.MembershipVector
-	for i := 0; i < len(bytes); i++ {
-		mv[i] = bytes[i]
-	}
+	copy(mv[:], bytes)
 
 	return mv
 }

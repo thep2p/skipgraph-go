@@ -10,23 +10,6 @@ import (
 	"testing"
 )
 
-// TestCompare checks the correctness of the Identifier comparison function
-func TestCompare(t *testing.T) {
-	s1 := []byte("12")
-	s2 := []byte("22")
-	s3 := []byte("12")
-	i1, err := skipgraph.ByteToId(s1)
-	require.NoError(t, err)
-	i2, err := skipgraph.ByteToId(s2)
-	require.NoError(t, err)
-	i3, err := skipgraph.ByteToId(s3)
-	require.NoError(t, err)
-
-	require.Equal(t, skipgraph.CompareLess, i1.Compare(i2))
-	require.Equal(t, skipgraph.CompareGreater, i2.Compare(i1))
-	require.Equal(t, skipgraph.CompareEqual, i1.Compare(i3))
-}
-
 func TestIdentifierCompare(t *testing.T) {
 	id0, err := skipgraph.ByteToId(bytes.Repeat([]byte{0}, skipgraph.IdentifierSizeBytes))
 	require.NoError(t, err)

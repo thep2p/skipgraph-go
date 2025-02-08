@@ -2,13 +2,33 @@ package skipgraph_test
 
 import (
 	"bytes"
-	"encoding/hex"
-	"fmt"
 	"github.com/stretchr/testify/require"
 	"github/yhassanzadeh13/skipgraph-go/model/skipgraph"
 	"github/yhassanzadeh13/skipgraph-go/unittest"
 	"testing"
 )
+
+func TestToDebugInfo(t *testing.T) {
+	id1, err := skipgraph.ByteToId([]byte{0x00, 0x01, 0x02, 0x03})
+	require.NoError(t, err)
+	id2, err := skipgraph.ByteToId([]byte{0x00, 0x01, 0x02, 0x04})
+	require.NoError(t, err)
+
+	// Test CompareGreater
+	debugInfo := skipgraph.ToDebugInfo(id2, id1, skipgraph.CompareGreater, 31)
+	expected := "04 > 03 (at byte 31)"
+	require.Equal(t, expected, debugInfo)
+
+	// Test CompareLess
+	debugInfo = skipgraph.ToDebugInfo(id1, id2, skipgraph.CompareLess, 31)
+	expected = "03 < 04 (at byte 31)"
+	require.Equal(t, expected, debugInfo)
+
+	// Test CompareEqual
+	debugInfo = skipgraph.ToDebugInfo(id1, id1, skipgraph.CompareEqual)
+	expected = ""
+	require.Equal(t, expected, debugInfo)
+}
 
 func TestIdentifierCompare(t *testing.T) {
 	id0, err := skipgraph.ByteToId(bytes.Repeat([]byte{0}, skipgraph.IdentifierSizeBytes))

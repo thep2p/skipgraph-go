@@ -28,8 +28,20 @@ func (i Identifier) Bytes() []byte {
 }
 
 type Comparison struct {
-	DebugInfo string
-	DiffIndex uint32
+	ComparisonResult string
+	DebugInfo        string
+	DiffIndex        uint32
+}
+
+func ToDebugInfo(i Identifier, other Identifier, comparison string, index ...int) string {
+	switch comparison {
+	case CompareGreater:
+		return fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(i[index[0]:index[0]+1]), hex.EncodeToString(other[index[0]:index[0]+1]), index[0])
+	case CompareLess:
+		return fmt.Sprintf("%s < %s (at byte %d)", hex.EncodeToString(i[index[0]:index[0]+1]), hex.EncodeToString(other[index[0]:index[0]+1]), index[0])
+	default:
+		return ""
+	}
 }
 
 // Compare compares two Identifiers and returns a Comparison result, including the debugging info and the first mismatching byte index, if applicable.
@@ -38,15 +50,15 @@ func (i Identifier) Compare(other Identifier) Comparison {
 		cmp := bytes.Compare(i[index:index+1], other[index:index+1])
 		switch cmp {
 		case 1:
-			return Comparison{CompareGreater, uint32(index)}
+			return Comparison{CompareGreater, ToDebugInfo(i, other, CompareGreater, index), uint32(index)}
 		case -1:
 
-			return Comparison{CompareLess, uint32(index)}
+			return Comparison{CompareLess, ToDebugInfo(i, other, CompareLess, index), uint32(index)}
 		default:
 			continue
 		}
 	}
-	return Comparison{DebugInfo: CompareEqual}
+	return Comparison{ComparisonResult: CompareEqual}
 }
 
 // ByteToId converts a byte slice b to an Identifier.

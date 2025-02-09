@@ -33,7 +33,7 @@ type Comparison struct {
 	DiffIndex        uint32 // in case of inequality, the index of the first differing byte
 }
 
-func ToDebugInfo(i Identifier, other Identifier, comparison string, index ...int) string {
+func DebugInfo(i Identifier, other Identifier, comparison string, index ...int) string {
 	switch comparison {
 	case CompareGreater:
 		return fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(i[index[0]:index[0]+1]), hex.EncodeToString(other[index[0]:index[0]+1]), index[0])
@@ -50,10 +50,10 @@ func (i Identifier) Compare(other Identifier) Comparison {
 		cmp := bytes.Compare(i[index:index+1], other[index:index+1])
 		switch cmp {
 		case 1:
-			return Comparison{CompareGreater, ToDebugInfo(i, other, CompareGreater, index), uint32(index)}
+			return Comparison{CompareGreater, DebugInfo(i, other, CompareGreater, index), uint32(index)}
 		case -1:
 
-			return Comparison{CompareLess, ToDebugInfo(i, other, CompareLess, index), uint32(index)}
+			return Comparison{CompareLess, DebugInfo(i, other, CompareLess, index), uint32(index)}
 		default:
 			continue
 		}

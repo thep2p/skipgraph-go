@@ -15,17 +15,17 @@ func TestToDebugInfo(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test CompareGreater
-	debugInfo := skipgraph.ToDebugInfo(id2, id1, skipgraph.CompareGreater, 31)
+	debugInfo := skipgraph.DebugInfo(id2, id1, skipgraph.CompareGreater, 31)
 	expected := "04 > 03 (at byte 31)"
 	require.Equal(t, expected, debugInfo)
 
 	// Test CompareLess
-	debugInfo = skipgraph.ToDebugInfo(id1, id2, skipgraph.CompareLess, 31)
+	debugInfo = skipgraph.DebugInfo(id1, id2, skipgraph.CompareLess, 31)
 	expected = "03 < 04 (at byte 31)"
 	require.Equal(t, expected, debugInfo)
 
 	// Test CompareEqual
-	debugInfo = skipgraph.ToDebugInfo(id1, id1, skipgraph.CompareEqual)
+	debugInfo = skipgraph.DebugInfo(id1, id1, skipgraph.CompareEqual)
 	expected = ""
 	require.Equal(t, expected, debugInfo)
 }
@@ -39,9 +39,9 @@ func TestIdentifierCompare(t *testing.T) {
 	require.NoError(t, err)
 
 	// each id is equal to itself
-	require.Equal(t, skipgraph.ToDebugInfo(id0, id0, skipgraph.CompareEqual), id0.Compare(id0).DebugInfo)
-	require.Equal(t, skipgraph.ToDebugInfo(id1, id1, skipgraph.CompareEqual), id1.Compare(id1).DebugInfo)
-	require.Equal(t, skipgraph.ToDebugInfo(id2, id2, skipgraph.CompareEqual), id2.Compare(id2).DebugInfo)
+	require.Equal(t, skipgraph.DebugInfo(id0, id0, skipgraph.CompareEqual), id0.Compare(id0).DebugInfo)
+	require.Equal(t, skipgraph.DebugInfo(id1, id1, skipgraph.CompareEqual), id1.Compare(id1).DebugInfo)
+	require.Equal(t, skipgraph.DebugInfo(id2, id2, skipgraph.CompareEqual), id2.Compare(id2).DebugInfo)
 
 	// id0 < id1
 	comp := id0.Compare(id1)

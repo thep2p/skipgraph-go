@@ -28,9 +28,9 @@ func (i Identifier) Bytes() []byte {
 }
 
 type Comparison struct {
-	ComparisonResult string
-	DebugInfo        string
-	DiffIndex        uint32
+	ComparisonResult string // one of CompareEqual, CompareGreater, CompareLess
+	DebugInfo        string // in case of inequality, a human-readable debug info with the index of the first differing byte
+	DiffIndex        uint32 // in case of inequality, the index of the first differing byte
 }
 
 func ToDebugInfo(i Identifier, other Identifier, comparison string, index ...int) string {

@@ -7,9 +7,12 @@ import (
 )
 
 const IdentifierSizeBytes = 32
-const CompareEqual = "compare-equal"
-const CompareGreater = "compare-greater"
-const CompareLess = "compare-less"
+
+type ComparisonResult string
+
+const CompareEqual ComparisonResult = "compare-equal"
+const CompareGreater ComparisonResult = "compare-greater"
+const CompareLess ComparisonResult = "compare-less"
 
 // Identifier represents a 32-byte unique identifier a Skip Graph node.
 type Identifier [IdentifierSizeBytes]byte
@@ -28,12 +31,12 @@ func (i Identifier) Bytes() []byte {
 }
 
 type Comparison struct {
-	ComparisonResult string // one of CompareEqual, CompareGreater, CompareLess
-	DebugInfo        string // in case of inequality, a human-readable debug info with the index of the first differing byte
-	DiffIndex        uint32 // in case of inequality, the index of the first differing byte
+	ComparisonResult ComparisonResult // one of CompareEqual, CompareGreater, CompareLess
+	DebugInfo        string           // in case of inequality, a human-readable debug info with the index of the first differing byte
+	DiffIndex        uint32           // in case of inequality, the index of the first differing byte
 }
 
-func DebugInfo(i Identifier, other Identifier, comparison string, index ...int) string {
+func DebugInfo(i Identifier, other Identifier, comparison ComparisonResult, index ...int) string {
 	switch comparison {
 	case CompareGreater:
 		return fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(i[index[0]:index[0]+1]), hex.EncodeToString(other[index[0]:index[0]+1]), index[0])

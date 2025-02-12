@@ -25,8 +25,8 @@ func TestToDebugInfo(t *testing.T) {
 	require.Equal(t, expected, debugInfo)
 
 	// Test CompareEqual
-	debugInfo = skipgraph.DebugInfo(id1, id1, skipgraph.CompareEqual, -1)
-	expected = ""
+	debugInfo = skipgraph.DebugInfo(id1, id1, skipgraph.CompareEqual, len(id1)-1)
+	expected = "0000000000000000000000000000000000000000000000000000000000010203 == 0000000000000000000000000000000000000000000000000000000000010203"
 	require.Equal(t, expected, debugInfo)
 }
 
@@ -39,9 +39,9 @@ func TestIdentifierCompare(t *testing.T) {
 	require.NoError(t, err)
 
 	// each id is equal to itself
-	require.Equal(t, skipgraph.DebugInfo(id0, id0, skipgraph.CompareEqual, -1), id0.Compare(id0).DebugInfo)
-	require.Equal(t, skipgraph.DebugInfo(id1, id1, skipgraph.CompareEqual, -1), id1.Compare(id1).DebugInfo)
-	require.Equal(t, skipgraph.DebugInfo(id2, id2, skipgraph.CompareEqual, -1), id2.Compare(id2).DebugInfo)
+	require.Equal(t, skipgraph.DebugInfo(id0, id0, skipgraph.CompareEqual, len(id0)-1), id0.Compare(id0).DebugInfo)
+	require.Equal(t, skipgraph.DebugInfo(id1, id1, skipgraph.CompareEqual, len(id1)-1), id1.Compare(id1).DebugInfo)
+	require.Equal(t, skipgraph.DebugInfo(id2, id2, skipgraph.CompareEqual, len(id2)-1), id2.Compare(id2).DebugInfo)
 
 	// id0 < id1
 	comp := id0.Compare(id1)

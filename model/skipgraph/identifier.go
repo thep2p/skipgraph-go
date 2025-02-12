@@ -36,12 +36,14 @@ type Comparison struct {
 	DiffIndex        uint32           // in case of inequality, the index of the first differing byte
 }
 
-func DebugInfo(i Identifier, other Identifier, comparison ComparisonResult, index ...int) string {
+// DebugInfo returns a human-readable debug info for the comparison result.
+// diffIndex is the index of the first differing byte. In case of equality, diffIndex is not used.
+func DebugInfo(i Identifier, other Identifier, comparison ComparisonResult, diffIndex int) string {
 	switch comparison {
 	case CompareGreater:
-		return fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(i[index[0]:index[0]+1]), hex.EncodeToString(other[index[0]:index[0]+1]), index[0])
+		return fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(i[diffIndex:diffIndex+1]), hex.EncodeToString(other[diffIndex:diffIndex+1]), diffIndex)
 	case CompareLess:
-		return fmt.Sprintf("%s < %s (at byte %d)", hex.EncodeToString(i[index[0]:index[0]+1]), hex.EncodeToString(other[index[0]:index[0]+1]), index[0])
+		return fmt.Sprintf("%s < %s (at byte %d)", hex.EncodeToString(i[diffIndex:diffIndex+1]), hex.EncodeToString(other[diffIndex:diffIndex+1]), diffIndex)
 	default:
 		return ""
 	}

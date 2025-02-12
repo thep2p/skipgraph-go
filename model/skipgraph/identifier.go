@@ -41,9 +41,9 @@ type Comparison struct {
 func DebugInfo(i Identifier, other Identifier, comparison ComparisonResult, diffIndex int) string {
 	switch comparison {
 	case CompareGreater:
-		return fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(i[diffIndex:diffIndex+1]), hex.EncodeToString(other[diffIndex:diffIndex+1]), diffIndex)
+		return fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(i[:diffIndex+1]), hex.EncodeToString(other[:diffIndex+1]), diffIndex)
 	case CompareLess:
-		return fmt.Sprintf("%s < %s (at byte %d)", hex.EncodeToString(i[diffIndex:diffIndex+1]), hex.EncodeToString(other[diffIndex:diffIndex+1]), diffIndex)
+		return fmt.Sprintf("%s < %s (at byte %d)", hex.EncodeToString(i[:diffIndex+1]), hex.EncodeToString(other[:diffIndex+1]), diffIndex)
 	default:
 		return ""
 	}

@@ -16,12 +16,12 @@ func TestToDebugInfo(t *testing.T) {
 
 	// Test CompareGreater
 	debugInfo := skipgraph.DebugInfo(id2, id1, skipgraph.CompareGreater, 31)
-	expected := "04 > 03 (at byte 31)"
+	expected := "0000000000000000000000000000000000000000000000000000000000010204 > 0000000000000000000000000000000000000000000000000000000000010203 (at byte 31)"
 	require.Equal(t, expected, debugInfo)
 
 	// Test CompareLess
 	debugInfo = skipgraph.DebugInfo(id1, id2, skipgraph.CompareLess, 31)
-	expected = "03 < 04 (at byte 31)"
+	expected = "0000000000000000000000000000000000000000000000000000000000010203 < 0000000000000000000000000000000000000000000000000000000000010204 (at byte 31)"
 	require.Equal(t, expected, debugInfo)
 
 	// Test CompareEqual

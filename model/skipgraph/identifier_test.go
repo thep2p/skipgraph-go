@@ -2,6 +2,8 @@ package skipgraph_test
 
 import (
 	"bytes"
+	"encoding/hex"
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"github/yhassanzadeh13/skipgraph-go/model/skipgraph"
 	"github/yhassanzadeh13/skipgraph-go/unittest"
@@ -98,10 +100,14 @@ func TestIdentifierCompare(t *testing.T) {
 	comp = idRandomGreater.Compare(idRandomLess)
 	require.Equal(t, skipgraph.CompareGreater, comp.ComparisonResult)
 	require.Equal(t, uint32(differingByteIndex), comp.DiffIndex)
+	expectedDebugInfo := fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(idRandomGreater[:differingByteIndex+1]), hex.EncodeToString(idRandomLess[:differingByteIndex+1]), differingByteIndex)
+	require.Equal(t, expectedDebugInfo, comp.DebugInfo)
 
 	comp = idRandomLess.Compare(idRandomGreater)
 	require.Equal(t, skipgraph.CompareLess, comp.ComparisonResult)
 	require.Equal(t, uint32(differingByteIndex), comp.DiffIndex)
+	expectedDebugInfo = fmt.Sprintf("%s < %s (at byte %d)", hex.EncodeToString(idRandomLess[:differingByteIndex+1]), hex.EncodeToString(idRandomGreater[:differingByteIndex+1]), differingByteIndex)
+	require.Equal(t, expectedDebugInfo, comp.DebugInfo)
 }
 func TestIdentifier_Bytes(t *testing.T) {
 	// 32 bytes of zero

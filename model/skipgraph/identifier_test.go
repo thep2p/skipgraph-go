@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestToDebugInfo(t *testing.T) {
+func TestDebugInfo(t *testing.T) {
 	id1, err := skipgraph.ByteToId([]byte{0x00, 0x01, 0x02, 0x03})
 	require.NoError(t, err)
 	id2, err := skipgraph.ByteToId([]byte{0x00, 0x01, 0x02, 0x04})

@@ -9,7 +9,7 @@ import (
 type Level int64
 
 // MaxLookupTableLevel indicates the upper bound for the number of levels in a SkipGraph LookupTable.
-const MaxLookupTableLevel Level = IdentifierSize * 8
+const MaxLookupTableLevel Level = IdentifierSizeBytes * 8
 
 // Direction is an enum type for the direction of a neighbor in the lookup table.
 type Direction string

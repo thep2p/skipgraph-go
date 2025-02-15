@@ -29,9 +29,9 @@ func TestMessageFixture(t *testing.T) *messages.Message {
 // IdentifierFixture generates a random Identifier
 func IdentifierFixture(t *testing.T) skipgraph.Identifier {
 	var id skipgraph.Identifier
-	bytes := RandomBytesFixture(t, skipgraph.IdentifierSize)
+	bytes := RandomBytesFixture(t, skipgraph.IdentifierSizeBytes)
 
-	for i := 0; i < skipgraph.IdentifierSize; i++ {
+	for i := 0; i < skipgraph.IdentifierSizeBytes; i++ {
 		id[i] = bytes[i]
 	}
 

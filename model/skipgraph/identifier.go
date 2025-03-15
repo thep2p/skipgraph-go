@@ -96,7 +96,7 @@ func (i *Identifier) Compare(other *Identifier) Comparison {
 
 // ByteToId converts a byte slice b to an Identifier.
 // Returns error if the length of b is more than Identifier's length i.e., 32 bytes.
-// If the length of b is less than 32 bytes, it is zero padded from the Left.
+// If the length of b is less than 32 bytes, it is zero padded from the left.
 // It follows a big-endian representation where the 0 index of the byte slice corresponds to the most significant byte.
 // Args:
 //

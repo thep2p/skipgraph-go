@@ -21,9 +21,39 @@ type Identifier [IdentifierSizeBytes]byte
 type IdentifierList []Identifier
 
 type Comparison struct {
-	ComparisonResult ComparisonResult // one of CompareEqual, CompareGreater, CompareLess
-	Left, Right      *Identifier      // the two identifiers being compared
-	DiffIndex        uint32           // in case of inequality, the index of the first differing byte. 0-indexed.
+	comparisonResult ComparisonResult // one of CompareEqual, CompareGreater, CompareLess
+	left, right      *Identifier      // the two identifiers being compared
+	diffIndex        uint32           // in case of inequality, the index of the first differing byte. 0-indexed.
+}
+
+// NewComparison creates a new Comparison instance.
+func NewComparison(result ComparisonResult, left, right *Identifier, diffIndex uint32) *Comparison {
+	return &Comparison{
+		comparisonResult: result,
+		left:             left,
+		right:            right,
+		diffIndex:        diffIndex,
+	}
+}
+
+// GetComparisonResult returns the comparison result.
+func (c *Comparison) GetComparisonResult() ComparisonResult {
+	return c.comparisonResult
+}
+
+// GetLeft returns the left identifier.
+func (c *Comparison) GetLeft() *Identifier {
+	return c.left
+}
+
+// GetRight returns the right identifier.
+func (c *Comparison) GetRight() *Identifier {
+	return c.right
+}
+
+// GetDiffIndex returns the index of the first differing byte.
+func (c *Comparison) GetDiffIndex() uint32 {
+	return c.diffIndex
 }
 
 // String converts Identifier to its hex representation.
@@ -38,13 +68,13 @@ func (i *Identifier) Bytes() []byte {
 
 // DebugInfo returns a human-readable debug info for the comparison result.
 func (c *Comparison) DebugInfo() string {
-	switch c.ComparisonResult {
+	switch c.GetComparisonResult() {
 	case CompareGreater:
-		return fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(c.Left[:c.DiffIndex+1]), hex.EncodeToString(c.Right[:c.DiffIndex+1]), c.DiffIndex)
+		return fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(c.GetLeft()[:c.GetDiffIndex()+1]), hex.EncodeToString(c.GetRight()[:c.GetDiffIndex()+1]), c.GetDiffIndex())
 	case CompareLess:
-		return fmt.Sprintf("%s < %s (at byte %d)", hex.EncodeToString(c.Left[:c.DiffIndex+1]), hex.EncodeToString(c.Right[:c.DiffIndex+1]), c.DiffIndex)
+		return fmt.Sprintf("%s < %s (at byte %d)", hex.EncodeToString(c.GetLeft()[:c.GetDiffIndex()+1]), hex.EncodeToString(c.GetRight()[:c.GetDiffIndex()+1]), c.GetDiffIndex())
 	default:
-		return fmt.Sprintf("%s == %s", hex.EncodeToString(c.Left[:c.DiffIndex+1]), hex.EncodeToString(c.Right[:c.DiffIndex+1]))
+		return fmt.Sprintf("%s == %s", hex.EncodeToString(c.GetLeft()[:c.GetDiffIndex()+1]), hex.EncodeToString(c.GetRight()[:c.GetDiffIndex()+1]))
 	}
 }
 
@@ -56,7 +86,6 @@ func (i *Identifier) Compare(other *Identifier) Comparison {
 		case 1:
 			return Comparison{CompareGreater, i, other, uint32(index)}
 		case -1:
-
 			return Comparison{CompareLess, i, other, uint32(index)}
 		default:
 			continue

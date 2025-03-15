@@ -34,7 +34,7 @@ func TestLookupTable_AddEntry(t *testing.T) {
 	require.Error(t, err)
 }
 
-// TestLookupTable_OverWriteLeftEntry test the overwriting of left entry in the lookup table.
+// TestLookupTable_OverWriteLeftEntry test the overwriting of Left entry in the lookup table.
 func TestLookupTable_OverWriteLeftEntry(t *testing.T) {
 	// create an empty lookup table
 	lt := skipgraph.LookupTable{}
@@ -62,7 +62,7 @@ func TestLookupTable_OverWriteLeftEntry(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestLookupTable_OverWriteRightEntry test the overwriting of right entry in the lookup table.
+// TestLookupTable_OverWriteRightEntry test the overwriting of Right entry in the lookup table.
 func TestLookupTable_OverWriteRightEntry(t *testing.T) {
 	// create an empty lookup table
 	lt := skipgraph.LookupTable{}
@@ -100,11 +100,11 @@ func TestLookupTable_GetEntry(t *testing.T) {
 	// declare an empty lookup table
 	var lt skipgraph.LookupTable
 
-	// add the identity as a left neighbor into the lookup table
+	// add the identity as a Left neighbor into the lookup table
 	err := lt.AddEntry(skipgraph.LeftDirection, 0, identity)
 	require.NoError(t, err)
 
-	// add the identity as a right neighbor into the lookup table
+	// add the identity as a Right neighbor into the lookup table
 	err = lt.AddEntry(skipgraph.RightDirection, 0, identity1)
 	require.NoError(t, err)
 

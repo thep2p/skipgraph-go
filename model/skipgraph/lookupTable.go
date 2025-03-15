@@ -15,10 +15,10 @@ const MaxLookupTableLevel Level = IdentifierSizeBytes * 8
 type Direction string
 
 const (
-	// RightDirection	indicates the right direction in the lookup table.
-	RightDirection = Direction("right")
-	// LeftDirection	indicates the left direction in the lookup table.
-	LeftDirection = Direction("left")
+	// RightDirection	indicates the Right direction in the lookup table.
+	RightDirection = Direction("Right")
+	// LeftDirection	indicates the Left direction in the lookup table.
+	LeftDirection = Direction("Left")
 )
 
 // LookupTable corresponds to a SkipGraph node's lookup table.
@@ -28,7 +28,7 @@ type LookupTable struct {
 	leftNeighbors  [MaxLookupTableLevel]Identity
 }
 
-// AddEntry inserts the supplied Identity in the lth level of lookup table either as the left or right neighbor depending on the dir.
+// AddEntry inserts the supplied Identity in the lth level of lookup table either as the Left or Right neighbor depending on the dir.
 // lev runs from 0...MaxLookupTableLevel-1.
 func (l *LookupTable) AddEntry(dir Direction, level Level, identity Identity) error {
 	// lock the lookup table for write access
@@ -53,7 +53,7 @@ func (l *LookupTable) AddEntry(dir Direction, level Level, identity Identity) er
 	return nil
 }
 
-// GetEntry returns the lth left/right neighbor in the lookup table depending on the dir.
+// GetEntry returns the lth Left/Right neighbor in the lookup table depending on the dir.
 // lev runs from 0...MaxLookupTableLevel-1.
 func (l *LookupTable) GetEntry(dir Direction, lev Level) (Identity, error) {
 	// lock the lookup table for read only

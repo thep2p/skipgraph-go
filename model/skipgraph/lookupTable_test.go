@@ -104,7 +104,7 @@ func TestLookupTable_GetEntry(t *testing.T) {
 	err := lt.AddEntry(skipgraph.LeftDirection, 0, identity)
 	require.NoError(t, err)
 
-	// add the identity as a Right neighbor into the lookup table
+	// add the identity as a right neighbor into the lookup table
 	err = lt.AddEntry(skipgraph.RightDirection, 0, identity1)
 	require.NoError(t, err)
 

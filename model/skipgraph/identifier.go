@@ -29,6 +29,14 @@ type ComparisonResult struct {
 func (cr ComparisonResult) Result() string {
 	return cr.result
 }
+func NewComparisonResult(s string) (*ComparisonResult, error) {
+	cr := ComparisonResult{s}
+	err := validate.Struct(cr)
+	if err != nil {
+		return nil, err
+	}
+	return &cr, nil
+}
 
 // Identifier represents a 32-byte unique identifier a Skip Graph node.
 type Identifier [IdentifierSizeBytes]byte

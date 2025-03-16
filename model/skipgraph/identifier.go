@@ -8,11 +8,11 @@ import (
 
 const IdentifierSizeBytes = 32
 
-type ComparisonResult string
+var validate *validator.Validate
 
-const CompareEqual ComparisonResult = "compare-equal"
-const CompareGreater ComparisonResult = "compare-greater"
-const CompareLess ComparisonResult = "compare-less"
+func init() {
+	validate = validator.New()
+}
 
 // Identifier represents a 32-byte unique identifier a Skip Graph node.
 type Identifier [IdentifierSizeBytes]byte

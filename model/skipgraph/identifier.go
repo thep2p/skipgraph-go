@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/go-playground/validator/v10"
 )
 
 const IdentifierSizeBytes = 32

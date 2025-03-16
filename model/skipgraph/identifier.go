@@ -64,7 +64,7 @@ type Comparison struct {
 // diffIndex is the index of the first differing byte. In case of equality, diffIndex is not used.
 // diffIndex is 0-indexed.
 func DebugInfo(i Identifier, other Identifier, comparison ComparisonResult, diffIndex int) string {
-	switch comparison {
+	switch comparison.Result() {
 	case CompareGreater:
 		return fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(i[:diffIndex+1]), hex.EncodeToString(other[:diffIndex+1]), diffIndex)
 	case CompareLess:
@@ -80,15 +80,17 @@ func (i Identifier) Compare(other Identifier) Comparison {
 		cmp := bytes.Compare(i[index:index+1], other[index:index+1])
 		switch cmp {
 		case 1:
-			return Comparison{CompareGreater, DebugInfo(i, other, CompareGreater, index), uint32(index)}
+			cr, _ := NewComparisonResult(CompareGreater)
+			return Comparison{*cr, DebugInfo(i, other, *cr, index), uint32(index)}
 		case -1:
-
-			return Comparison{CompareLess, DebugInfo(i, other, CompareLess, index), uint32(index)}
+			cr, _ := NewComparisonResult(CompareLess)
+			return Comparison{*cr, DebugInfo(i, other, *cr, index), uint32(index)}
 		default:
 			continue
 		}
 	}
-	return Comparison{CompareEqual, DebugInfo(i, other, CompareEqual, len(i)-1), uint32(len(i) - 1)}
+	cr, _ := NewComparisonResult(CompareEqual)
+	return Comparison{*cr, DebugInfo(i, other, *cr, len(i)-1), uint32(len(i) - 1)}
 }
 
 // ByteToId converts a byte slice b to an Identifier.

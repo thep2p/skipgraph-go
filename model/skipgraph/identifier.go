@@ -14,6 +14,22 @@ func init() {
 	validate = validator.New()
 }
 
+const (
+	CompareEqual   = "compare-equal"
+	CompareGreater = "compare-greater"
+	CompareLess    = "compare-less"
+)
+
+type ComparisonResult struct {
+	// made this field unexported to ensure that only the constructor func is used
+	// to create an instance of this type
+	result string `validate:"oneof=compare-equal compare-greater compare-less"`
+}
+
+func (cr ComparisonResult) Result() string {
+	return cr.result
+}
+
 // Identifier represents a 32-byte unique identifier a Skip Graph node.
 type Identifier [IdentifierSizeBytes]byte
 

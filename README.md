@@ -14,7 +14,7 @@ To use the Skip Graph Middleware, follow these instructions:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yhassanzadeh13/skipgraph-go.git
+git clone https://github.com/thep2p/skipgraph-go.git
 cd skipgraph-go
 ```
 2. Build the project:

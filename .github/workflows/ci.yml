@@ -43,7 +43,7 @@ jobs:
       fail-fast: false
       matrix:
         go-version:
-          - 1.23
+          - 1.23 # Add more versions here if needed
     runs-on: ubuntu-latest
     steps:
     - name: Check Go Version

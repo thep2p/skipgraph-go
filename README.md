@@ -8,7 +8,27 @@ The underlay exposes the necessary interface through which an overlay can commun
 The overlay instructs the underlay to communicate with another node only by specifying the receiver's identifier.
 Other network information such as IP address is handled by the underlay unit and is transparent to the overlay.
 
+## Usage
 
+To use the Skip Graph Middleware, follow these instructions:
 
+1. Clone the repository:
+```bash
+git clone https://github.com/thep2p/skipgraph-go.git
+cd skipgraph-go
+```
+2. Build the project:
+```bash
+make build
+```
+
+3. Run the tests:
+```bash
+make test
+```
+
+## Requirements
+
+- Go 1.16 or later
 
 

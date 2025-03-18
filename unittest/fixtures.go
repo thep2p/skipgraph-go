@@ -1,12 +1,12 @@
 package unittest
 
 import (
+	"crypto/rand"
 	"github.com/stretchr/testify/require"
 	"github/yhassanzadeh13/skipgraph-go/model"
 	"github/yhassanzadeh13/skipgraph-go/model/messages"
 	"github/yhassanzadeh13/skipgraph-go/model/skipgraph"
-	"math/rand"
-	"strconv"
+	"math/big"
 	"testing"
 )
 
@@ -63,7 +63,9 @@ func MembershipVectorFixture(t *testing.T) skipgraph.MembershipVector {
 // AddressFixture returns an Address on localhost with a random port number.
 func AddressFixture(t *testing.T) model.Address {
 	// pick a random port
-	port := strconv.Itoa(rand.Intn(65535))
+	max := big.NewInt(65535)
+	randomInt, _ := rand.Int(rand.Reader, max)
+	port := randomInt.String()
 	addr := model.NewAddress("localhost", port)
 	return addr
 

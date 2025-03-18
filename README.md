@@ -29,6 +29,6 @@ make test
 
 ## Requirements
 
-- Go 1.16 or later
+- Go 1.23 or later
 
 

@@ -4,15 +4,40 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/go-playground/validator/v10"
 )
 
 const IdentifierSizeBytes = 32
 
-type ComparisonResult string
+var validate *validator.Validate
 
-const CompareEqual ComparisonResult = "compare-equal"
-const CompareGreater ComparisonResult = "compare-greater"
-const CompareLess ComparisonResult = "compare-less"
+func init() {
+	validate = validator.New(validator.WithPrivateFieldValidation())
+}
+
+const (
+	CompareEqual   = "compare-equal"
+	CompareGreater = "compare-greater"
+	CompareLess    = "compare-less"
+)
+
+type ComparisonResult struct {
+	// made this field unexported to ensure that only the constructor func is used
+	// to create an instance of this type
+	result string `validate:"oneof=compare-equal compare-greater compare-less"`
+}
+
+func (cr ComparisonResult) Result() string {
+	return cr.result
+}
+func NewComparisonResult(s string) (*ComparisonResult, error) {
+	cr := ComparisonResult{s}
+	err := validate.Struct(cr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate the comparison result upon instantiation: %w", err)
+	}
+	return &cr, nil
+}
 
 // Identifier represents a 32-byte unique identifier a Skip Graph node.
 type Identifier [IdentifierSizeBytes]byte
@@ -37,8 +62,8 @@ func NewComparison(result ComparisonResult, left, right *Identifier, diffIndex u
 }
 
 // GetComparisonResult returns the comparison result.
-func (c *Comparison) GetComparisonResult() ComparisonResult {
-	return c.comparisonResult
+func (c *Comparison) GetComparisonResult() string {
+	return c.comparisonResult.Result()
 }
 
 // GetLeft returns the left identifier.
@@ -84,14 +109,26 @@ func (i *Identifier) Compare(other *Identifier) Comparison {
 		cmp := bytes.Compare(i[index:index+1], other[index:index+1])
 		switch cmp {
 		case 1:
-			return Comparison{CompareGreater, i, other, uint32(index)}
+			cr, err := NewComparisonResult(CompareGreater)
+			if err != nil {
+				panic(err)
+			}
+			return Comparison{*cr, i, other, uint32(index)}
 		case -1:
-			return Comparison{CompareLess, i, other, uint32(index)}
+			cr, err := NewComparisonResult(CompareLess)
+			if err != nil {
+				panic(err)
+			}
+			return Comparison{*cr, i, other, uint32(index)}
 		default:
 			continue
 		}
 	}
-	return Comparison{CompareEqual, i, other, uint32(len(i) - 1)}
+	cr, err := NewComparisonResult(CompareEqual)
+	if err != nil {
+		panic(err)
+	}
+	return Comparison{*cr, i, other, uint32(len(i) - 1)}
 }
 
 // ByteToId converts a byte slice b to an Identifier.

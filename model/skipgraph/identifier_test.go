@@ -11,19 +11,19 @@ import (
 )
 
 func TestNewComparisonResult(t *testing.T) {
-	//cr, err := skipgraph.NewComparisonResult(skipgraph.CompareEqual)
-	//require.NoError(t, err)
-	//require.Equal(t, skipgraph.CompareEqual, cr.Result())
-	//
-	//cr, err = skipgraph.NewComparisonResult(skipgraph.CompareGreater)
-	//require.NoError(t, err)
-	//require.Equal(t, skipgraph.CompareGreater, cr.Result())
-	//
-	//cr, err = skipgraph.NewComparisonResult(skipgraph.CompareLess)
-	//require.NoError(t, err)
-	//require.Equal(t, skipgraph.CompareLess, cr.Result())
+	cr, err := skipgraph.NewComparisonResult(skipgraph.CompareEqual)
+	require.NoError(t, err)
+	require.Equal(t, skipgraph.CompareEqual, cr.Result())
 
-	_, err := skipgraph.NewComparisonResult("invalid")
+	cr, err = skipgraph.NewComparisonResult(skipgraph.CompareGreater)
+	require.NoError(t, err)
+	require.Equal(t, skipgraph.CompareGreater, cr.Result())
+
+	cr, err = skipgraph.NewComparisonResult(skipgraph.CompareLess)
+	require.NoError(t, err)
+	require.Equal(t, skipgraph.CompareLess, cr.Result())
+
+	_, err = skipgraph.NewComparisonResult("invalid")
 	require.Error(t, err)
 }
 func TestDebugInfo(t *testing.T) {

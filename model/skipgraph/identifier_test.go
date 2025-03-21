@@ -35,7 +35,7 @@ func TestDebugInfo(t *testing.T) {
 	// Test CompareGreater
 	crGreater, err := skipgraph.NewComparisonResult(skipgraph.CompareGreater)
 	require.NoError(t, err)
-	c := skipgraph.NewComparison(crGreater, &id2, &id1, uint32(31))
+	c := skipgraph.NewComparison(*crGreater, &id2, &id1, uint32(31))
 	debugInfo := c.DebugInfo()
 	expected := "0000000000000000000000000000000000000000000000000000000000010204 > 0000000000000000000000000000000000000000000000000000000000010203 (at byte 31)"
 	require.Equal(t, expected, debugInfo)
@@ -43,7 +43,7 @@ func TestDebugInfo(t *testing.T) {
 	// Test CompareLess
 	crLess, err := skipgraph.NewComparisonResult(skipgraph.CompareLess)
 	require.NoError(t, err)
-	c = skipgraph.NewComparison(crLess, &id1, &id2, uint32(31))
+	c = skipgraph.NewComparison(*crLess, &id1, &id2, uint32(31))
 	debugInfo = c.DebugInfo()
 	expected = "0000000000000000000000000000000000000000000000000000000000010203 < 0000000000000000000000000000000000000000000000000000000000010204 (at byte 31)"
 	require.Equal(t, expected, debugInfo)
@@ -51,7 +51,7 @@ func TestDebugInfo(t *testing.T) {
 	// Test CompareEqual
 	crEqual, err := skipgraph.NewComparisonResult(skipgraph.CompareEqual)
 	require.NoError(t, err)
-	c = skipgraph.NewComparison(crEqual, &id1, &id1, uint32(len(id1)-1))
+	c = skipgraph.NewComparison(*crEqual, &id1, &id1, uint32(len(id1)-1))
 	debugInfo = c.DebugInfo()
 	expected = "0000000000000000000000000000000000000000000000000000000000010203 == 0000000000000000000000000000000000000000000000000000000000010203"
 	require.Equal(t, expected, debugInfo)
@@ -69,15 +69,15 @@ func TestIdentifierCompare(t *testing.T) {
 	// each id is equal to itself
 	crEqual, err := skipgraph.NewComparisonResult(skipgraph.CompareEqual)
 	require.NoError(t, err)
-	exp := skipgraph.NewComparison(crEqual, &id0, &id0, uint32(len(id0)-1))
+	exp := skipgraph.NewComparison(*crEqual, &id0, &id0, uint32(len(id0)-1))
 	res := id0.Compare(&id0)
 	require.Equal(t, exp.DebugInfo(), res.DebugInfo())
 
-	exp = skipgraph.NewComparison(crEqual, &id1, &id1, uint32(len(id1)-1))
+	exp = skipgraph.NewComparison(*crEqual, &id1, &id1, uint32(len(id1)-1))
 	res = id1.Compare(&id1)
 	require.Equal(t, exp.DebugInfo(), res.DebugInfo())
 
-	exp = skipgraph.NewComparison(crEqual, &id2, &id2, uint32(len(id2)-1))
+	exp = skipgraph.NewComparison(*crEqual, &id2, &id2, uint32(len(id2)-1))
 	res = id2.Compare(&id2)
 	require.Equal(t, exp.DebugInfo(), res.DebugInfo())
 

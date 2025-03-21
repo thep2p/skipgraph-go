@@ -62,8 +62,8 @@ func NewComparison(result ComparisonResult, left, right *Identifier, diffIndex u
 }
 
 // GetComparisonResult returns the comparison result.
-func (c *Comparison) GetComparisonResult() ComparisonResult {
-	return c.comparisonResult
+func (c *Comparison) GetComparisonResult() string {
+	return c.comparisonResult.Result()
 }
 
 // GetLeft returns the left identifier.
@@ -113,13 +113,13 @@ func (i *Identifier) Compare(other *Identifier) Comparison {
 			if err != nil {
 				panic(err)
 			}
-			return Comparison{cr, i, other, uint32(index)}
+			return Comparison{*cr, i, other, uint32(index)}
 		case -1:
 			cr, err := NewComparisonResult(CompareLess)
 			if err != nil {
 				panic(err)
 			}
-			return Comparison{cr, i, other, uint32(index)}
+			return Comparison{*cr, i, other, uint32(index)}
 		default:
 			continue
 		}
@@ -128,7 +128,7 @@ func (i *Identifier) Compare(other *Identifier) Comparison {
 	if err != nil {
 		panic(err)
 	}
-	return Comparison{cr, i, other, uint32(len(i) - 1)}
+	return Comparison{*cr, i, other, uint32(len(i) - 1)}
 }
 
 // ByteToId converts a byte slice b to an Identifier.

@@ -10,6 +10,22 @@ import (
 	"testing"
 )
 
+func TestNewComparisonResult(t *testing.T) {
+	//cr, err := skipgraph.NewComparisonResult(skipgraph.CompareEqual)
+	//require.NoError(t, err)
+	//require.Equal(t, skipgraph.CompareEqual, cr.Result())
+	//
+	//cr, err = skipgraph.NewComparisonResult(skipgraph.CompareGreater)
+	//require.NoError(t, err)
+	//require.Equal(t, skipgraph.CompareGreater, cr.Result())
+	//
+	//cr, err = skipgraph.NewComparisonResult(skipgraph.CompareLess)
+	//require.NoError(t, err)
+	//require.Equal(t, skipgraph.CompareLess, cr.Result())
+
+	_, err := skipgraph.NewComparisonResult("invalid")
+	require.Error(t, err)
+}
 func TestDebugInfo(t *testing.T) {
 	id1, err := skipgraph.ByteToId([]byte{0x00, 0x01, 0x02, 0x03})
 	require.NoError(t, err)
@@ -36,6 +52,7 @@ func TestDebugInfo(t *testing.T) {
 	debugInfo = skipgraph.DebugInfo(id1, id1, *crEqual, len(id1)-1)
 	expected = "0000000000000000000000000000000000000000000000000000000000010203 == 0000000000000000000000000000000000000000000000000000000000010203"
 	require.Equal(t, expected, debugInfo)
+
 }
 
 func TestIdentifierCompare(t *testing.T) {

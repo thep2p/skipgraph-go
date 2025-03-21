@@ -12,7 +12,7 @@ const IdentifierSizeBytes = 32
 var validate *validator.Validate
 
 func init() {
-	validate = validator.New()
+	validate = validator.New(validator.WithPrivateFieldValidation())
 }
 
 const (
@@ -34,7 +34,7 @@ func NewComparisonResult(s string) (*ComparisonResult, error) {
 	cr := ComparisonResult{s}
 	err := validate.Struct(cr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to validate the comparison result upon instantiation: %w", err)
 	}
 	return &cr, nil
 }
@@ -81,16 +81,25 @@ func (i Identifier) Compare(other Identifier) Comparison {
 		cmp := bytes.Compare(i[index:index+1], other[index:index+1])
 		switch cmp {
 		case 1:
-			cr, _ := NewComparisonResult(CompareGreater)
+			cr, err := NewComparisonResult(CompareGreater)
+			if err != nil {
+				panic(err)
+			}
 			return Comparison{*cr, DebugInfo(i, other, *cr, index), uint32(index)}
 		case -1:
-			cr, _ := NewComparisonResult(CompareLess)
+			cr, err := NewComparisonResult(CompareLess)
+			if err != nil {
+				panic(err)
+			}
 			return Comparison{*cr, DebugInfo(i, other, *cr, index), uint32(index)}
 		default:
 			continue
 		}
 	}
-	cr, _ := NewComparisonResult(CompareEqual)
+	cr, err := NewComparisonResult(CompareEqual)
+	if err != nil {
+		panic(err)
+	}
 	return Comparison{*cr, DebugInfo(i, other, *cr, len(i)-1), uint32(len(i) - 1)}
 }
 

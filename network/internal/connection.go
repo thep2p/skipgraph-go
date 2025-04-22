@@ -2,7 +2,7 @@ package internal
 
 import (
 	"context"
-	"github/yhassanzadeh13/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/model/skipgraph"
 )
 
 // Connection represents a connection to a remote peer.

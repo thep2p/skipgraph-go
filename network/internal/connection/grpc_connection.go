@@ -1,6 +1,6 @@
 package connection
 
-import "github/yhassanzadeh13/skipgraph-go/network/internal"
+import "github/thep2p/skipgraph-go/network/internal"
 
 // GRPCConnection represents a connection to a remote peer using gRPC.
 type GRPCConnection struct {

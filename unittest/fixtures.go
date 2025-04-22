@@ -3,9 +3,9 @@ package unittest
 import (
 	"crypto/rand"
 	"github.com/stretchr/testify/require"
-	"github/yhassanzadeh13/skipgraph-go/model"
-	"github/yhassanzadeh13/skipgraph-go/model/messages"
-	"github/yhassanzadeh13/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/model"
+	"github/thep2p/skipgraph-go/model/messages"
+	"github/thep2p/skipgraph-go/model/skipgraph"
 	"math/big"
 	"testing"
 )

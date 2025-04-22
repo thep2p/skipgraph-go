@@ -2,8 +2,8 @@ package skipgraph_test
 
 import (
 	"github.com/stretchr/testify/require"
-	"github/yhassanzadeh13/skipgraph-go/model/skipgraph"
-	"github/yhassanzadeh13/skipgraph-go/unittest"
+	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/unittest"
 	"sync"
 	"testing"
 	"time"

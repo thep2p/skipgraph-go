@@ -2,9 +2,9 @@ package mocknet
 
 import (
 	"fmt"
-	"github/yhassanzadeh13/skipgraph-go/model/messages"
-	"github/yhassanzadeh13/skipgraph-go/model/skipgraph"
-	"github/yhassanzadeh13/skipgraph-go/network"
+	"github/thep2p/skipgraph-go/model/messages"
+	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/network"
 	"sync"
 )
 

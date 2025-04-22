@@ -1,6 +1,6 @@
 package skipgraph
 
-import "github/yhassanzadeh13/skipgraph-go/model"
+import "github/thep2p/skipgraph-go/model"
 
 // Identity is a struct that contains the information of a node in the skip graph.
 // More specifically, it is the constituent element of the LookupTable.

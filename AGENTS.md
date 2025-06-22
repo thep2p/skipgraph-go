@@ -3,7 +3,7 @@
 ## Testing Instructions
 
 - Find the CI pipeline in the `.github/workflows` directory.
-- Fix any failing test before submitting a pull request `go test ./...` should pass with no errors.
+- Fix any failing test before submitting a pull request. `go test ./...` should pass with no errors.
 - Add or update godoc comments for any new or modified functions, types, and packages.
 - Ensure that all new code is covered by tests. Use `go test -cover` to check coverage.
 - Add or update tests for the code you modify or add.

@@ -23,7 +23,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
       - name: builds the code
-        run: go build ./...
+        run: make build
 
   lint:
     name: Lint
@@ -54,4 +54,4 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v4
     - name: Run tests
-      run: go test -v ./...
+      run: make test

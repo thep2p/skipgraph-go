@@ -61,3 +61,9 @@ lint: check-go-version tidy
 tidy: check-go-version
 	@echo "Running go mod tidy..."
 	@go mod tidy
+
+.PHONY: build
+build: check-go-version tidy
+	@echo "Building the Go project..."
+	@go build ./...
+	@echo "✅ Build completed successfully."

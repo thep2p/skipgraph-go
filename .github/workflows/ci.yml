@@ -19,7 +19,7 @@ jobs:
           echo "go-version=$(awk -F ':= ' '/GO_MIN_VERSION/ {print $2; exit}' Makefile)" >> "$GITHUB_OUTPUT"
           echo "lint-version=$(awk -F ':= ' '/LINT_VERSION/ {print $2; exit}' Makefile)" >> "$GITHUB_OUTPUT"
   build:
-    name: Build
+    name: Build - ${{ github.run_id }}
     runs-on: ubuntu-latest
     needs: versions
     env:
@@ -52,7 +52,7 @@ jobs:
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$LINT_VERSION/install.sh | sh -s -- -b $GITHUB_WORKSPACE/bin $LINT_VERSION
       - run: $GITHUB_WORKSPACE/bin/golangci-lint run --config integration/golangci-lint.yml ./...
   unittest:
-    name: Unit Tests
+    name: Unit Tests - ${{ github.run_id }}
     runs-on: ubuntu-latest
     needs: versions
     env:

@@ -69,6 +69,29 @@ This is a Skip Graph middleware implementation in Go. The system follows a layer
 - `github.com/stretchr/testify` for testing
 - golangci-lint v1.64.5 for linting
 
+## Cross-Language Development
+
+This Go implementation is developed in tandem with a reference Rust implementation at `github.com/thep2p/skipgraph-rust`. Both repositories:
+
+- Share the same core architecture (Overlay/Underlay pattern)
+- Use identical 32-byte identifier systems
+- Maintain feature parity across languages
+- Are developed under the same `thep2p` organization
+
+**Common Development Patterns:**
+- When implementing new features, reference the Rust implementation for design patterns and behavior
+- Port Rust features to Go while adapting to Go idioms and conventions
+- Maintain consistent API designs across both implementations
+- Ensure comprehensive testing for all ported features
+
+**For Feature Implementation:**
+1. Study the feature implementation in the Rust version
+2. Adapt the design to Go conventions and patterns
+3. Implement with proper error handling and validation
+4. Write comprehensive tests including unit and integration tests
+5. Update documentation and godoc comments
+6. Run full test suite and linting to ensure code quality
+
 ## Module Path
 
 The module uses `github/thep2p/skipgraph-go` as its path (note: this differs from the GitHub URL which is `github.com/thep2p/skipgraph-go`).

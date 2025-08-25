@@ -69,6 +69,19 @@ This is a Skip Graph middleware implementation in Go. The system follows a layer
 - `github.com/stretchr/testify` for testing
 - golangci-lint v1.64.5 for linting
 
+## Reference Documentation
+
+The `/docs` folder contains reference documentation and blueprints for this project:
+
+- `skip-graphs-journal.pdf`: Core academic paper and technical specifications for Skip Graph implementation
+- Additional design documents and implementation blueprints (as they are added)
+
+**When asked to "consult the docs":**
+1. Read the relevant documentation in the `/docs` folder
+2. Understand the theoretical foundation and design specifications
+3. Implement the feature according to the documented specifications
+4. Ensure implementation follows both the academic model and project conventions
+
 ## Cross-Language Development
 
 This Go implementation is developed in tandem with a reference Rust implementation at `github.com/thep2p/skipgraph-rust`. Both repositories:

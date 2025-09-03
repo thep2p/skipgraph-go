@@ -1,5 +1,7 @@
 package modules
 
+import "context"
+
 // ReadyDoneAware is implemented by components that have a ready and done state.
 // It provides channels to signal when the component is ready and when it is done.
 // A component is considered ready when it has completed its initialization and is ready to process requests.

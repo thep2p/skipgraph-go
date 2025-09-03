@@ -21,7 +21,7 @@ This is a Skip Graph middleware implementation in Go. The system follows a layer
 ### Core Components
 
 1. **Skip Graph Node**: Each node has a unique 32-byte identifier and consists of two main components:
-   - **Overlay**: Contains skip graph routing logic
+   - **Node**: Contains skip graph routing logic
    - **Network**: Provides network communication services between nodes
 
 2. **Model Layer** (`model/`):
@@ -86,7 +86,7 @@ The `/docs` folder contains reference documentation and blueprints for this proj
 
 This Go implementation is developed in tandem with a reference Rust implementation at `github.com/thep2p/skipgraph-rust`. Both repositories:
 
-- Share the same core architecture (Overlay/Network pattern)
+- Share the same core architecture (Node/Network pattern)
 - Use identical 32-byte identifier systems
 - Maintain feature parity across languages
 - Are developed under the same `thep2p` organization

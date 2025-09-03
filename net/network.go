@@ -20,6 +20,8 @@ type Network interface {
 
 type Channel string
 
+const TestChannel = Channel("channel-test")
+
 // Conduit is a high-level abstraction for sending messages to other nodes in the skip graph.
 // It abstracts away the details of connection management and message serialization.
 // Each conduit is associated with a specific channel.

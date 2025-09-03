@@ -1,6 +1,7 @@
 package net
 
 import (
+	"github/thep2p/skipgraph-go/model/messages"
 	"github/thep2p/skipgraph-go/model/skipgraph"
 )
 
@@ -14,5 +15,5 @@ type MessageProcessor interface {
 	//  - channel: the channel on which the message was received.
 	//  - originID: the identifier of the sender of the message.
 	//  - msg: the message received.
-	ProcessIncomingMessage(channel Channel, originID skipgraph.Identifier, msg interface{})
+	ProcessIncomingMessage(channel Channel, originID skipgraph.Identifier, msg messages.Message)
 }

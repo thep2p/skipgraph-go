@@ -5,9 +5,8 @@ import (
 	"github/thep2p/skipgraph-go/model/skipgraph"
 )
 
-// Underlay represents the underlying network and services therein
-// A skip graph node interacts with other nodes using its Underlay.
-type Underlay interface {
+// Network represents the underlying networking layer of a skip graph node.
+type Network interface {
 	// Start starts the networking layer.
 	Start() <-chan interface{}
 

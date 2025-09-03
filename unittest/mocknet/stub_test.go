@@ -12,18 +12,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestTwoUnderlays checks two mock underlays can send message to each other
-func TestTwoUnderlays(t *testing.T) {
-	// construct an empty mocked underlay
+// TestTwoNetworks checks two mock networks can send message to each other
+func TestTwoNetworks(t *testing.T) {
+	// construct an empty mocked network
 	stub := mocknet.NewNetworkStub()
 
 	// create a random identifier
 	id1 := unittest.IdentifierFixture(t)
-	u1 := stub.NewMockUnderlay(t, id1)
+	u1 := stub.NewMockNetwork(t, id1)
 
 	// create a random identifier
 	id2 := unittest.IdentifierFixture(t)
-	u2 := stub.NewMockUnderlay(t, id2)
+	u2 := stub.NewMockNetwork(t, id2)
 
 	// make sure they are not equal
 	require.NotEqual(t, id1, id2)
@@ -32,10 +32,10 @@ func TestTwoUnderlays(t *testing.T) {
 	u1.Start(tCtx)
 	u2.Start(tCtx)
 
-	// starts underlay
+	// starts network
 	unittest.ChannelsMustCloseWithinTimeout(
 		t,
-		100*time.Millisecond, "could not start underlays on time", u1.Ready(), u2.Ready(),
+		100*time.Millisecond, "could not start networks on time", u1.Ready(), u2.Ready(),
 	)
 
 	// sets message handler at u1
@@ -67,9 +67,9 @@ func TestTwoUnderlays(t *testing.T) {
 	require.True(t, received)
 	require.Equal(t, msg.Payload, receivedPayload)
 
-	// stops underlay
+	// stops network
 	unittest.ChannelsMustCloseWithinTimeout(
 		t,
-		100*time.Millisecond, "could not stop underlay on time", u1.Done(), u2.Done(),
+		100*time.Millisecond, "could not stop network on time", u1.Done(), u2.Done(),
 	)
 }

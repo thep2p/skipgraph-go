@@ -50,7 +50,7 @@ func (m *MockNetwork) Register(channel net.Channel, processor net.MessageProcess
 	}, nil
 }
 
-// NewMockUnderlay initializes an empty MockNetwork and returns a pointer to it
+// newMockNetwork initializes an empty MockNetwork and returns a pointer to it
 func newMockNetwork(id skipgraph.Identifier, stub *NetworkStub) *MockNetwork {
 	return &MockNetwork{
 		stub:              stub,

@@ -5,6 +5,6 @@ import (
 	"testing"
 )
 
-func TestUnderlay(t *testing.T) {
+func TestNetwork(t *testing.T) {
 	require.True(t, true)
 }

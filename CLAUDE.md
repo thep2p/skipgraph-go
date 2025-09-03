@@ -22,7 +22,7 @@ This is a Skip Graph middleware implementation in Go. The system follows a layer
 
 1. **Skip Graph Node**: Each node has a unique 32-byte identifier and consists of two main components:
    - **Overlay**: Contains skip graph routing logic
-   - **Underlay**: Provides network communication services between nodes
+   - **Network**: Provides network communication services between nodes
 
 2. **Model Layer** (`model/`):
    - `skipgraph/identifier.go`: Core 32-byte identifier type with comparison operations
@@ -32,9 +32,9 @@ This is a Skip Graph middleware implementation in Go. The system follows a layer
    - `messages/message.go`: Message types for inter-node communication
    - `address.go`: Network addressing
 
-3. **Network Layer** (`network/`):
-   - `underlay.go`: Interface definition for network abstraction
-   - `underlay/underlay.go`: Concrete underlay implementation
+3. **Network Layer** (`net/`):
+   - `network.go`: Interface definition for network abstraction
+   - `network/network.go`: Concrete network implementation
    - `internal/connection.go`: Connection management
    - `internal/connection/grpc_connection.go`: gRPC-based connections
    - `internal/connection/message.proto`: Protocol buffer definitions
@@ -46,8 +46,8 @@ This is a Skip Graph middleware implementation in Go. The system follows a layer
 
 ### Key Design Patterns
 
-- **Interface-based Architecture**: The underlay is defined as an interface, allowing for different network implementations
-- **Message Handler Pattern**: The underlay uses configurable message handlers based on message type
+- **Interface-based Architecture**: The network layer is defined as an interface, allowing for different network implementations
+- **Message Handler Pattern**: The network layer uses configurable message handlers based on message type
 - **Identifier-based Routing**: Network communication uses 32-byte identifiers, abstracting away IP addresses
 - **Validation-driven Development**: Uses `github.com/go-playground/validator/v10` for struct validation
 
@@ -86,7 +86,7 @@ The `/docs` folder contains reference documentation and blueprints for this proj
 
 This Go implementation is developed in tandem with a reference Rust implementation at `github.com/thep2p/skipgraph-rust`. Both repositories:
 
-- Share the same core architecture (Overlay/Underlay pattern)
+- Share the same core architecture (Overlay/Network pattern)
 - Use identical 32-byte identifier systems
 - Maintain feature parity across languages
 - Are developed under the same `thep2p` organization

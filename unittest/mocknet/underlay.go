@@ -2,60 +2,57 @@ package mocknet
 
 import (
 	"fmt"
-	"github/thep2p/skipgraph-go/model/messages"
-	"github/thep2p/skipgraph-go/model/skipgraph"
-	"github/thep2p/skipgraph-go/network"
+	"github/thep2p/skipgraph-go/modules"
+	"github/thep2p/skipgraph-go/net"
 	"sync"
 )
 
-// MockUnderlay keeps data necessary for processing of incoming network messages in a mock network
-type MockUnderlay struct {
+// MockNetwork keeps data necessary for processing of incoming network messages in a mock network
+type MockNetwork struct {
 	l sync.Mutex
 	// there is only one handler per message type (but not per caller)
-	messageHandlers map[messages.Type]network.MessageHandler
-	stub            *NetworkStub
+	messageProcessors map[net.Channel]net.MessageProcessor
+	stub              *NetworkStub
 }
 
-// NewMockUnderlay initializes an empty MockUnderlay and returns a pointer to it
-func newMockUnderlay(stub *NetworkStub) *MockUnderlay {
-	return &MockUnderlay{
-		stub:            stub,
-		messageHandlers: make(map[messages.Type]network.MessageHandler),
-	}
+// Start is a no-op for the mock network.
+func (m *MockNetwork) Start(ctx modules.ThrowableContext) {
+	// No-op
 }
 
-// SetMessageHandler determines the handler of a message based on its message type.
-func (m *MockUnderlay) SetMessageHandler(msgType messages.Type, handler network.MessageHandler) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-
-	// check whether a handler exists for the supplied message type
-	_, ok := m.messageHandlers[msgType]
-	if ok {
-		return fmt.Errorf("a handler exists for the attempted message type: %s", msgType)
-	}
-	m.messageHandlers[msgType] = handler
-	return nil
-}
-
-// Send sends a message to a list of target recipients in the underlying network.
-func (m *MockUnderlay) Send(msg messages.Message, target skipgraph.Identifier) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-
-	return m.stub.routeMessageTo(msg, target)
-}
-
-// Start starts a MockUnderlay
-func (m *MockUnderlay) Start() <-chan interface{} {
+// Ready returns a closed channel as there is nothing to wait for in the mock network
+func (m *MockNetwork) Ready() <-chan interface{} {
 	ch := make(chan interface{})
 	close(ch)
 	return ch
 }
 
-// Stop stops a MockUnderlay
-func (m *MockUnderlay) Stop() <-chan interface{} {
+// Done returns a closed channel as there is nothing to wait for in the mock network
+func (m *MockNetwork) Done() <-chan interface{} {
 	ch := make(chan interface{})
 	close(ch)
 	return ch
 }
+
+func (m *MockNetwork) Register(channel net.Channel, processor net.MessageProcessor) (net.Conduit, error) {
+	if _, exists := m.messageProcessors[channel]; exists {
+		return nil, fmt.Errorf("message processor for channel %v already exists", channel)
+	}
+	m.l.Lock()
+	m.messageProcessors[channel] = processor
+	m.l.Unlock()
+	return &MockConduit{
+		channel: channel,
+		stub:    m.stub,
+	}, nil
+}
+
+// NewMockUnderlay initializes an empty MockNetwork and returns a pointer to it
+func newMockNetwork(stub *NetworkStub) *MockNetwork {
+	return &MockNetwork{
+		stub:              stub,
+		messageProcessors: make(map[net.Channel]net.MessageProcessor),
+	}
+}
+
+var _ net.Network = (*MockNetwork)(nil)

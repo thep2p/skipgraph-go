@@ -9,27 +9,27 @@ import (
 	"testing"
 )
 
-// NetworkStub acts as a router to connect a set of MockUnderlay
+// NetworkStub acts as a router to connect a set of MockNetwork
 // it needs to be locked using its l field before being accessed
 type NetworkStub struct {
 	l         sync.Mutex
-	underlays map[skipgraph.Identifier]*MockUnderlay
+	underlays map[skipgraph.Identifier]*MockNetwork
 }
 
 // NewNetworkStub creates an empty NetworkStub
 func NewNetworkStub() *NetworkStub {
-	return &NetworkStub{underlays: make(map[skipgraph.Identifier]*MockUnderlay)}
+	return &NetworkStub{underlays: make(map[skipgraph.Identifier]*MockNetwork)}
 }
 
 // NewMockUnderlay creates and returns a mock underlay connected to this network stub for a non-existing Identifier.
-func (n *NetworkStub) NewMockUnderlay(t *testing.T, id skipgraph.Identifier) *MockUnderlay {
+func (n *NetworkStub) NewMockUnderlay(t *testing.T, id skipgraph.Identifier) *MockNetwork {
 	n.l.Lock()
 	defer n.l.Unlock()
 
 	_, exists := n.underlays[id]
 	require.False(t, exists, "attempting to create mock underlay for already existing identifier")
 
-	u := newMockUnderlay(n)
+	u := newMockNetwork(n)
 	n.underlays[id] = u
 
 	return u
@@ -45,7 +45,7 @@ func (n *NetworkStub) routeMessageTo(msg messages.Message, target skipgraph.Iden
 		return fmt.Errorf("no mock underlay exists for %x", target)
 	}
 
-	h, exists := u.messageHandlers[msg.Type]
+	h, exists := u.messageProcessors[msg.Type]
 	if !exists {
 		return fmt.Errorf("no handler exists for message type %v", msg.Type)
 	}

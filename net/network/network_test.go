@@ -1,4 +1,4 @@
-package underlay
+package network
 
 import (
 	"github.com/stretchr/testify/require"

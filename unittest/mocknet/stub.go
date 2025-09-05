@@ -5,55 +5,53 @@ import (
 	"github.com/stretchr/testify/require"
 	"github/thep2p/skipgraph-go/model/messages"
 	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/net"
 	"sync"
 	"testing"
 )
 
-// NetworkStub acts as a router to connect a set of MockUnderlay
+// NetworkStub acts as a router to connect a set of MockNetwork
 // it needs to be locked using its l field before being accessed
 type NetworkStub struct {
-	l         sync.Mutex
-	underlays map[skipgraph.Identifier]*MockUnderlay
+	l        sync.Mutex
+	networks map[skipgraph.Identifier]*MockNetwork
 }
 
 // NewNetworkStub creates an empty NetworkStub
 func NewNetworkStub() *NetworkStub {
-	return &NetworkStub{underlays: make(map[skipgraph.Identifier]*MockUnderlay)}
+	return &NetworkStub{networks: make(map[skipgraph.Identifier]*MockNetwork)}
 }
 
-// NewMockUnderlay creates and returns a mock underlay connected to this network stub for a non-existing Identifier.
-func (n *NetworkStub) NewMockUnderlay(t *testing.T, id skipgraph.Identifier) *MockUnderlay {
+// NewMockNetwork creates and returns a mock network connected to this network stub for a non-existing Identifier.
+func (n *NetworkStub) NewMockNetwork(t *testing.T, id skipgraph.Identifier) *MockNetwork {
 	n.l.Lock()
 	defer n.l.Unlock()
 
-	_, exists := n.underlays[id]
-	require.False(t, exists, "attempting to create mock underlay for already existing identifier")
+	_, exists := n.networks[id]
+	require.False(t, exists, "attempting to create mock network for already existing identifier")
 
-	u := newMockUnderlay(n)
-	n.underlays[id] = u
+	u := newMockNetwork(id, n)
+	n.networks[id] = u
 
 	return u
 }
 
-// routeMessageTo imitates routing the message in the underlying network to the target identifier's mock underlay.
-func (n *NetworkStub) routeMessageTo(msg messages.Message, target skipgraph.Identifier) error {
+// routeMessageTo imitates routing the message in the underlying network to the target identifier's mock network.
+func (n *NetworkStub) routeMessageTo(channel net.Channel, originId skipgraph.Identifier, msg messages.Message, target skipgraph.Identifier) error {
 	n.l.Lock()
 	defer n.l.Unlock()
 
-	u, exists := n.underlays[target]
+	u, exists := n.networks[target]
 	if !exists {
-		return fmt.Errorf("no mock underlay exists for %x", target)
+		return fmt.Errorf("no mock network exists for %x", target)
 	}
 
-	h, exists := u.messageHandlers[msg.Type]
+	h, exists := u.messageProcessors[channel]
 	if !exists {
-		return fmt.Errorf("no handler exists for message type %v", msg.Type)
+		return fmt.Errorf("no handler exists for channel %v", channel)
 	}
 
-	err := h(msg)
-	if err != nil {
-		return fmt.Errorf("mock underlay handler could not handler message %w", err)
-	}
+	h.ProcessIncomingMessage(channel, originId, msg)
 
 	return nil
 }

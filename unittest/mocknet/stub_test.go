@@ -2,6 +2,8 @@ package mocknet_test
 
 import (
 	"github/thep2p/skipgraph-go/model/messages"
+	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/net"
 	"github/thep2p/skipgraph-go/unittest"
 	"github/thep2p/skipgraph-go/unittest/mocknet"
 	"testing"
@@ -10,47 +12,64 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestTwoUnderlays checks two mock underlays can send message to each other
-func TestTwoUnderlays(t *testing.T) {
-	// construct an empty mocked underlay
+// TestTwoNetworks checks two mock networks can send message to each other
+func TestTwoNetworks(t *testing.T) {
+	// construct an empty mocked network
 	stub := mocknet.NewNetworkStub()
 
 	// create a random identifier
 	id1 := unittest.IdentifierFixture(t)
-	u1 := stub.NewMockUnderlay(t, id1)
+	u1 := stub.NewMockNetwork(t, id1)
 
 	// create a random identifier
 	id2 := unittest.IdentifierFixture(t)
-	u2 := stub.NewMockUnderlay(t, id2)
+	u2 := stub.NewMockNetwork(t, id2)
 
 	// make sure they are not equal
 	require.NotEqual(t, id1, id2)
 
-	// starts underlay
-	unittest.ChannelsMustCloseWithinTimeout(t,
-		100*time.Millisecond, "could not start underlays on time", u1.Start(), u2.Start())
+	tCtx := unittest.NewMockThrowableContext(t)
+	u1.Start(tCtx)
+	u2.Start(tCtx)
+
+	// starts network
+	unittest.ChannelsMustCloseWithinTimeout(
+		t,
+		100*time.Millisecond, "could not start networks on time", u1.Ready(), u2.Ready(),
+	)
 
 	// sets message handler at u1
 	received := false
 	var receivedPayload interface{}
-	f := func(msg messages.Message) error {
+	f := func(channel net.Channel, originId skipgraph.Identifier, msg messages.Message) {
 		received = true
 		receivedPayload = msg.Payload
-		return nil
+		require.Equal(t, id2, originId)
 	}
-	require.NoError(t, u1.SetMessageHandler(unittest.TestMessageType, f))
+	_, err := u1.Register(net.TestChannel, mocknet.NewMockMessageProcessor(f))
+	require.NoError(t, err)
 
 	// sends message from u2 -> u1
+	con2, err := u2.Register(
+		net.TestChannel, mocknet.NewMockMessageProcessor(
+			func(channel net.Channel, originID skipgraph.Identifier, msg messages.Message) {
+				// No-op, just to satisfy the interface, u2 does not expect to receive messages in this test
+			},
+		),
+	)
+	require.NoError(t, err)
 	msg := unittest.TestMessageFixture(t)
 	// TODO: refactor message as an interface
 	// TODO: add test for u1 -> u2
-	require.NoError(t, u2.Send(*msg, id1))
+	require.NoError(t, con2.Send(id1, *msg))
 
 	// the handler is called
 	require.True(t, received)
 	require.Equal(t, msg.Payload, receivedPayload)
 
-	// stops underlay
-	unittest.ChannelsMustCloseWithinTimeout(t,
-		100*time.Millisecond, "could not stop underlay on time", u1.Stop(), u2.Stop())
+	// stops network
+	unittest.ChannelsMustCloseWithinTimeout(
+		t,
+		100*time.Millisecond, "could not stop network on time", u1.Done(), u2.Done(),
+	)
 }

@@ -14,14 +14,10 @@ import (
 A utility module to generate random values of some certain type
 */
 
-// TestMessageType  is a random message type.
-const TestMessageType = messages.Type("test-message")
-
 // TestMessageFixture generates a random Message.
 func TestMessageFixture(t *testing.T) *messages.Message {
 
 	return &messages.Message{
-		Type:    TestMessageType,
 		Payload: RandomBytesFixture(t, 100),
 	}
 }

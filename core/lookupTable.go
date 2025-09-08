@@ -36,5 +36,3 @@ type MutableLookupTable interface {
 	// lev runs from 0...MaxLookupTableLevel-1.
 	AddEntry(dir Direction, level Level, identity model.Identity) error
 }
-
-ss

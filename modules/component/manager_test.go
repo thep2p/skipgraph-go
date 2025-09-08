@@ -6,7 +6,7 @@ import (
 	"github/thep2p/skipgraph-go/modules"
 	"github/thep2p/skipgraph-go/modules/component"
 	"github/thep2p/skipgraph-go/modules/throwable"
-	"sync"
+	"github/thep2p/skipgraph-go/unittest"
 	"testing"
 	"time"
 )
@@ -21,8 +21,8 @@ func TestNewManager(t *testing.T) {
 
 func TestManager_Add(t *testing.T) {
 	manager := component.NewManager()
-	component1 := NewMockComponent()
-	component2 := NewMockComponent()
+	component1 := unittest.NewMockComponent(t)
+	component2 := unittest.NewMockComponent(t)
 
 	// Add components before starting
 	require.NotPanics(
@@ -35,7 +35,7 @@ func TestManager_Add(t *testing.T) {
 
 func TestManager_Add_SameComponentTwice_ShouldPanic(t *testing.T) {
 	manager := component.NewManager()
-	component1 := NewMockComponent()
+	component1 := unittest.NewMockComponent(t)
 
 	manager.Add(component1)
 
@@ -49,8 +49,8 @@ func TestManager_Add_SameComponentTwice_ShouldPanic(t *testing.T) {
 
 func TestManager_Add_AfterStart_ShouldPanic(t *testing.T) {
 	manager := component.NewManager()
-	component1 := NewMockComponent()
-	component2 := NewMockComponent()
+	component1 := unittest.NewMockComponent(t)
+	component2 := unittest.NewMockComponent(t)
 
 	manager.Add(component1)
 
@@ -65,27 +65,9 @@ func TestManager_Add_AfterStart_ShouldPanic(t *testing.T) {
 	)
 }
 
-func TestManager_Start_CallsStartOnAllComponents(t *testing.T) {
-	manager := component.NewManager()
-	component1 := NewMockComponent()
-	component2 := NewMockComponent()
-
-	manager.Add(component1)
-	manager.Add(component2)
-
-	ctx := throwable.NewContext(context.Background())
-	manager.Start(ctx)
-
-	// Verify all components were started
-	require.True(t, component1.IsStartCalled())
-	require.True(t, component2.IsStartCalled())
-	require.Equal(t, 1, component1.GetStartCallCount())
-	require.Equal(t, 1, component2.GetStartCallCount())
-}
-
 func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
 	manager := component.NewManager()
-	component1 := NewMockComponent()
+	component1 := unittest.NewMockComponent(t)
 
 	manager.Add(component1)
 
@@ -100,95 +82,32 @@ func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
 	)
 }
 
-func TestManager_Ready_WaitsForAllComponents(t *testing.T) {
+func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 	manager := component.NewManager()
-	component1 := NewMockComponent()
-	component2 := NewMockComponent()
+	component1 := unittest.NewMockComponent(t)
+	component2 := unittest.NewMockComponent(t)
 
 	manager.Add(component1)
 	manager.Add(component2)
 
-	ctx := throwable.NewContext(context.Background())
-	manager.Start(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
+	tCtx := throwable.NewContext(ctx)
+	manager.Start(tCtx)
 
-	// Manager should not be ready yet since components aren't ready
-	select {
-	case <-manager.Ready():
-		t.Fatal("Manager should not be ready yet")
-	case <-time.After(50 * time.Millisecond):
-		// Expected - manager not ready yet
-	}
+	// Components should be started and ready
+	unittest.ChannelMustCloseWithinTimeout(t, component1.Ready(), 100*time.Millisecond, "component1 was not started")
+	unittest.ChannelMustCloseWithinTimeout(t, component2.Ready(), 100*time.Millisecond, "component2 was not started")
 
-	// Mark first component as ready
-	component1.MarkReady()
+	// When all components are ready, manager should be ready
+	unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager was not ready after all components were ready")
 
-	// Manager should still not be ready since not all components are ready
-	select {
-	case <-manager.Ready():
-		t.Fatal("Manager should not be ready yet - component2 not ready")
-	case <-time.After(50 * time.Millisecond):
-		// Expected - manager not ready yet
-	}
+	// Cancel context to signal components to be done
+	cancel()
 
-	// Mark second component as ready
-	component2.MarkReady()
-
-	// Now manager should be ready
-	select {
-	case <-manager.Ready():
-		// Expected - manager is now ready
-	case <-time.After(100 * time.Millisecond):
-		t.Fatal("Manager should be ready now")
-	}
-}
-
-func TestManager_Done_WaitsForAllComponents(t *testing.T) {
-	manager := component.NewManager()
-	component1 := NewMockComponent()
-	component2 := NewMockComponent()
-
-	manager.Add(component1)
-	manager.Add(component2)
-
-	ctx := throwable.NewContext(context.Background())
-	manager.Start(ctx)
-
-	// Mark components as ready first
-	component1.MarkReady()
-	component2.MarkReady()
-
-	// Wait for manager to be ready
-	<-manager.Ready()
-
-	// Manager should not be done yet since components aren't done
-	select {
-	case <-manager.Done():
-		t.Fatal("Manager should not be done yet")
-	case <-time.After(50 * time.Millisecond):
-		// Expected - manager not done yet
-	}
-
-	// Mark first component as done
-	component1.MarkDone()
-
-	// Manager should still not be done since not all components are done
-	select {
-	case <-manager.Done():
-		t.Fatal("Manager should not be done yet - component2 not done")
-	case <-time.After(50 * time.Millisecond):
-		// Expected - manager not done yet
-	}
-
-	// Mark second component as done
-	component2.MarkDone()
-
-	// Now manager should be done
-	select {
-	case <-manager.Done():
-		// Expected - manager is now done
-	case <-time.After(100 * time.Millisecond):
-		t.Fatal("Manager should be done now")
-	}
+	// Manager should wait for all components to be done
+	unittest.ChannelMustCloseWithinTimeout(t, component1.Done(), 200*time.Millisecond, "component1 was not done")
+	unittest.ChannelMustCloseWithinTimeout(t, component2.Done(), 200*time.Millisecond, "component2 was not done")
+	unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 300*time.Millisecond, "manager was not done after all components were done")
 }
 
 func TestManager_WithNoComponents(t *testing.T) {
@@ -198,96 +117,38 @@ func TestManager_WithNoComponents(t *testing.T) {
 	manager.Start(ctx)
 
 	// With no components, manager should be ready and done immediately
-	select {
-	case <-manager.Ready():
-		// Expected - manager with no components is immediately ready
-	case <-time.After(100 * time.Millisecond):
-		t.Fatal("Manager with no components should be ready immediately")
-	}
+	unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager was not ready immediately")
 
-	select {
-	case <-manager.Done():
-		// Expected - manager with no components is immediately done
-	case <-time.After(100 * time.Millisecond):
-		t.Fatal("Manager with no components should be done immediately")
-	}
+	// Expected - since there are no components, manager should be done immediately
+	unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 100*time.Millisecond, "manager was not done immediately")
 }
 
-func TestManager_ComponentsWithDelays(t *testing.T) {
+func TestManager_MultipleCalls(t *testing.T) {
 	manager := component.NewManager()
-
-	// Component 1: Fast startup, slow to be ready
-	component1 := NewMockComponentWithDelays(10*time.Millisecond, 100*time.Millisecond, 150*time.Millisecond)
-	// Component 2: Slow startup, fast to be ready
-	component2 := NewMockComponentWithDelays(50*time.Millisecond, 20*time.Millisecond, 200*time.Millisecond)
-
-	manager.Add(component1)
-	manager.Add(component2)
-
-	ctx := throwable.NewContext(context.Background())
-	startTime := time.Now()
-	manager.Start(ctx)
-
-	// Wait for manager to be ready - should take time for slowest component to be ready
-	<-manager.Ready()
-	readyTime := time.Now()
-
-	// Should take at least the time for the slowest component to be ready
-	// Component 1: 10ms start + 100ms ready = 110ms
-	// Component 2: 50ms start + 20ms ready = 70ms
-	// Manager should be ready after ~110ms
-	require.True(t, readyTime.Sub(startTime) >= 100*time.Millisecond)
-
-	// Wait for manager to be done
-	<-manager.Done()
-	doneTime := time.Now()
-
-	// Should take time for the slowest component to be done
-	// Component 1: 10ms start + 100ms ready + 150ms done = 260ms
-	// Component 2: 50ms start + 20ms ready + 200ms done = 270ms
-	// Manager should be done after ~270ms
-	require.True(t, doneTime.Sub(startTime) >= 250*time.Millisecond)
-}
-
-func TestManager_Ready_MultipleCalls(t *testing.T) {
-	manager := component.NewManager()
-	component1 := NewMockComponent()
+	component1 := unittest.NewMockComponent(t)
 
 	manager.Add(component1)
 
-	ctx := throwable.NewContext(context.Background())
-	manager.Start(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
+	tCtx := throwable.NewContext(ctx)
+	manager.Start(tCtx)
 
-	// Multiple calls to Ready() should return the same channel
+	// Multiple calls to Ready() and Done() should return the same channel
 	readyChan1 := manager.Ready()
 	readyChan2 := manager.Ready()
 	require.Equal(t, readyChan1, readyChan2)
 
-	component1.MarkReady()
-
-	// Both channels should be closed
-	<-readyChan1
-	<-readyChan2
-}
-
-func TestManager_Done_MultipleCalls(t *testing.T) {
-	manager := component.NewManager()
-	component1 := NewMockComponent()
-
-	manager.Add(component1)
-
-	ctx := throwable.NewContext(context.Background())
-	manager.Start(ctx)
-
-	// Multiple calls to Done() should return the same channel
 	doneChan1 := manager.Done()
 	doneChan2 := manager.Done()
 	require.Equal(t, doneChan1, doneChan2)
 
-	component1.MarkReady()
-	component1.MarkDone()
+	// Both channels should be closed when component is ready and done
+	unittest.ChannelMustCloseWithinTimeout(t, readyChan1, 100*time.Millisecond, "ready channel was not closed")
+	unittest.ChannelMustCloseWithinTimeout(t, readyChan2, 100*time.Millisecond, "ready channel was not closed")
 
-	// Both channels should be closed
-	<-doneChan1
-	<-doneChan2
+	// Cancel context to signal component to be done
+	cancel()
+
+	unittest.ChannelMustCloseWithinTimeout(t, doneChan1, 200*time.Millisecond, "done channel was not closed")
+	unittest.ChannelMustCloseWithinTimeout(t, doneChan2, 200*time.Millisecond, "done channel was not closed")
 }

@@ -1,8 +1,10 @@
 package unittest
 
 import (
+	"github.com/stretchr/testify/require"
 	"github/thep2p/skipgraph-go/modules"
 	"sync"
+	"testing"
 )
 
 // MockComponent is a mock implementation of modules.Component for testing
@@ -13,12 +15,14 @@ type MockComponent struct {
 	mu          sync.Mutex
 	readyOnce   sync.Once
 	doneOnce    sync.Once
+	t           *testing.T
 }
 
-func NewMockComponent() *MockComponent {
+func NewMockComponent(t *testing.T) *MockComponent {
 	return &MockComponent{
 		readyChan: make(chan interface{}),
 		doneChan:  make(chan interface{}),
+		t:         t,
 	}
 }
 
@@ -27,7 +31,7 @@ func (m *MockComponent) Start(ctx modules.ThrowableContext) {
 	defer m.mu.Unlock()
 
 	if m.startCalled {
-		panic("Start called multiple times")
+		require.Fail(m.t, "component.Start() called multiple times")
 	}
 	m.startCalled = true
 	m.readyOnce.Do(

@@ -1,17 +1,47 @@
-package skipgraph
+package model
 
-import "github/thep2p/skipgraph-go/model"
+import "fmt"
+
+// Address contains network address information
+type Address struct {
+	hostName string
+	port     string
+}
+
+// NewAddress initializes and returns an instance of Address with the supplied inputs
+func NewAddress(hostname string, port string) Address {
+	return Address{
+		hostName: hostname,
+		port:     port,
+	}
+}
+
+// HostName returns the hostName
+func (a Address) HostName() string {
+	return a.hostName
+}
+
+// Port returns the port
+func (a Address) Port() string {
+	return a.port
+}
+
+// String stringifies an Address
+func (a Address) String() string {
+	s := fmt.Sprintf("host name: %s, port: %s", a.HostName(), a.Port())
+	return s
+}
 
 // Identity is a struct that contains the information of a node in the skip graph.
 // More specifically, it is the constituent element of the LookupTable.
 type Identity struct {
 	id        Identifier       // corresponds to numerical id in traditional skip graph.
 	memVector MembershipVector // corresponds to name id in traditional skip graph.
-	addr      model.Address    // holds network address like IP.
+	addr      Address          // holds network address like IP.
 }
 
 // NewIdentity constructs and returns an Identity.
-func NewIdentity(id Identifier, mv MembershipVector, addr model.Address) Identity {
+func NewIdentity(id Identifier, mv MembershipVector, addr Address) Identity {
 	i := Identity{}
 	i.SetMemVector(mv)
 	i.SetAddr(addr)
@@ -30,7 +60,7 @@ func (i Identity) GetMembershipVector() MembershipVector {
 }
 
 // GetAddress returns the Address field.
-func (i Identity) GetAddress() model.Address {
+func (i Identity) GetAddress() Address {
 	return i.addr
 }
 
@@ -47,7 +77,7 @@ func (i *Identity) SetMemVector(mv MembershipVector) {
 }
 
 // SetAddr sets address.
-func (i *Identity) SetAddr(addr model.Address) {
+func (i *Identity) SetAddr(addr Address) {
 	// TODO validation of the addr may be needed.
 	i.addr = addr
 }

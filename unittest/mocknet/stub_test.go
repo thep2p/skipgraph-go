@@ -1,8 +1,7 @@
 package mocknet_test
 
 import (
-	"github/thep2p/skipgraph-go/model/messages"
-	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/core/model"
 	"github/thep2p/skipgraph-go/net"
 	"github/thep2p/skipgraph-go/unittest"
 	"github/thep2p/skipgraph-go/unittest/mocknet"
@@ -41,7 +40,7 @@ func TestTwoNetworks(t *testing.T) {
 	// sets message handler at u1
 	received := false
 	var receivedPayload interface{}
-	f := func(channel net.Channel, originId skipgraph.Identifier, msg messages.Message) {
+	f := func(channel net.Channel, originId model.Identifier, msg net.Message) {
 		received = true
 		receivedPayload = msg.Payload
 		require.Equal(t, id2, originId)
@@ -52,7 +51,7 @@ func TestTwoNetworks(t *testing.T) {
 	// sends message from u2 -> u1
 	con2, err := u2.Register(
 		net.TestChannel, mocknet.NewMockMessageProcessor(
-			func(channel net.Channel, originID skipgraph.Identifier, msg messages.Message) {
+			func(channel net.Channel, originID model.Identifier, msg net.Message) {
 				// No-op, just to satisfy the interface, u2 does not expect to receive messages in this test
 			},
 		),

@@ -1,4 +1,4 @@
-package messages
+package net
 
 // Message is a network message
 type Message struct {

@@ -1,8 +1,10 @@
-package skipgraph_test
+package lookup_test
 
 import (
 	"github.com/stretchr/testify/require"
-	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/core"
+	"github/thep2p/skipgraph-go/core/lookup"
+	"github/thep2p/skipgraph-go/core/model"
 	"github/thep2p/skipgraph-go/unittest"
 	"sync"
 	"testing"
@@ -12,38 +14,38 @@ import (
 // TestLookupTable_AddEntry test the AddEntry method of LookupTable.
 func TestLookupTable_AddEntry(t *testing.T) {
 	// create an empty lookup table
-	lt := skipgraph.LookupTable{}
+	lt := lookup.Table{}
 
 	// create an empty identity
-	identity := skipgraph.Identity{}
+	identity := model.Identity{}
 
 	// add the identity in a valid position
-	err := lt.AddEntry(skipgraph.LeftDirection, 0, identity)
+	err := lt.AddEntry(core.LeftDirection, 0, identity)
 	require.NoError(t, err)
 
 	// add the identity in a valid position
-	err = lt.AddEntry(skipgraph.LeftDirection, skipgraph.MaxLookupTableLevel-1, identity)
+	err = lt.AddEntry(core.LeftDirection, core.MaxLookupTableLevel-1, identity)
 	require.NoError(t, err)
 
 	// add an entry with invalid level
-	err = lt.AddEntry(skipgraph.LeftDirection, skipgraph.MaxLookupTableLevel, identity)
+	err = lt.AddEntry(core.LeftDirection, core.MaxLookupTableLevel, identity)
 	require.Error(t, err)
 
 	// add an entry with wrong direction
-	err = lt.AddEntry(skipgraph.Direction("no where"), 0, identity)
+	err = lt.AddEntry(core.Direction("no where"), 0, identity)
 	require.Error(t, err)
 }
 
 // TestLookupTable_OverWriteLeftEntry test the overwriting of left entry in the lookup table.
 func TestLookupTable_OverWriteLeftEntry(t *testing.T) {
 	// create an empty lookup table
-	lt := skipgraph.LookupTable{}
+	lt := lookup.Table{}
 
 	// create a random identity
 	identity := unittest.IdentityFixture(t)
 
 	// add the identity in a valid position
-	err := lt.AddEntry(skipgraph.LeftDirection, 0, identity)
+	err := lt.AddEntry(core.LeftDirection, 0, identity)
 	require.NoError(t, err)
 
 	// create another random identity
@@ -53,11 +55,11 @@ func TestLookupTable_OverWriteLeftEntry(t *testing.T) {
 	require.NotEqual(t, identity1, identity)
 
 	// overwrite the previous entry with the new identity
-	err = lt.AddEntry(skipgraph.LeftDirection, 0, identity1)
+	err = lt.AddEntry(core.LeftDirection, 0, identity1)
 	require.NoError(t, err)
 
 	// check that the new identity has overwritten the previous one
-	retIdentity, err := lt.GetEntry(skipgraph.LeftDirection, 0)
+	retIdentity, err := lt.GetEntry(core.LeftDirection, 0)
 	require.Equal(t, identity1, retIdentity)
 	require.NoError(t, err)
 }
@@ -65,13 +67,13 @@ func TestLookupTable_OverWriteLeftEntry(t *testing.T) {
 // TestLookupTable_OverWriteRightEntry test the overwriting of right entry in the lookup table.
 func TestLookupTable_OverWriteRightEntry(t *testing.T) {
 	// create an empty lookup table
-	lt := skipgraph.LookupTable{}
+	lt := lookup.Table{}
 
 	// create a random identity
 	identity := unittest.IdentityFixture(t)
 
 	// add the identity in a valid position
-	err := lt.AddEntry(skipgraph.RightDirection, 0, identity)
+	err := lt.AddEntry(core.RightDirection, 0, identity)
 	require.NoError(t, err)
 
 	// create another random identity
@@ -81,11 +83,11 @@ func TestLookupTable_OverWriteRightEntry(t *testing.T) {
 	require.NotEqual(t, identity1, identity)
 
 	// overwrite the previous entry with the new identity
-	err = lt.AddEntry(skipgraph.RightDirection, 0, identity1)
+	err = lt.AddEntry(core.RightDirection, 0, identity1)
 	require.NoError(t, err)
 
 	// check that the new identity has overwritten the previous one
-	retIdentity, err := lt.GetEntry(skipgraph.RightDirection, 0)
+	retIdentity, err := lt.GetEntry(core.RightDirection, 0)
 	require.Equal(t, identity1, retIdentity)
 	require.NoError(t, err)
 }
@@ -98,32 +100,32 @@ func TestLookupTable_GetEntry(t *testing.T) {
 	require.NotEqual(t, identity1, identity)
 
 	// declare an empty lookup table
-	var lt skipgraph.LookupTable
+	var lt lookup.Table
 
 	// add the identity as a left neighbor into the lookup table
-	err := lt.AddEntry(skipgraph.LeftDirection, 0, identity)
+	err := lt.AddEntry(core.LeftDirection, 0, identity)
 	require.NoError(t, err)
 
 	// add the identity as a right neighbor into the lookup table
-	err = lt.AddEntry(skipgraph.RightDirection, 0, identity1)
+	err = lt.AddEntry(core.RightDirection, 0, identity1)
 	require.NoError(t, err)
 
 	// check that the inserted identity is retrievable
-	retIdentity, err := lt.GetEntry(skipgraph.LeftDirection, 0)
+	retIdentity, err := lt.GetEntry(core.LeftDirection, 0)
 	require.Equal(t, identity, retIdentity)
 	require.NoError(t, err)
 
 	// check that the inserted identity is retrievable
-	retIdentity1, err := lt.GetEntry(skipgraph.RightDirection, 0)
+	retIdentity1, err := lt.GetEntry(core.RightDirection, 0)
 	require.Equal(t, identity1, retIdentity1)
 	require.NoError(t, err)
 
 	// access a wrong level
-	_, err = lt.GetEntry(skipgraph.RightDirection, skipgraph.MaxLookupTableLevel)
+	_, err = lt.GetEntry(core.RightDirection, core.MaxLookupTableLevel)
 	require.Error(t, err)
 
 	// access a wrong direction
-	_, err = lt.GetEntry(skipgraph.Direction("no where"), 0)
+	_, err = lt.GetEntry(core.Direction("no where"), 0)
 	require.Error(t, err)
 
 }
@@ -131,7 +133,7 @@ func TestLookupTable_GetEntry(t *testing.T) {
 // TestLookupTable_GetEntryConcurrent test the concurrent access to the lookup table.
 func TestLookupTable_Concurrency(t *testing.T) {
 	// create an empty lookup table
-	lt := skipgraph.LookupTable{}
+	lt := lookup.Table{}
 
 	// number of items to be added to the lookup table
 	addCount := 2
@@ -150,7 +152,7 @@ func TestLookupTable_Concurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			identity := unittest.IdentityFixture(t)
-			err := lt.AddEntry(skipgraph.LeftDirection, skipgraph.Level(i), identity)
+			err := lt.AddEntry(core.LeftDirection, core.Level(i), identity)
 			require.NoError(t, err)
 		}()
 	}
@@ -159,12 +161,17 @@ func TestLookupTable_Concurrency(t *testing.T) {
 		i := i
 		go func() {
 			defer wg.Done()
-			_, err := lt.GetEntry(skipgraph.LeftDirection, skipgraph.Level(i))
+			_, err := lt.GetEntry(core.LeftDirection, core.Level(i))
 			require.NoError(t, err)
 		}()
 	}
 
 	// check whether all the routines are finished
 	// wait 2 milliseconds for each routine to finish
-	unittest.CallMustReturnWithinTimeout(t, wg.Wait, time.Duration((getCount+addCount)*2)*time.Millisecond, "concurrent access to lookup table failed")
+	unittest.CallMustReturnWithinTimeout(
+		t,
+		wg.Wait,
+		time.Duration((getCount+addCount)*2)*time.Millisecond,
+		"concurrent access to lookup table failed",
+	)
 }

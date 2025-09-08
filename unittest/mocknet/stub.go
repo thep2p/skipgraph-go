@@ -3,8 +3,7 @@ package mocknet
 import (
 	"fmt"
 	"github.com/stretchr/testify/require"
-	"github/thep2p/skipgraph-go/model/messages"
-	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/core/model"
 	"github/thep2p/skipgraph-go/net"
 	"sync"
 	"testing"
@@ -14,16 +13,16 @@ import (
 // it needs to be locked using its l field before being accessed
 type NetworkStub struct {
 	l        sync.Mutex
-	networks map[skipgraph.Identifier]*MockNetwork
+	networks map[model.Identifier]*MockNetwork
 }
 
 // NewNetworkStub creates an empty NetworkStub
 func NewNetworkStub() *NetworkStub {
-	return &NetworkStub{networks: make(map[skipgraph.Identifier]*MockNetwork)}
+	return &NetworkStub{networks: make(map[model.Identifier]*MockNetwork)}
 }
 
 // NewMockNetwork creates and returns a mock network connected to this network stub for a non-existing Identifier.
-func (n *NetworkStub) NewMockNetwork(t *testing.T, id skipgraph.Identifier) *MockNetwork {
+func (n *NetworkStub) NewMockNetwork(t *testing.T, id model.Identifier) *MockNetwork {
 	n.l.Lock()
 	defer n.l.Unlock()
 
@@ -37,7 +36,7 @@ func (n *NetworkStub) NewMockNetwork(t *testing.T, id skipgraph.Identifier) *Moc
 }
 
 // routeMessageTo imitates routing the message in the underlying network to the target identifier's mock network.
-func (n *NetworkStub) routeMessageTo(channel net.Channel, originId skipgraph.Identifier, msg messages.Message, target skipgraph.Identifier) error {
+func (n *NetworkStub) routeMessageTo(channel net.Channel, originId model.Identifier, msg net.Message, target model.Identifier) error {
 	n.l.Lock()
 	defer n.l.Unlock()
 

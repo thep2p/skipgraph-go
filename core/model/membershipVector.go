@@ -1,4 +1,4 @@
-package skipgraph
+package model
 
 import (
 	"encoding/hex"

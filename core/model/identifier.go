@@ -1,4 +1,4 @@
-package skipgraph
+package model
 
 import (
 	"bytes"
@@ -95,9 +95,19 @@ func (i *Identifier) Bytes() []byte {
 func (c *Comparison) DebugInfo() string {
 	switch c.GetComparisonResult() {
 	case CompareGreater:
-		return fmt.Sprintf("%s > %s (at byte %d)", hex.EncodeToString(c.GetLeft()[:c.GetDiffIndex()+1]), hex.EncodeToString(c.GetRight()[:c.GetDiffIndex()+1]), c.GetDiffIndex())
+		return fmt.Sprintf(
+			"%s > %s (at byte %d)",
+			hex.EncodeToString(c.GetLeft()[:c.GetDiffIndex()+1]),
+			hex.EncodeToString(c.GetRight()[:c.GetDiffIndex()+1]),
+			c.GetDiffIndex(),
+		)
 	case CompareLess:
-		return fmt.Sprintf("%s < %s (at byte %d)", hex.EncodeToString(c.GetLeft()[:c.GetDiffIndex()+1]), hex.EncodeToString(c.GetRight()[:c.GetDiffIndex()+1]), c.GetDiffIndex())
+		return fmt.Sprintf(
+			"%s < %s (at byte %d)",
+			hex.EncodeToString(c.GetLeft()[:c.GetDiffIndex()+1]),
+			hex.EncodeToString(c.GetRight()[:c.GetDiffIndex()+1]),
+			c.GetDiffIndex(),
+		)
 	default:
 		return fmt.Sprintf("%s == %s", hex.EncodeToString(c.GetLeft()[:c.GetDiffIndex()+1]), hex.EncodeToString(c.GetRight()[:c.GetDiffIndex()+1]))
 	}

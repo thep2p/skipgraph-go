@@ -1,18 +1,17 @@
 package mocknet
 
 import (
-	"github/thep2p/skipgraph-go/model/messages"
-	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/core/model"
 	"github/thep2p/skipgraph-go/net"
 )
 
 type MockConduit struct {
 	stub    *NetworkStub
 	channel net.Channel
-	id      skipgraph.Identifier
+	id      model.Identifier
 }
 
-func (m MockConduit) Send(targetId skipgraph.Identifier, message messages.Message) error {
+func (m MockConduit) Send(targetId model.Identifier, message net.Message) error {
 	return m.stub.routeMessageTo(m.channel, m.id, message, targetId)
 }
 

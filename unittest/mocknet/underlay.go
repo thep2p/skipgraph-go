@@ -2,7 +2,7 @@ package mocknet
 
 import (
 	"fmt"
-	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/core/model"
 	"github/thep2p/skipgraph-go/modules"
 	"github/thep2p/skipgraph-go/net"
 	"sync"
@@ -14,7 +14,7 @@ type MockNetwork struct {
 	// there is only one handler per message type (but not per caller)
 	messageProcessors map[net.Channel]net.MessageProcessor
 	stub              *NetworkStub
-	id                skipgraph.Identifier // Identifier of the node this mock network belongs to
+	id                model.Identifier // Identifier of the node this mock network belongs to
 }
 
 // Start is a no-op for the mock network.
@@ -51,7 +51,7 @@ func (m *MockNetwork) Register(channel net.Channel, processor net.MessageProcess
 }
 
 // newMockNetwork initializes an empty MockNetwork and returns a pointer to it
-func newMockNetwork(id skipgraph.Identifier, stub *NetworkStub) *MockNetwork {
+func newMockNetwork(id model.Identifier, stub *NetworkStub) *MockNetwork {
 	return &MockNetwork{
 		stub:              stub,
 		messageProcessors: make(map[net.Channel]net.MessageProcessor),

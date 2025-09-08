@@ -3,9 +3,8 @@ package unittest
 import (
 	"crypto/rand"
 	"github.com/stretchr/testify/require"
-	"github/thep2p/skipgraph-go/model"
-	"github/thep2p/skipgraph-go/model/messages"
-	"github/thep2p/skipgraph-go/model/skipgraph"
+	model2 "github/thep2p/skipgraph-go/core/model"
+	"github/thep2p/skipgraph-go/net"
 	"math/big"
 	"testing"
 )
@@ -15,19 +14,19 @@ A utility module to generate random values of some certain type
 */
 
 // TestMessageFixture generates a random Message.
-func TestMessageFixture(t *testing.T) *messages.Message {
+func TestMessageFixture(t *testing.T) *net.Message {
 
-	return &messages.Message{
+	return &net.Message{
 		Payload: RandomBytesFixture(t, 100),
 	}
 }
 
 // IdentifierFixture generates a random Identifier
-func IdentifierFixture(t *testing.T) skipgraph.Identifier {
-	var id skipgraph.Identifier
-	bytes := RandomBytesFixture(t, skipgraph.IdentifierSizeBytes)
+func IdentifierFixture(t *testing.T) model2.Identifier {
+	var id model2.Identifier
+	bytes := RandomBytesFixture(t, model2.IdentifierSizeBytes)
 
-	for i := 0; i < skipgraph.IdentifierSizeBytes; i++ {
+	for i := 0; i < model2.IdentifierSizeBytes; i++ {
 		id[i] = bytes[i]
 	}
 
@@ -47,31 +46,31 @@ func RandomBytesFixture(t *testing.T, size int) []byte {
 }
 
 // MembershipVectorFixture creates and returns a random MemberShipVector.
-func MembershipVectorFixture(t *testing.T) skipgraph.MembershipVector {
-	bytes := RandomBytesFixture(t, skipgraph.MembershipVectorSize)
+func MembershipVectorFixture(t *testing.T) model2.MembershipVector {
+	bytes := RandomBytesFixture(t, model2.MembershipVectorSize)
 
-	var mv skipgraph.MembershipVector
+	var mv model2.MembershipVector
 	copy(mv[:], bytes)
 
 	return mv
 }
 
 // AddressFixture returns an Address on localhost with a random port number.
-func AddressFixture(t *testing.T) model.Address {
+func AddressFixture(t *testing.T) model2.Address {
 	// pick a random port
 	max := big.NewInt(65535)
 	randomInt, _ := rand.Int(rand.Reader, max)
 	port := randomInt.String()
-	addr := model.NewAddress("localhost", port)
+	addr := model2.NewAddress("localhost", port)
 	return addr
 
 }
 
 // IdentityFixture generates a random Identity with an address on localhost.
-func IdentityFixture(t *testing.T) skipgraph.Identity {
+func IdentityFixture(t *testing.T) model2.Identity {
 	id := IdentifierFixture(t)
 	memVec := MembershipVectorFixture(t)
 	addr := AddressFixture(t)
-	identity := skipgraph.NewIdentity(id, memVec, addr)
+	identity := model2.NewIdentity(id, memVec, addr)
 	return identity
 }

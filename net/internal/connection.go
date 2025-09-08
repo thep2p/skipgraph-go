@@ -2,7 +2,7 @@ package internal
 
 import (
 	"context"
-	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/core/model"
 )
 
 // Connection represents a connection to a remote peer.
@@ -37,7 +37,7 @@ type ConnectionManager interface {
 	// If the connection is already established, it returns the cached connection.
 	// The cardinal assumption is there is always at most one connection to a remote peer.
 	// Errors from this method are expected to be treated as benign, i.e., don't panic on error.
-	Connect(context.Context, skipgraph.Identifier) (Connection, error)
+	Connect(context.Context, model.Identifier) (Connection, error)
 
 	// Close closes all connections.
 	// Errors from this method can be considered as benign, i.e., don't panic on error.

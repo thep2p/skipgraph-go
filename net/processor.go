@@ -1,8 +1,7 @@
 package net
 
 import (
-	"github/thep2p/skipgraph-go/model/messages"
-	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/core/model"
 )
 
 // MessageProcessor is the interface of an Engine that processes incoming messages from the network layer.
@@ -15,5 +14,5 @@ type MessageProcessor interface {
 	//  - channel: the channel on which the message was received.
 	//  - originID: the identifier of the sender of the message.
 	//  - msg: the message received.
-	ProcessIncomingMessage(channel Channel, originID skipgraph.Identifier, msg messages.Message)
+	ProcessIncomingMessage(channel Channel, originID model.Identifier, msg Message)
 }

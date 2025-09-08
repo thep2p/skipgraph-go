@@ -1,8 +1,7 @@
 package net
 
 import (
-	"github/thep2p/skipgraph-go/model/messages"
-	"github/thep2p/skipgraph-go/model/skipgraph"
+	"github/thep2p/skipgraph-go/core/model"
 	"github/thep2p/skipgraph-go/modules"
 )
 
@@ -29,5 +28,5 @@ type Conduit interface {
 	// Send sends a message to the specified destination node defined by its identifier.
 	// It establishes a connection to the destination node if one does not already exist.
 	// Any returned error must be treated as benign, it should not cause the node to crash.
-	Send(skipgraph.Identifier, messages.Message) error
+	Send(model.Identifier, Message) error
 }

@@ -61,6 +61,7 @@ This is a Skip Graph middleware implementation in Go. The system follows a layer
 - Keep functions small and focused on single tasks
 - Use meaningful variable and function names
 - Update godoc comments when modifying existing code
+- Always follow the guidelines outlined in `AGENTS.md` for code style, testing, and contribution standards
 
 ## Dependencies
 

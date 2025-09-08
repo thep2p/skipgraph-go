@@ -1,28 +1,131 @@
 package component
 
-import "github/thep2p/skipgraph-go/modules"
+import (
+	"github/thep2p/skipgraph-go/modules"
+	"sync"
+)
 
 type Manager struct {
-}
-
-func (Mang Manager) Start(ctx modules.ThrowableContext) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (Mang Manager) Ready() <-chan interface{} {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (Mang Manager) Done() <-chan interface{} {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (Mang Manager) Add(c modules.Component) {
-	//TODO implement me
-	panic("implement me")
+	mu         sync.RWMutex
+	components []modules.Component
+	started    bool
+	readyChan  chan interface{}
+	doneChan   chan interface{}
+	readyOnce  sync.Once
+	doneOnce   sync.Once
 }
 
 var _ modules.ComponentManager = (*Manager)(nil)
+
+func NewManager() *Manager {
+	return &Manager{
+		components: make([]modules.Component, 0),
+		readyChan:  make(chan interface{}),
+		doneChan:   make(chan interface{}),
+	}
+}
+
+func (m *Manager) Start(ctx modules.ThrowableContext) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.started {
+		panic("Manager.Start() called multiple times")
+	}
+	m.started = true
+
+	// Start all components
+	for _, c := range m.components {
+		c.Start(ctx)
+	}
+
+	// Wait for all components to be ready in a separate goroutine
+	go m.waitForReady()
+
+	// Wait for all components to be done in a separate goroutine
+	go m.waitForDone()
+}
+
+func (m *Manager) Ready() <-chan interface{} {
+	return m.readyChan
+}
+
+func (m *Manager) Done() <-chan interface{} {
+	return m.doneChan
+}
+
+func (m *Manager) Add(c modules.Component) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.started {
+		panic("cannot add component to Manager after it has been started")
+	}
+
+	// Check if component already exists
+	for _, component := range m.components {
+		if component == c {
+			panic("cannot add the same component to Manager multiple times")
+		}
+	}
+
+	m.components = append(m.components, c)
+}
+
+func (m *Manager) waitForReady() {
+	m.mu.RLock()
+	components := make([]modules.Component, len(m.components))
+	copy(components, m.components)
+	m.mu.RUnlock()
+
+	// If no components, immediately close ready channel
+	if len(components) == 0 {
+		m.readyOnce.Do(
+			func() {
+				close(m.readyChan)
+			},
+		)
+		return
+	}
+
+	// Wait for all components to be ready
+	for _, component := range components {
+		<-component.Ready()
+	}
+
+	// Close the ready channel exactly once
+	m.readyOnce.Do(
+		func() {
+			close(m.readyChan)
+		},
+	)
+}
+
+func (m *Manager) waitForDone() {
+	m.mu.RLock()
+	components := make([]modules.Component, len(m.components))
+	copy(components, m.components)
+	m.mu.RUnlock()
+
+	// If no components, immediately close done channel
+	if len(components) == 0 {
+		m.doneOnce.Do(
+			func() {
+				close(m.doneChan)
+			},
+		)
+		return
+	}
+
+	// Wait for all components to be done
+	for _, component := range components {
+		<-component.Done()
+	}
+
+	// Close the done channel exactly once
+	m.doneOnce.Do(
+		func() {
+			close(m.doneChan)
+		},
+	)
+}

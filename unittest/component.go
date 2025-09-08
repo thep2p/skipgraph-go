@@ -16,13 +16,27 @@ type MockComponent struct {
 	readyOnce   sync.Once
 	doneOnce    sync.Once
 	t           *testing.T
+	readyLogic  func() // Optional logic to run when ready
+	doneLogic   func() // Optional logic to run when done
 }
 
 func NewMockComponent(t *testing.T) *MockComponent {
 	return &MockComponent{
-		readyChan: make(chan interface{}),
-		doneChan:  make(chan interface{}),
-		t:         t,
+		readyChan:  make(chan interface{}),
+		doneChan:   make(chan interface{}),
+		t:          t,
+		readyLogic: func() {},
+		doneLogic:  func() {},
+	}
+}
+
+func NewMockComponentWithLogic(t *testing.T, readyLogic, doneLogic func()) *MockComponent {
+	return &MockComponent{
+		readyChan:  make(chan interface{}),
+		doneChan:   make(chan interface{}),
+		t:          t,
+		readyLogic: readyLogic,
+		doneLogic:  doneLogic,
 	}
 }
 
@@ -34,22 +48,26 @@ func (m *MockComponent) Start(ctx modules.ThrowableContext) {
 		require.Fail(m.t, "component.Start() called multiple times")
 	}
 	m.startCalled = true
-	m.readyOnce.Do(
-		func() {
-			close(m.readyChan)
-		},
-	)
+
+	// Execute ready logic in a separate goroutine and then close ready channel
+	go func() {
+		m.readyLogic() // Execute the ready blocking logic
+		m.readyOnce.Do(
+			func() {
+				close(m.readyChan)
+			},
+		)
+	}()
 
 	// Wait for context to be done in a separate goroutine
 	go func() {
-		select {
-		case <-ctx.Done():
-			m.doneOnce.Do(
-				func() {
-					close(m.doneChan)
-				},
-			)
-		}
+		<-ctx.Done()
+		m.doneLogic() // Execute the done blocking logic
+		m.doneOnce.Do(
+			func() {
+				close(m.doneChan)
+			},
+		)
 	}()
 }
 

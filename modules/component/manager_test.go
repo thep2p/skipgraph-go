@@ -152,3 +152,90 @@ func TestManager_MultipleCalls(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, doneChan1, 200*time.Millisecond, "done channel was not closed")
 	unittest.ChannelMustCloseWithinTimeout(t, doneChan2, 200*time.Millisecond, "done channel was not closed")
 }
+
+func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
+	manager := component.NewManager()
+
+	// Create a blocking ready signal
+	readySignal := make(chan struct{})
+	blockingComponent := unittest.NewMockComponentWithLogic(t,
+		func() { <-readySignal }, // Block until signal is sent
+		func() {},                // Non-blocking done logic
+	)
+
+	// Create a non-blocking component for comparison
+	normalComponent := unittest.NewMockComponent(t)
+
+	manager.Add(blockingComponent)
+	manager.Add(normalComponent)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	tCtx := throwable.NewContext(ctx)
+	manager.Start(tCtx)
+
+	// Normal component should be ready quickly
+	unittest.ChannelMustCloseWithinTimeout(t, normalComponent.Ready(), 100*time.Millisecond, "normal component should be ready")
+
+	// Manager should NOT be ready while blocking component is not ready
+	select {
+	case <-manager.Ready():
+		require.Fail(t, "manager should not be ready while blocking component is not ready")
+	case <-time.After(200 * time.Millisecond):
+		// Expected: manager is blocked
+	}
+
+	// Release the blocking component
+	close(readySignal)
+
+	// Now both components and manager should be ready
+	unittest.ChannelMustCloseWithinTimeout(t, blockingComponent.Ready(), 100*time.Millisecond, "blocking component should be ready after signal")
+	unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager should be ready after all components are ready")
+}
+
+func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
+	manager := component.NewManager()
+
+	// Create a blocking done signal
+	doneSignal := make(chan struct{})
+	blockingComponent := unittest.NewMockComponentWithLogic(t,
+		func() {},               // Non-blocking ready logic
+		func() { <-doneSignal }, // Block until signal is sent
+	)
+
+	// Create a non-blocking component for comparison
+	normalComponent := unittest.NewMockComponent(t)
+
+	manager.Add(blockingComponent)
+	manager.Add(normalComponent)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	tCtx := throwable.NewContext(ctx)
+	manager.Start(tCtx)
+
+	// Both components and manager should be ready quickly
+	unittest.ChannelMustCloseWithinTimeout(t, blockingComponent.Ready(), 100*time.Millisecond, "blocking component should be ready")
+	unittest.ChannelMustCloseWithinTimeout(t, normalComponent.Ready(), 100*time.Millisecond, "normal component should be ready")
+	unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager should be ready")
+
+	// Cancel context to trigger done state
+	cancel()
+
+	// Normal component should be done quickly
+	unittest.ChannelMustCloseWithinTimeout(t, normalComponent.Done(), 200*time.Millisecond, "normal component should be done")
+
+	// Manager should NOT be done while blocking component is not done
+	select {
+	case <-manager.Done():
+		require.Fail(t, "manager should not be done while blocking component is not done")
+	case <-time.After(300 * time.Millisecond):
+		// Expected: manager is blocked
+	}
+
+	// Release the blocking component
+	close(doneSignal)
+
+	// Now blocking component and manager should be done
+	unittest.ChannelMustCloseWithinTimeout(t, blockingComponent.Done(), 100*time.Millisecond, "blocking component should be done after signal")
+	unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 100*time.Millisecond, "manager should be done after all components are done")
+}

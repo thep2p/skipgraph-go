@@ -1,6 +1,7 @@
 package component
 
 import (
+	"context"
 	"github/thep2p/skipgraph-go/modules"
 	"sync"
 )
@@ -40,7 +41,7 @@ func (m *Manager) Start(ctx modules.ThrowableContext) {
 	}
 
 	// Wait for all components to be ready in a separate goroutine
-	go m.waitForReady()
+	go m.waitForReady(ctx)
 
 	// Wait for all components to be done in a separate goroutine
 	go m.waitForDone()
@@ -72,7 +73,7 @@ func (m *Manager) Add(c modules.Component) {
 	m.components = append(m.components, c)
 }
 
-func (m *Manager) waitForReady() {
+func (m *Manager) waitForReady(ctx context.Context) {
 	m.mu.RLock()
 	components := make([]modules.Component, len(m.components))
 	copy(components, m.components)
@@ -90,7 +91,12 @@ func (m *Manager) waitForReady() {
 
 	// Wait for all components to be ready
 	for _, component := range components {
-		<-component.Ready()
+		select {
+		case <-ctx.Done():
+			return // Exit if context is done
+		default:
+			<-component.Ready()
+		}
 	}
 
 	// Close the ready channel exactly once

@@ -158,7 +158,8 @@ func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
 
 	// Create a blocking ready signal
 	readySignal := make(chan struct{})
-	blockingComponent := unittest.NewMockComponentWithLogic(t,
+	blockingComponent := unittest.NewMockComponentWithLogic(
+		t,
 		func() { <-readySignal }, // Block until signal is sent
 		func() {},                // Non-blocking done logic
 	)
@@ -198,7 +199,8 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 
 	// Create a blocking done signal
 	doneSignal := make(chan struct{})
-	blockingComponent := unittest.NewMockComponentWithLogic(t,
+	blockingComponent := unittest.NewMockComponentWithLogic(
+		t,
 		func() {},               // Non-blocking ready logic
 		func() { <-doneSignal }, // Block until signal is sent
 	)
@@ -238,4 +240,57 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 	// Now blocking component and manager should be done
 	unittest.ChannelMustCloseWithinTimeout(t, blockingComponent.Done(), 100*time.Millisecond, "blocking component should be done after signal")
 	unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 100*time.Millisecond, "manager should be done after all components are done")
+}
+
+func TestManager_NeverReadyWhenContextCancelledDuringStartup(t *testing.T) {
+	manager := component.NewManager()
+
+	// Create a component that blocks on ready
+	readySignal := make(chan struct{})
+	slowComponent := unittest.NewMockComponentWithLogic(
+		t,
+		func() { <-readySignal }, // Block until signal is sent
+		func() {},                // Non-blocking done logic
+	)
+
+	// Create another component that becomes ready quickly
+	fastComponent := unittest.NewMockComponent(t)
+
+	manager.Add(slowComponent)
+	manager.Add(fastComponent)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	tCtx := throwable.NewContext(ctx)
+	manager.Start(tCtx)
+
+	// Fast component should be ready quickly
+	unittest.ChannelMustCloseWithinTimeout(t, fastComponent.Ready(), 100*time.Millisecond, "fast component should be ready")
+
+	// Cancel the context while the slow component is still not ready
+	cancel()
+
+	// Manager should never become ready because context was cancelled
+	// during the waitForReady loop before all components were ready
+	select {
+	case <-manager.Ready():
+		require.Fail(t, "manager should never become ready when context is cancelled during startup")
+	case <-time.After(500 * time.Millisecond):
+		// Expected: manager never becomes ready
+	}
+
+	// Even if we release the slow component now, manager should still not be ready
+	// because the waitForReady goroutine already returned early
+	close(readySignal)
+	unittest.ChannelMustCloseWithinTimeout(t, slowComponent.Ready(), 100*time.Millisecond, "slow component should be ready after signal")
+
+	// Manager should still not be ready even after all components are ready
+	select {
+	case <-manager.Ready():
+		require.Fail(t, "manager should still not be ready even after all components become ready")
+	case <-time.After(200 * time.Millisecond):
+		// Expected: manager remains not ready because waitForReady returned early
+	}
+
+	// Manager should eventually be done since context was cancelled
+	unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 500*time.Millisecond, "manager should be done after context cancellation")
 }

@@ -37,4 +37,4 @@ type MutableLookupTable interface {
 	AddEntry(dir Direction, level Level, identity model.Identity) error
 }
 
-ss
+// LookupTable corresponds to a SkipGraph node's lookup table.

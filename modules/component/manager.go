@@ -94,8 +94,8 @@ func (m *Manager) waitForReady(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return // Exit if context is done
-		default:
-			<-component.Ready()
+		case <-component.Ready():
+			// Component is ready, continue to next
 		}
 	}
 

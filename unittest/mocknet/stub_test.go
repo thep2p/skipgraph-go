@@ -1,10 +1,10 @@
 package mocknet_test
 
 import (
-	"github/thep2p/skipgraph-go/core/model"
-	"github/thep2p/skipgraph-go/net"
-	"github/thep2p/skipgraph-go/unittest"
-	"github/thep2p/skipgraph-go/unittest/mocknet"
+	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/net"
+	"github.com/thep2p/skipgraph-go/unittest"
+	"github.com/thep2p/skipgraph-go/unittest/mocknet"
 	"testing"
 	"time"
 

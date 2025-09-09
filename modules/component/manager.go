@@ -2,7 +2,7 @@ package component
 
 import (
 	"context"
-	"github/thep2p/skipgraph-go/modules"
+	"github.com/thep2p/skipgraph-go/modules"
 	"sync"
 )
 

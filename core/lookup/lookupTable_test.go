@@ -2,10 +2,10 @@ package lookup_test
 
 import (
 	"github.com/stretchr/testify/require"
-	"github/thep2p/skipgraph-go/core"
-	"github/thep2p/skipgraph-go/core/lookup"
-	"github/thep2p/skipgraph-go/core/model"
-	"github/thep2p/skipgraph-go/unittest"
+	"github.com/thep2p/skipgraph-go/core"
+	"github.com/thep2p/skipgraph-go/core/lookup"
+	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/unittest"
 	"sync"
 	"testing"
 	"time"

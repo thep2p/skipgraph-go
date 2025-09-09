@@ -1,8 +1,8 @@
 package engines
 
 import (
-	"github/thep2p/skipgraph-go/modules"
-	"github/thep2p/skipgraph-go/net"
+	"github.com/thep2p/skipgraph-go/modules"
+	"github.com/thep2p/skipgraph-go/net"
 )
 
 // Engine represents a separate domain of functionality in a skip graph node.

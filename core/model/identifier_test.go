@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/stretchr/testify/require"
-	"github/thep2p/skipgraph-go/core/model"
-	"github/thep2p/skipgraph-go/unittest"
+	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/unittest"
 	"testing"
 )
 

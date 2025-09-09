@@ -3,10 +3,10 @@ package component_test
 import (
 	"context"
 	"github.com/stretchr/testify/require"
-	"github/thep2p/skipgraph-go/modules"
-	"github/thep2p/skipgraph-go/modules/component"
-	"github/thep2p/skipgraph-go/modules/throwable"
-	"github/thep2p/skipgraph-go/unittest"
+	"github.com/thep2p/skipgraph-go/modules"
+	"github.com/thep2p/skipgraph-go/modules/component"
+	"github.com/thep2p/skipgraph-go/modules/throwable"
+	"github.com/thep2p/skipgraph-go/unittest"
 	"testing"
 	"time"
 )

@@ -3,8 +3,8 @@ package mocknet
 import (
 	"fmt"
 	"github.com/stretchr/testify/require"
-	"github/thep2p/skipgraph-go/core/model"
-	"github/thep2p/skipgraph-go/net"
+	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/net"
 	"sync"
 	"testing"
 )

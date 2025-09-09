@@ -2,7 +2,7 @@ package unittest
 
 import (
 	"github.com/stretchr/testify/require"
-	"github/thep2p/skipgraph-go/modules"
+	"github.com/thep2p/skipgraph-go/modules"
 	"sync"
 	"testing"
 )

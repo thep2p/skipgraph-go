@@ -19,7 +19,7 @@ A `ComponentManager` is itself a component that can manage other components:
 - Starts all its child components when started
 - Becomes ready only after ALL child components are ready
 - Becomes done only after ALL child components are done
-- Can contain other ComponentManagers, enabling recursive tree structures
+- Can contain other `ComponentManager`s, enabling recursive tree structures
 
 ## Architecture
 

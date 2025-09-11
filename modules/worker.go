@@ -1,7 +1,5 @@
 package modules
 
-import "github.com/thep2p/skipgraph-go/modules/throwable"
-
 // Job represents a unit of work that can be executed by a worker.
 // Jobs should be self-contained and include all necessary data for execution.
 type Job interface {
@@ -14,7 +12,7 @@ type Job interface {
 	// If the job cannot be completed successfully, it should return a non-nil error.
 	// The caller is responsible for handling retries or failure logging as needed.
 	// A job should not be cancelled mid-execution; it should either complete successfully or fail with an error.
-	Execute(ctx throwable.Context)
+	Execute(ctx ThrowableContext)
 }
 
 // WorkerPool manages a pool of workers for concurrent job execution.

@@ -2,43 +2,75 @@ package worker
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/thep2p/skipgraph-go/modules"
 )
 
 type Pool struct {
-	workers []func(modules.Job)
-	queue   chan modules.Job
-	ready   chan interface{}
-	done    chan interface{}
+	workerCount int
+	queue       chan modules.Job
+	ready       chan interface{}
+	done        chan interface{}
+	wg          sync.WaitGroup
+	ctx         modules.ThrowableContext
 }
 
-func NewWorkerPool(queueSize int, workerCount int, workerLogic func(modules.Job)) *Pool {
-	pool := &Pool{
-		workers: make([]func(modules.Job), workerCount),
-		queue:   make(chan modules.Job, queueSize),
+func NewWorkerPool(queueSize int, workerCount int) *Pool {
+	return &Pool{
+		workerCount: workerCount,
+		queue:       make(chan modules.Job, queueSize),
+		ready:       make(chan interface{}),
+		done:        make(chan interface{}),
 	}
-
-	for i := range pool.workers {
-		pool.workers[i] = workerLogic
-	}
-
-	return pool
 }
 
 func (p *Pool) Start(ctx modules.ThrowableContext) {
-	go func() {
-		close(p.ready)
-		for _, w := range p.workers {
-			select {
-			case <-ctx.Done():
-				// TODO: Log termination
-				close(p.done)
+	p.ctx = ctx
+
+	// Start all workers
+	for i := 0; i < p.workerCount; i++ {
+		p.wg.Add(1)
+		go p.runWorker(i)
+	}
+
+	// Signal ready immediately after workers start
+	close(p.ready)
+
+	// Monitor for shutdown
+	go p.monitorShutdown()
+}
+
+func (p *Pool) runWorker(id int) {
+	defer p.wg.Done()
+
+	for {
+		select {
+		case <-p.ctx.Done():
+			return
+		case job, ok := <-p.queue:
+			if !ok {
+				// Queue closed, worker should exit
 				return
-			case job := <-p.queue:
-				w(job)
 			}
+			// Execute job - it handles its own errors via the throwable context
+			job.Execute(p.ctx)
 		}
-	}()
+	}
+}
+
+func (p *Pool) monitorShutdown() {
+	// Wait for context cancellation
+	<-p.ctx.Done()
+
+	// Close queue to signal workers to stop
+	close(p.queue)
+
+	// Wait for all workers to finish processing
+	p.wg.Wait()
+
+	// Signal done after all workers have finished
+	close(p.done)
 }
 
 func (p *Pool) Ready() <-chan interface{} {
@@ -59,7 +91,7 @@ func (p *Pool) Submit(job modules.Job) error {
 }
 
 func (p *Pool) WorkerCount() int {
-	return len(p.workers)
+	return p.workerCount
 }
 
 func (p *Pool) QueueSize() int {

@@ -84,8 +84,22 @@ func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
 
 func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 	manager := component.NewManager()
-	component1 := unittest.NewMockComponent(t)
-	component2 := unittest.NewMockComponent(t)
+
+	// Create components with controlled done behavior
+	doneSignal1 := make(chan struct{})
+	doneSignal2 := make(chan struct{})
+	
+	component1 := unittest.NewMockComponentWithLogic(
+		t,
+		func() {}, // Non-blocking ready
+		func() { <-doneSignal1 }, // Block until signal
+	)
+	
+	component2 := unittest.NewMockComponentWithLogic(
+		t,
+		func() {}, // Non-blocking ready
+		func() { <-doneSignal2 }, // Block until signal
+	)
 
 	manager.Add(component1)
 	manager.Add(component2)
@@ -101,13 +115,39 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 	// When all components are ready, manager should be ready
 	unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager was not ready after all components were ready")
 
-	// Cancel context to signal components to be done
+	// Cancel context to signal components to start shutdown
 	cancel()
 
-	// Manager should wait for all components to be done
-	unittest.ChannelMustCloseWithinTimeout(t, component1.Done(), 200*time.Millisecond, "component1 was not done")
-	unittest.ChannelMustCloseWithinTimeout(t, component2.Done(), 200*time.Millisecond, "component2 was not done")
-	unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 300*time.Millisecond, "manager was not done after all components were done")
+	// Verify manager is NOT done while components are still blocking
+	require.Eventually(t, func() bool {
+		select {
+		case <-manager.Done():
+			// Manager should NOT be done yet
+			return false
+		default:
+			// Good, manager is waiting
+			return true
+		}
+	}, 200*time.Millisecond, 10*time.Millisecond, "manager should wait for components to be done")
+
+	// Release component1
+	close(doneSignal1)
+	unittest.ChannelMustCloseWithinTimeout(t, component1.Done(), 100*time.Millisecond, "component1 should be done after signal")
+
+	// Manager should still be waiting for component2
+	select {
+	case <-manager.Done():
+		require.Fail(t, "manager should not be done while component2 is still running")
+	case <-time.After(100 * time.Millisecond):
+		// Good, manager is still waiting
+	}
+
+	// Release component2
+	close(doneSignal2)
+	unittest.ChannelMustCloseWithinTimeout(t, component2.Done(), 100*time.Millisecond, "component2 should be done after signal")
+
+	// Now manager should be done
+	unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 100*time.Millisecond, "manager should be done after all components are done")
 }
 
 func TestManager_WithNoComponents(t *testing.T) {

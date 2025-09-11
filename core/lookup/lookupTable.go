@@ -2,8 +2,8 @@ package lookup
 
 import (
 	"fmt"
-	"github/thep2p/skipgraph-go/core"
-	"github/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/core"
+	"github.com/thep2p/skipgraph-go/core/model"
 	"sync"
 )
 

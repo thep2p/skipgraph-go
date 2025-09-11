@@ -1,4 +1,4 @@
-module github/thep2p/skipgraph-go
+module github.com/thep2p/skipgraph-go
 
 go 1.23
 

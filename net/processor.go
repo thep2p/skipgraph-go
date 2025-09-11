@@ -1,7 +1,7 @@
 package net
 
 import (
-	"github/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/core/model"
 )
 
 // MessageProcessor is the interface of an Engine that processes incoming messages from the network layer.

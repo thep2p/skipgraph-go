@@ -1,8 +1,8 @@
 package net
 
 import (
-	"github/thep2p/skipgraph-go/core/model"
-	"github/thep2p/skipgraph-go/modules"
+	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/modules"
 )
 
 // Network represents the underlying networking layer of a skip graph node.

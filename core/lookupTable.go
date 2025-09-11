@@ -1,6 +1,6 @@
 package core
 
-import "github/thep2p/skipgraph-go/core/model"
+import "github.com/thep2p/skipgraph-go/core/model"
 
 // Level is the type for the level of entries in the lookup table.
 type Level int64

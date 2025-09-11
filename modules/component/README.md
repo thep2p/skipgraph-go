@@ -4,7 +4,7 @@ The `component` package provides a framework for managing application components
 
 ## Overview
 
-The component system enables building modular applications where each component has a well-defined lifecycle with ready and done states. Components can be organized hierarchically using the ComponentManager, creating tree-like structures where parent components manage their children.
+The component system enables building modular applications where each `Component` has a well-defined lifecycle with ready and done states. `Component`s can be organized hierarchically using the `ComponentManager`, creating tree-like structures where parent `Component`s manage their children.
 
 ## Core Concepts
 
@@ -19,7 +19,7 @@ A `ComponentManager` is itself a component that can manage other components:
 - Starts all its child components when started
 - Becomes ready only after ALL child components are ready
 - Becomes done only after ALL child components are done
-- Can contain other ComponentManagers, enabling recursive tree structures
+- Can contain other `ComponentManager`s, enabling recursive tree structures
 
 ## Architecture
 

@@ -88,16 +88,16 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 	// Create components with controlled done behavior
 	doneSignal1 := make(chan struct{})
 	doneSignal2 := make(chan struct{})
-	
+
 	component1 := unittest.NewMockComponentWithLogic(
 		t,
-		func() {}, // Non-blocking ready
+		func() {},                // Non-blocking ready
 		func() { <-doneSignal1 }, // Block until signal
 	)
-	
+
 	component2 := unittest.NewMockComponentWithLogic(
 		t,
-		func() {}, // Non-blocking ready
+		func() {},                // Non-blocking ready
 		func() { <-doneSignal2 }, // Block until signal
 	)
 

@@ -9,6 +9,15 @@ import (
 	"github.com/thep2p/skipgraph-go/modules"
 )
 
+// Pool manages a fixed number of goroutine workers for concurrent job execution.
+// Fields:
+//   - workerCount: number of concurrent workers
+//   - queue: buffered channel holding pending jobs
+//   - ready: signaled when all workers have started
+//   - done: signaled when all workers have stopped
+//   - wg: tracks active worker goroutines
+//   - ctx: context for cancellation and error propagation
+//   - logger: structured logger for trace-level events
 type Pool struct {
 	workerCount int
 	queue       chan modules.Job
@@ -19,6 +28,12 @@ type Pool struct {
 	logger      zerolog.Logger
 }
 
+// NewWorkerPool creates a new worker pool.
+// Args:
+//   - queueSize: buffer size for job queue (max pending jobs)
+//   - workerCount: number of concurrent workers to spawn
+//
+// Returns initialized pool (not started).
 func NewWorkerPool(queueSize int, workerCount int) *Pool {
 	logger := log.With().
 		Str("component", "worker_pool").
@@ -38,6 +53,11 @@ func NewWorkerPool(queueSize int, workerCount int) *Pool {
 	}
 }
 
+// Start initializes and begins worker execution.
+// Args:
+//   - ctx: context for cancellation and error propagation
+//
+// Spawns workers, signals ready, and monitors for shutdown.
 func (p *Pool) Start(ctx modules.ThrowableContext) {
 	p.ctx = ctx
 
@@ -63,6 +83,11 @@ func (p *Pool) Start(ctx modules.ThrowableContext) {
 	go p.monitorShutdown()
 }
 
+// runWorker executes jobs from the queue until shutdown.
+// Args:
+//   - workerID: unique identifier for logging
+//
+// Exits on context cancellation or queue closure.
 func (p *Pool) runWorker(workerID int) {
 	defer func() {
 		p.logger.Trace().
@@ -102,6 +127,8 @@ func (p *Pool) runWorker(workerID int) {
 	}
 }
 
+// monitorShutdown coordinates graceful shutdown.
+// Waits for context cancellation, closes queue, waits for workers, signals done.
 func (p *Pool) monitorShutdown() {
 	p.logger.Trace().
 		Msg("Shutdown monitor started")
@@ -127,14 +154,23 @@ func (p *Pool) monitorShutdown() {
 	close(p.done)
 }
 
+// Ready returns channel signaled when all workers have started.
+// Returns read-only channel closed after successful startup.
 func (p *Pool) Ready() <-chan interface{} {
 	return p.ready
 }
 
+// Done returns channel signaled when all workers have stopped.
+// Returns read-only channel closed after complete shutdown.
 func (p *Pool) Done() <-chan interface{} {
 	return p.done
 }
 
+// Submit adds a job to the queue for processing.
+// Args:
+//   - job: work to be executed by a worker
+//
+// Returns error if queue is full (non-blocking). Caller should handle error.
 func (p *Pool) Submit(job modules.Job) error {
 	select {
 	case p.queue <- job:
@@ -150,10 +186,14 @@ func (p *Pool) Submit(job modules.Job) error {
 	}
 }
 
+// WorkerCount returns the number of workers in the pool.
+// Returns configured worker count.
 func (p *Pool) WorkerCount() int {
 	return p.workerCount
 }
 
+// QueueSize returns current number of pending jobs.
+// Returns count of jobs waiting in queue.
 func (p *Pool) QueueSize() int {
 	return len(p.queue)
 }

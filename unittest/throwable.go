@@ -1,39 +1,32 @@
 package unittest
 
 import (
+	"context"
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/modules"
 	"testing"
-	"time"
 )
 
 // MockThrowableContext is a mock implementation of modules.ThrowableContext for testing purposes.
 // It fails the test if ThrowIrrecoverable is called.
 // Other than that it behaves like a no-op context.
 type MockThrowableContext struct {
-	t *testing.T
+	context.Context
+	cancel context.CancelFunc
+	t      *testing.T
 }
 
 func NewMockThrowableContext(t *testing.T) *MockThrowableContext {
-	return &MockThrowableContext{t: t}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &MockThrowableContext{
+		Context: ctx,
+		cancel:  cancel,
+		t:       t,
+	}
 }
 
-func (m *MockThrowableContext) Deadline() (deadline time.Time, ok bool) {
-	return time.Time{}, false
-}
-
-func (m *MockThrowableContext) Done() <-chan struct{} {
-	done := make(chan struct{})
-	close(done)
-	return done
-}
-
-func (m *MockThrowableContext) Err() error {
-	return nil
-}
-
-func (m *MockThrowableContext) Value(_ any) any {
-	return nil
+func (m *MockThrowableContext) Cancel() {
+	m.cancel()
 }
 
 func (m *MockThrowableContext) ThrowIrrecoverable(err error) {

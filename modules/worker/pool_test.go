@@ -51,35 +51,42 @@ func (m *cancellableThrowableContext) ThrowIrrecoverable(err error) {
 	m.thrown = err
 }
 
+// TestPool_HappyPath tests normal operation of the worker pool.
+// It starts the pool, submits jobs, and verifies they execute.
+// Also verifies pool state (worker count, queue size) at the end.
 func TestPool_HappyPath(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
-	defer throwCtx.Cancel()
 	pool := NewWorkerPool(10, 3)
+	defer func() {
+		throwCtx.Cancel()
+		unittest.RequireAllDone(t, pool)
+	}()
 
 	// Start pool
 	pool.Start(throwCtx)
 
 	// Wait for ready
-	unittest.AllReady(t, pool)
+	unittest.RequireAllReady(t, pool)
 
 	// Submit and execute jobs
-	jobs := make([]*mockJob, 5)
+	jobsCount := 5
+	jobs := make([]*mockJob, jobsCount)
 	for i := range jobs {
-		jobs[i] = &mockJob{}
+		jobs[i] = &mockJob{
+			picked:   make(chan struct{}),
+			executed: make(chan struct{}),
+		}
 		require.NoError(t, pool.Submit(jobs[i]))
 	}
 
-	// Wait for execution
-	require.Eventually(
-		t, func() bool {
-			for _, job := range jobs {
-				if !job.executed.Load() {
-					return false
-				}
-			}
-			return true
-		}, time.Second, 10*time.Millisecond,
-	)
+	// Wait for all jobs to execute
+	for _, job := range jobs {
+		select {
+		case <-job.executed:
+		case <-time.After(2 * time.Second):
+			t.Fatal("job did not complete")
+		}
+	}
 
 	// Verify pool state; 3 workers, and empty queue at end.
 	assert.Equal(t, 3, pool.WorkerCount())
@@ -87,26 +94,38 @@ func TestPool_HappyPath(t *testing.T) {
 }
 
 func TestPool_QueueFull(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	throwCtx := &cancellableThrowableContext{Context: ctx}
+	throwCtx := unittest.NewMockThrowableContext(t)
 	pool := NewWorkerPool(1, 1)
+	defer func() {
+		throwCtx.Cancel()
+		unittest.RequireAllDone(t, pool)
+	}()
 
 	pool.Start(throwCtx)
-	<-pool.Ready()
+	unittest.RequireAllReady(t, pool)
 
 	// Block the worker
-	blocker := &mockJob{block: make(chan struct{})}
+	blocker := &mockJob{
+		picked:   make(chan struct{}),
+		executed: make(chan struct{}),
+		block:    make(chan struct{}),
+	}
 	require.NoError(t, pool.Submit(blocker))
 
 	// Wait for worker to pick up blocker
 	time.Sleep(10 * time.Millisecond)
 
 	// Fill queue
-	require.NoError(t, pool.Submit(&mockJob{}))
+	require.NoError(t, pool.Submit(&mockJob{
+		picked:   make(chan struct{}),
+		executed: make(chan struct{}),
+	}))
 
 	// Queue full - should error
-	err := pool.Submit(&mockJob{})
+	err := pool.Submit(&mockJob{
+		picked:   make(chan struct{}),
+		executed: make(chan struct{}),
+	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "queue full")
 
@@ -123,7 +142,11 @@ func TestPool_ContextCancellation(t *testing.T) {
 	<-pool.Ready()
 
 	// Submit blocking job
-	job := &mockJob{block: make(chan struct{})}
+	job := &mockJob{
+		picked:   make(chan struct{}),
+		executed: make(chan struct{}),
+		block:    make(chan struct{}),
+	}
 	require.NoError(t, pool.Submit(job))
 
 	// Wait for worker to pick it up
@@ -152,7 +175,11 @@ func TestPool_JobPanic(t *testing.T) {
 	<-pool.Ready()
 
 	// Submit job that throws
-	panicJob := &mockJob{panic: true}
+	panicJob := &mockJob{
+		picked:   make(chan struct{}),
+		executed: make(chan struct{}),
+		panic:    true,
+	}
 	require.NoError(t, pool.Submit(panicJob))
 
 	// Wait for throw
@@ -170,14 +197,17 @@ func TestPool_JobPanic(t *testing.T) {
 	throwCtx.mu.Unlock()
 
 	// Pool continues working
-	normalJob := &mockJob{}
+	normalJob := &mockJob{
+		picked:   make(chan struct{}),
+		executed: make(chan struct{}),
+	}
 	require.NoError(t, pool.Submit(normalJob))
 
-	require.Eventually(
-		t, func() bool {
-			return normalJob.executed.Load()
-		}, time.Second, 10*time.Millisecond,
-	)
+	select {
+	case <-normalJob.executed:
+	case <-time.After(time.Second):
+		t.Fatal("normal job did not execute")
+	}
 
 	cancel()
 	<-pool.Done()
@@ -195,21 +225,31 @@ func TestPool_QueueSize(t *testing.T) {
 	assert.Equal(t, 0, pool.QueueSize())
 
 	// Block worker
-	blocker := &mockJob{block: make(chan struct{})}
+	blocker := &mockJob{
+		picked:   make(chan struct{}),
+		executed: make(chan struct{}),
+		block:    make(chan struct{}),
+	}
 	require.NoError(t, pool.Submit(blocker))
 
 	// Wait for worker to pick up blocker
 	time.Sleep(10 * time.Millisecond)
 
 	// Add to queue
-	require.NoError(t, pool.Submit(&mockJob{}))
+	require.NoError(t, pool.Submit(&mockJob{
+		picked:   make(chan struct{}),
+		executed: make(chan struct{}),
+	}))
 	require.Eventually(
 		t, func() bool {
 			return pool.QueueSize() == 1
 		}, 100*time.Millisecond, 10*time.Millisecond,
 	)
 
-	require.NoError(t, pool.Submit(&mockJob{}))
+	require.NoError(t, pool.Submit(&mockJob{
+		picked:   make(chan struct{}),
+		executed: make(chan struct{}),
+	}))
 	require.Eventually(
 		t, func() bool {
 			return pool.QueueSize() == 2
@@ -241,7 +281,10 @@ func TestPool_ConcurrentSubmit(t *testing.T) {
 	jobs := make([]*mockJob, 50)
 
 	for i := range jobs {
-		jobs[i] = &mockJob{}
+		jobs[i] = &mockJob{
+			picked:   make(chan struct{}),
+			executed: make(chan struct{}),
+		}
 		wg.Add(1)
 		go func(job *mockJob) {
 			defer wg.Done()
@@ -252,14 +295,11 @@ func TestPool_ConcurrentSubmit(t *testing.T) {
 	wg.Wait()
 
 	// All should execute
-	require.Eventually(
-		t, func() bool {
-			for _, job := range jobs {
-				if !job.executed.Load() {
-					return false
-				}
-			}
-			return true
-		}, 2*time.Second, 10*time.Millisecond,
-	)
+	for _, job := range jobs {
+		select {
+		case <-job.executed:
+		case <-time.After(2 * time.Second):
+			t.Fatal("job did not complete")
+		}
+	}
 }

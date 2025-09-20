@@ -22,10 +22,10 @@ func init() {
 }
 
 type mockJob struct {
-	picked   chan struct{} // closed when picked up by worker
-	executed chan struct{} // closed when executed
-	block    chan struct{} // if non-nil, job blocks until channel is closed
-	panic    bool          // if true, job panics when executed
+	picked   chan interface{} // closed when picked up by worker
+	executed chan interface{} // closed when executed
+	block    chan interface{} // if non-nil, job blocks until channel is closed
+	panic    bool             // if true, job panics when executed
 }
 
 func (m *mockJob) Execute(ctx modules.ThrowableContext) {
@@ -73,8 +73,8 @@ func TestPool_HappyPath(t *testing.T) {
 	jobs := make([]*mockJob, jobsCount)
 	for i := range jobs {
 		jobs[i] = &mockJob{
-			picked:   make(chan struct{}),
-			executed: make(chan struct{}),
+			picked:   make(chan interface{}),
+			executed: make(chan interface{}),
 		}
 		require.NoError(t, pool.Submit(jobs[i]))
 	}
@@ -106,9 +106,9 @@ func TestPool_QueueFull(t *testing.T) {
 
 	// Block the worker
 	blocker := &mockJob{
-		picked:   make(chan struct{}),
-		executed: make(chan struct{}),
-		block:    make(chan struct{}),
+		picked:   make(chan interface{}),
+		executed: make(chan interface{}),
+		block:    make(chan interface{}),
 	}
 	require.NoError(t, pool.Submit(blocker))
 
@@ -119,8 +119,8 @@ func TestPool_QueueFull(t *testing.T) {
 	require.NoError(
 		t, pool.Submit(
 			&mockJob{
-				picked:   make(chan struct{}),
-				executed: make(chan struct{}),
+				picked:   make(chan interface{}),
+				executed: make(chan interface{}),
 			},
 		),
 	)
@@ -128,8 +128,8 @@ func TestPool_QueueFull(t *testing.T) {
 	// Queue full - should error
 	err := pool.Submit(
 		&mockJob{
-			picked:   make(chan struct{}),
-			executed: make(chan struct{}),
+			picked:   make(chan interface{}),
+			executed: make(chan interface{}),
 		},
 	)
 	assert.Error(t, err)
@@ -149,9 +149,9 @@ func TestPool_ContextCancellation(t *testing.T) {
 
 	// Submit blocking job
 	job := &mockJob{
-		picked:   make(chan struct{}),
-		executed: make(chan struct{}),
-		block:    make(chan struct{}),
+		picked:   make(chan interface{}),
+		executed: make(chan interface{}),
+		block:    make(chan interface{}),
 	}
 	require.NoError(t, pool.Submit(job))
 
@@ -182,8 +182,8 @@ func TestPool_JobPanic(t *testing.T) {
 
 	// Submit job that throws
 	panicJob := &mockJob{
-		picked:   make(chan struct{}),
-		executed: make(chan struct{}),
+		picked:   make(chan interface{}),
+		executed: make(chan interface{}),
 		panic:    true,
 	}
 	require.NoError(t, pool.Submit(panicJob))
@@ -204,8 +204,8 @@ func TestPool_JobPanic(t *testing.T) {
 
 	// Pool continues working
 	normalJob := &mockJob{
-		picked:   make(chan struct{}),
-		executed: make(chan struct{}),
+		picked:   make(chan interface{}),
+		executed: make(chan interface{}),
 	}
 	require.NoError(t, pool.Submit(normalJob))
 
@@ -232,9 +232,9 @@ func TestPool_QueueSize(t *testing.T) {
 
 	// Block worker
 	blocker := &mockJob{
-		picked:   make(chan struct{}),
-		executed: make(chan struct{}),
-		block:    make(chan struct{}),
+		picked:   make(chan interface{}),
+		executed: make(chan interface{}),
+		block:    make(chan interface{}),
 	}
 	require.NoError(t, pool.Submit(blocker))
 
@@ -245,8 +245,8 @@ func TestPool_QueueSize(t *testing.T) {
 	require.NoError(
 		t, pool.Submit(
 			&mockJob{
-				picked:   make(chan struct{}),
-				executed: make(chan struct{}),
+				picked:   make(chan interface{}),
+				executed: make(chan interface{}),
 			},
 		),
 	)
@@ -259,8 +259,8 @@ func TestPool_QueueSize(t *testing.T) {
 	require.NoError(
 		t, pool.Submit(
 			&mockJob{
-				picked:   make(chan struct{}),
-				executed: make(chan struct{}),
+				picked:   make(chan interface{}),
+				executed: make(chan interface{}),
 			},
 		),
 	)
@@ -296,8 +296,8 @@ func TestPool_ConcurrentSubmit(t *testing.T) {
 
 	for i := range jobs {
 		jobs[i] = &mockJob{
-			picked:   make(chan struct{}),
-			executed: make(chan struct{}),
+			picked:   make(chan interface{}),
+			executed: make(chan interface{}),
 		}
 		wg.Add(1)
 		go func(job *mockJob) {

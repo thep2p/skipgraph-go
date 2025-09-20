@@ -113,19 +113,25 @@ func TestPool_QueueFull(t *testing.T) {
 	require.NoError(t, pool.Submit(blocker))
 
 	// Wait for worker to pick up blocker
-	time.Sleep(10 * time.Millisecond)
+	unittest.ChannelMustCloseWithinTimeout(t, blocker.picked, 100*time.Millisecond, "blocker job not picked up on time")
 
 	// Fill queue
-	require.NoError(t, pool.Submit(&mockJob{
-		picked:   make(chan struct{}),
-		executed: make(chan struct{}),
-	}))
+	require.NoError(
+		t, pool.Submit(
+			&mockJob{
+				picked:   make(chan struct{}),
+				executed: make(chan struct{}),
+			},
+		),
+	)
 
 	// Queue full - should error
-	err := pool.Submit(&mockJob{
-		picked:   make(chan struct{}),
-		executed: make(chan struct{}),
-	})
+	err := pool.Submit(
+		&mockJob{
+			picked:   make(chan struct{}),
+			executed: make(chan struct{}),
+		},
+	)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "queue full")
 
@@ -236,20 +242,28 @@ func TestPool_QueueSize(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Add to queue
-	require.NoError(t, pool.Submit(&mockJob{
-		picked:   make(chan struct{}),
-		executed: make(chan struct{}),
-	}))
+	require.NoError(
+		t, pool.Submit(
+			&mockJob{
+				picked:   make(chan struct{}),
+				executed: make(chan struct{}),
+			},
+		),
+	)
 	require.Eventually(
 		t, func() bool {
 			return pool.QueueSize() == 1
 		}, 100*time.Millisecond, 10*time.Millisecond,
 	)
 
-	require.NoError(t, pool.Submit(&mockJob{
-		picked:   make(chan struct{}),
-		executed: make(chan struct{}),
-	}))
+	require.NoError(
+		t, pool.Submit(
+			&mockJob{
+				picked:   make(chan struct{}),
+				executed: make(chan struct{}),
+			},
+		),
+	)
 	require.Eventually(
 		t, func() bool {
 			return pool.QueueSize() == 2

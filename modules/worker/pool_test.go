@@ -5,7 +5,6 @@ import (
 	"github.com/thep2p/skipgraph-go/unittest"
 	"os"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,19 +22,21 @@ func init() {
 }
 
 type mockJob struct {
-	executed atomic.Bool
-	panic    bool
-	block    chan struct{}
+	picked   chan struct{} // closed when picked up by worker
+	executed chan struct{} // closed when executed
+	block    chan struct{} // if non-nil, job blocks until channel is closed
+	panic    bool          // if true, job panics when executed
 }
 
 func (m *mockJob) Execute(ctx modules.ThrowableContext) {
+	close(m.picked) // signal picked up
 	if m.panic {
 		ctx.ThrowIrrecoverable(assert.AnError)
 	}
 	if m.block != nil {
 		<-m.block
 	}
-	m.executed.Store(true)
+	close(m.executed) // signal executed
 }
 
 type cancellableThrowableContext struct {

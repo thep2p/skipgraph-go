@@ -50,8 +50,8 @@ func ChannelsMustCloseWithinTimeout(t *testing.T, timeout time.Duration, failure
 	CallMustReturnWithinTimeout(t, wg.Wait, timeout, failureMsg)
 }
 
-// AllReady is a test helper that fails the test if any of the given components do not become ready within the default timeout.
-func AllReady(t *testing.T, components ...modules.Component) {
+// RequireAllReady is a test helper that fails the test if any of the given components do not become ready within the default timeout.
+func RequireAllReady(t *testing.T, components ...modules.Component) {
 	readyChans := make([]<-chan interface{}, len(components))
 	for i, c := range components {
 		readyChans[i] = c.Ready()
@@ -59,8 +59,8 @@ func AllReady(t *testing.T, components ...modules.Component) {
 	ChannelsMustCloseWithinTimeout(t, DefaultReadyDoneTimeout, "not all components became ready on time", readyChans...)
 }
 
-// AllDone is a test helper that fails the test if any of the given components do not become done within the default timeout.
-func AllDone(t *testing.T, components ...modules.Component) {
+// RequireAllDone is a test helper that fails the test if any of the given components do not become done within the default timeout.
+func RequireAllDone(t *testing.T, components ...modules.Component) {
 	doneChans := make([]<-chan interface{}, len(components))
 	for i, c := range components {
 		doneChans[i] = c.Done()

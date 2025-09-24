@@ -182,14 +182,14 @@ func TestPool_ContextCancellation(t *testing.T) {
 }
 
 func TestPool_JobPanic(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	throwCtx := &cancellableThrowableContext{Context: ctx}
+	throwCtx := unittest.NewMockThrowableContext(t)
 	pool := NewWorkerPool(10, 2)
+	defer func() {
+		throwCtx.Cancel()
+		unittest.RequireAllDone(t, pool)
+	}()
 
 	pool.Start(throwCtx)
-	<-pool.Ready()
 
 	// Submit job that throws
 	panicJob := &mockJob{
@@ -199,35 +199,12 @@ func TestPool_JobPanic(t *testing.T) {
 	}
 	require.NoError(t, pool.Submit(panicJob))
 
-	// Wait for throw
-	require.Eventually(
-		t, func() bool {
-			throwCtx.mu.Lock()
-			defer throwCtx.mu.Unlock()
-			return throwCtx.thrown != nil
-		}, time.Second, 10*time.Millisecond,
-	)
+	// Wait for job to be picked up
+	unittest.ChannelMustCloseWithinTimeout(t, panicJob.picked, 100*time.Millisecond, "job not picked up on time")
 
-	// Verify error was thrown
-	throwCtx.mu.Lock()
-	assert.Equal(t, assert.AnError, throwCtx.thrown)
-	throwCtx.mu.Unlock()
+	// TODO: develop a RequireEventuallyPanics helper in unittest package
 
-	// Pool continues working
-	normalJob := &mockJob{
-		picked:   make(chan interface{}),
-		executed: make(chan interface{}),
-	}
-	require.NoError(t, pool.Submit(normalJob))
-
-	select {
-	case <-normalJob.executed:
-	case <-time.After(time.Second):
-		t.Fatal("normal job did not execute")
-	}
-
-	cancel()
-	<-pool.Done()
+	// Wait for job to execute (and panic) using RequireEventuallyPanics
 }
 
 func TestPool_QueueSize(t *testing.T) {

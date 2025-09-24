@@ -50,6 +50,7 @@ func NewWorkerPool(queueSize int, workerCount int) *Pool {
 		queue:       make(chan modules.Job, queueSize),
 		ready:       make(chan interface{}),
 		done:        make(chan interface{}),
+		started:     make(chan interface{}),
 		logger:      logger,
 	}
 }
@@ -64,10 +65,11 @@ func (p *Pool) Start(ctx modules.ThrowableContext) {
 	select {
 	case <-p.started:
 		ctx.ThrowIrrecoverable(fmt.Errorf("worker pool already started"))
+		return
 	default:
 		close(p.started)
 	}
-	
+
 	p.ctx = ctx
 
 	p.logger.Trace().

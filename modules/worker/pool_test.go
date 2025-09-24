@@ -326,3 +326,45 @@ func TestPool_ConcurrentSubmit(t *testing.T) {
 	}
 	unittest.ChannelsMustCloseWithinTimeout(t, 2*time.Second, "not all jobs executed on time", executedChannels...)
 }
+
+// TestPool_StartAlreadyStarted tests that starting an already started pool
+// throws an irrecoverable error.
+func TestPool_StartAlreadyStarted(t *testing.T) {
+	errorCaught := make(chan error, 1)
+	throwCtx := unittest.NewMockThrowableContext(t)
+
+	pool := NewWorkerPool(10, 3)
+	defer func() {
+		throwCtx.Cancel()
+		unittest.RequireAllDone(t, pool)
+	}()
+
+	// Start pool first time - should succeed
+	pool.Start(throwCtx)
+	unittest.RequireAllReady(t, pool)
+
+	// Create a second context for the second start attempt
+	throwCtx2 := unittest.NewMockThrowableContext(
+		t, unittest.WithThrowLogic(
+			func(err error) {
+				select {
+				case errorCaught <- err:
+				default:
+				}
+			},
+		),
+	)
+	defer throwCtx2.Cancel()
+
+	// Start pool second time - should throw error
+	pool.Start(throwCtx2)
+
+	// Wait for error to be thrown
+	select {
+	case err := <-errorCaught:
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "worker pool already started")
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("expected error for starting already started pool")
+	}
+}

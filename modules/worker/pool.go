@@ -23,6 +23,7 @@ type Pool struct {
 	queue       chan modules.Job
 	ready       chan interface{}
 	done        chan interface{}
+	started     chan interface{}
 	wg          sync.WaitGroup
 	ctx         modules.ThrowableContext
 	logger      zerolog.Logger
@@ -59,6 +60,14 @@ func NewWorkerPool(queueSize int, workerCount int) *Pool {
 //
 // Spawns workers, signals ready, and monitors for shutdown.
 func (p *Pool) Start(ctx modules.ThrowableContext) {
+	// Prevent multiple starts
+	select {
+	case <-p.started:
+		ctx.ThrowIrrecoverable(fmt.Errorf("worker pool already started"))
+	default:
+		close(p.started)
+	}
+	
 	p.ctx = ctx
 
 	p.logger.Trace().

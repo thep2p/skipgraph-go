@@ -93,6 +93,8 @@ func TestPool_HappyPath(t *testing.T) {
 	assert.Equal(t, 0, pool.QueueSize())
 }
 
+// TestPool_QueueFull tests that when the job queue is full,
+// submitting a new job returns an error and does not block.
 func TestPool_QueueFull(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
 	pool := NewWorkerPool(1, 1)
@@ -116,12 +118,13 @@ func TestPool_QueueFull(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, blocker.picked, 100*time.Millisecond, "blocker job not picked up on time")
 
 	// Fill queue
+	secondJob := &mockJob{
+		picked:   make(chan interface{}),
+		executed: make(chan interface{}),
+	}
 	require.NoError(
 		t, pool.Submit(
-			&mockJob{
-				picked:   make(chan interface{}),
-				executed: make(chan interface{}),
-			},
+			secondJob,
 		),
 	)
 
@@ -140,6 +143,11 @@ func TestPool_QueueFull(t *testing.T) {
 
 	// Wait for blocker job to finish
 	unittest.ChannelMustCloseWithinTimeout(t, blocker.executed, 100*time.Millisecond, "blocker job not executed on time")
+
+	// Wait for second job to finish
+	unittest.ChannelMustCloseWithinTimeout(t, secondJob.picked, 100*time.Millisecond, "second job not executed on time")
+	unittest.ChannelMustCloseWithinTimeout(t, secondJob.executed, 100*time.Millisecond, "second job not executed on time")
+
 	// Wait for queue to drain
 	require.Eventually(
 		t, func() bool {
@@ -216,14 +224,19 @@ func TestPool_JobPanic(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, throwChan, 100*time.Millisecond, "throw not captured on time")
 }
 
+// TestPool_QueueSize tests that the QueueSize method accurately reflects
+// the number of pending jobs in the queue as jobs are submitted and processed.
 func TestPool_QueueSize(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	throwCtx := &cancellableThrowableContext{Context: ctx}
+	throwCtx := unittest.NewMockThrowableContext(t)
 	pool := NewWorkerPool(10, 1)
 
+	defer func() {
+		throwCtx.Cancel()
+		unittest.RequireAllDone(t, pool)
+	}()
+
 	pool.Start(throwCtx)
-	<-pool.Ready()
+	unittest.RequireAllReady(t, pool)
 
 	assert.Equal(t, 0, pool.QueueSize())
 
@@ -235,8 +248,8 @@ func TestPool_QueueSize(t *testing.T) {
 	}
 	require.NoError(t, pool.Submit(blocker))
 
-	// Wait for worker to pick up blocker
-	time.Sleep(10 * time.Millisecond)
+	// Wait for worker to pick up the blocker job, hence blocking the only worker of the pool.
+	unittest.ChannelMustCloseWithinTimeout(t, blocker.picked, 100*time.Millisecond, "blocker job not picked up on time")
 
 	// Add to queue
 	require.NoError(
@@ -253,12 +266,14 @@ func TestPool_QueueSize(t *testing.T) {
 		}, 100*time.Millisecond, 10*time.Millisecond,
 	)
 
+	secondJob := &mockJob{
+		picked:   make(chan interface{}),
+		executed: make(chan interface{}),
+	}
+
 	require.NoError(
 		t, pool.Submit(
-			&mockJob{
-				picked:   make(chan interface{}),
-				executed: make(chan interface{}),
-			},
+			secondJob,
 		),
 	)
 	require.Eventually(
@@ -269,6 +284,13 @@ func TestPool_QueueSize(t *testing.T) {
 
 	// Unblock
 	close(blocker.block)
+
+	// require blocked job to finish
+	unittest.ChannelMustCloseWithinTimeout(t, blocker.executed, 100*time.Millisecond, "blocker job not executed on time")
+
+	// require second job to be picked up and executed
+	unittest.ChannelMustCloseWithinTimeout(t, secondJob.picked, 100*time.Millisecond, "second job not picked up on time")
+	unittest.ChannelMustCloseWithinTimeout(t, secondJob.executed, 100*time.Millisecond, "second job not executed on time")
 
 	// Queue drains
 	require.Eventually(

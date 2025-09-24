@@ -14,15 +14,30 @@ type MockThrowableContext struct {
 	context.Context
 	cancel context.CancelFunc
 	t      *testing.T
+	throw  func(err error) // Optional logic to run when ThrowIrrecoverable is called
 }
 
-func NewMockThrowableContext(t *testing.T) *MockThrowableContext {
+func WithThrowLogic(throwLogic func(err error)) func(*MockThrowableContext) {
+	return func(m *MockThrowableContext) {
+		m.throw = throwLogic
+	}
+}
+
+func NewMockThrowableContext(t *testing.T, opts ...func(*MockThrowableContext)) *MockThrowableContext {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &MockThrowableContext{
+	throwCtx := &MockThrowableContext{
 		Context: ctx,
 		cancel:  cancel,
 		t:       t,
+		throw: func(err error) {
+			require.Fail(t, "irrecoverable error: "+err.Error())
+		},
 	}
+	for _, opt := range opts {
+		opt(throwCtx)
+	}
+
+	return throwCtx
 }
 
 func (m *MockThrowableContext) Cancel() {
@@ -30,7 +45,7 @@ func (m *MockThrowableContext) Cancel() {
 }
 
 func (m *MockThrowableContext) ThrowIrrecoverable(err error) {
-	require.Fail(m.t, "irrecoverable error: "+err.Error())
+	m.throw(err)
 }
 
 var _ modules.ThrowableContext = (*MockThrowableContext)(nil)

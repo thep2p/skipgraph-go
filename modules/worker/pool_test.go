@@ -181,8 +181,18 @@ func TestPool_ContextCancellation(t *testing.T) {
 	unittest.RequireAllDone(t, pool)
 }
 
+// TestPool_JobPanic tests that if a job panics (throws irrecoverable error),
+// the pool captures the throw and continues operating.
 func TestPool_JobPanic(t *testing.T) {
-	throwCtx := unittest.NewMockThrowableContext(t)
+	throwChan := make(chan interface{})
+	throwCtx := unittest.NewMockThrowableContext(
+		t, unittest.WithThrowLogic(
+			func(err error) {
+				close(throwChan)
+			},
+		),
+	)
+
 	pool := NewWorkerPool(10, 2)
 	defer func() {
 		throwCtx.Cancel()
@@ -202,9 +212,8 @@ func TestPool_JobPanic(t *testing.T) {
 	// Wait for job to be picked up
 	unittest.ChannelMustCloseWithinTimeout(t, panicJob.picked, 100*time.Millisecond, "job not picked up on time")
 
-	// TODO: develop a RequireEventuallyPanics helper in unittest package
-
-	// Wait for job to execute (and panic) using RequireEventuallyPanics
+	// Wait for throw to be captured
+	unittest.ChannelMustCloseWithinTimeout(t, throwChan, 100*time.Millisecond, "throw not captured on time")
 }
 
 func TestPool_QueueSize(t *testing.T) {

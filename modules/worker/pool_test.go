@@ -150,13 +150,16 @@ func TestPool_QueueFull(t *testing.T) {
 	assert.Equal(t, 0, pool.QueueSize())
 }
 
+// TestPool_ContextCancellation tests that when the context is cancelled,
+// the pool stops accepting new jobs, finishes executing current jobs,
+// and then shuts down gracefully.
 func TestPool_ContextCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	throwCtx := &cancellableThrowableContext{Context: ctx}
+	throwCtx := unittest.NewMockThrowableContext(t)
 
 	pool := NewWorkerPool(10, 2)
 	pool.Start(throwCtx)
-	<-pool.Ready()
+
+	unittest.RequireAllReady(t, pool)
 
 	// Submit blocking job
 	job := &mockJob{
@@ -166,19 +169,16 @@ func TestPool_ContextCancellation(t *testing.T) {
 	}
 	require.NoError(t, pool.Submit(job))
 
-	// Wait for worker to pick it up
-	time.Sleep(10 * time.Millisecond)
+	// Wait for job to be picked up
+	unittest.ChannelMustCloseWithinTimeout(t, job.picked, 100*time.Millisecond, "job not picked up on time")
 
 	// Cancel context and unblock job
-	cancel()
+	throwCtx.Cancel()
 	close(job.block)
 
-	// Pool should shutdown
-	select {
-	case <-pool.Done():
-	case <-time.After(time.Second):
-		t.Fatal("pool failed to shutdown on context cancel")
-	}
+	// Job should execute before pool shuts down
+	unittest.ChannelMustCloseWithinTimeout(t, job.executed, 100*time.Millisecond, "job not executed on time")
+	unittest.RequireAllDone(t, pool)
 }
 
 func TestPool_JobPanic(t *testing.T) {

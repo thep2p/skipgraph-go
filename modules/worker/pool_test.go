@@ -112,7 +112,7 @@ func TestPool_QueueFull(t *testing.T) {
 	}
 	require.NoError(t, pool.Submit(blocker))
 
-	// Wait for worker to pick up blocker
+	// Wait for worker to pick up the blocker job, hence blocking the only worker of the pool.
 	unittest.ChannelMustCloseWithinTimeout(t, blocker.picked, 100*time.Millisecond, "blocker job not picked up on time")
 
 	// Fill queue
@@ -137,6 +137,17 @@ func TestPool_QueueFull(t *testing.T) {
 
 	// Unblock and cleanup
 	close(blocker.block)
+
+	// Wait for blocker job to finish
+	unittest.ChannelMustCloseWithinTimeout(t, blocker.executed, 100*time.Millisecond, "blocker job not executed on time")
+	// Wait for queue to drain
+	require.Eventually(
+		t, func() bool {
+			return pool.QueueSize() == 0
+		}, time.Second, 10*time.Millisecond,
+	)
+
+	assert.Equal(t, 0, pool.QueueSize())
 }
 
 func TestPool_ContextCancellation(t *testing.T) {

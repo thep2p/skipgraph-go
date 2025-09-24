@@ -186,12 +186,10 @@ func (p *Pool) Submit(job modules.Job) error {
 	select {
 	case p.queue <- job:
 		p.logger.Trace().
-			Int("queue_size", len(p.queue)).
 			Msg("Job submitted to pool")
 		return nil
 	default:
 		p.logger.Trace().
-			Int("queue_size", len(p.queue)).
 			Msg("Failed to submit job - queue full")
 		return fmt.Errorf("queue full")
 	}

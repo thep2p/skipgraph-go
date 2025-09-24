@@ -300,14 +300,19 @@ func TestPool_QueueSize(t *testing.T) {
 	)
 }
 
+// TestPool_ConcurrentSubmit tests that multiple goroutines can concurrently
+// submit jobs to the pool without errors or deadlocks, and all jobs execute.
 func TestPool_ConcurrentSubmit(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	throwCtx := &cancellableThrowableContext{Context: ctx}
+	throwCtx := unittest.NewMockThrowableContext(t)
 	pool := NewWorkerPool(100, 5)
 
+	defer func() {
+		throwCtx.Cancel()
+		unittest.RequireAllDone(t, pool)
+	}()
+
 	pool.Start(throwCtx)
-	<-pool.Ready()
+	unittest.RequireAllReady(t, pool)
 
 	// Concurrent submissions
 	var wg sync.WaitGroup
@@ -325,14 +330,8 @@ func TestPool_ConcurrentSubmit(t *testing.T) {
 		}(jobs[i])
 	}
 
-	wg.Wait()
+	unittest.CallMustReturnWithinTimeout(t, wg.Wait, 2*time.Second, "concurrent submissions did not complete on time")
 
 	// All should execute
-	for _, job := range jobs {
-		select {
-		case <-job.executed:
-		case <-time.After(2 * time.Second):
-			t.Fatal("job did not complete")
-		}
-	}
+	unittest.ChannelsMustCloseWithinTimeout(t, 2*time.Second, "not all jobs executed on time", jobs...)
 }

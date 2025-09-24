@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"context"
 	"github.com/thep2p/skipgraph-go/unittest"
 	"os"
 	"sync"
@@ -37,18 +36,6 @@ func (m *mockJob) Execute(ctx modules.ThrowableContext) {
 		<-m.block
 	}
 	close(m.executed) // signal executed
-}
-
-type cancellableThrowableContext struct {
-	context.Context
-	thrown error
-	mu     sync.Mutex
-}
-
-func (m *cancellableThrowableContext) ThrowIrrecoverable(err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.thrown = err
 }
 
 // TestPool_HappyPath tests normal operation of the worker pool.
@@ -333,5 +320,9 @@ func TestPool_ConcurrentSubmit(t *testing.T) {
 	unittest.CallMustReturnWithinTimeout(t, wg.Wait, 2*time.Second, "concurrent submissions did not complete on time")
 
 	// All should execute
-	unittest.ChannelsMustCloseWithinTimeout(t, 2*time.Second, "not all jobs executed on time", jobs...)
+	executedChannels := make([]<-chan interface{}, len(jobs))
+	for i, job := range jobs {
+		executedChannels[i] = job.executed
+	}
+	unittest.ChannelsMustCloseWithinTimeout(t, 2*time.Second, "not all jobs executed on time", executedChannels...)
 }

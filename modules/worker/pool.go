@@ -2,6 +2,7 @@ package worker
 
 import (
 	"fmt"
+	"github.com/thep2p/skipgraph-go/modules/component"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -19,11 +20,9 @@ import (
 //   - ctx: context for cancellation and error propagation
 //   - logger: structured logger for trace-level events
 type Pool struct {
+	component.LifecycleManager
 	workerCount int
 	queue       chan modules.Job
-	ready       chan interface{}
-	done        chan interface{}
-	started     chan interface{}
 	wg          sync.WaitGroup
 	ctx         modules.ThrowableContext
 	logger      zerolog.Logger
@@ -45,53 +44,44 @@ func NewWorkerPool(queueSize int, workerCount int) *Pool {
 	logger.Trace().
 		Msg("Creating new worker pool")
 
-	return &Pool{
+	p := &Pool{
 		workerCount: workerCount,
 		queue:       make(chan modules.Job, queueSize),
-		ready:       make(chan interface{}),
-		done:        make(chan interface{}),
-		started:     make(chan interface{}),
 		logger:      logger,
 	}
-}
 
-// Start initializes and begins worker execution.
-// Args:
-//   - ctx: context for cancellation and error propagation
-//
-// Spawns workers, signals ready, and monitors for shutdown.
-func (p *Pool) Start(ctx modules.ThrowableContext) {
-	// Prevent multiple starts
-	select {
-	case <-p.started:
-		ctx.ThrowIrrecoverable(fmt.Errorf("worker pool already started"))
-		return
-	default:
-		close(p.started)
-	}
+	p.LifecycleManager = *component.NewLifecycleTracker(
+		func(ctx modules.ThrowableContext) {
+			// Startup logic - store context
+			p.ctx = ctx
+			p.logger.Trace().Msg("Starting worker pool")
+			// Start all workers
+			for i := 0; i < p.workerCount; i++ {
+				p.wg.Add(1)
+				workerID := i
+				p.logger.Trace().Int("worker_id", workerID).Msg("Starting worker")
+				go p.runWorker(workerID)
+			}
+			// Signal ready immediately after workers start
+			p.logger.Trace().Msg("all workers started, startup complete")
+		},
+		func() {
+			p.logger.Trace().Msg("initiating shutdown")
 
-	p.ctx = ctx
+			// Close queue to signal workers to stop
+			p.logger.Trace().Msg("Closing job queue")
+			close(p.queue)
 
-	p.logger.Trace().
-		Msg("Starting worker pool")
+			// Wait for all workers to finish processing
+			p.logger.Trace().Msg("Waiting for all workers to finish")
+			p.wg.Wait()
 
-	// Start all workers
-	for i := 0; i < p.workerCount; i++ {
-		p.wg.Add(1)
-		workerID := i
-		p.logger.Trace().
-			Int("worker_id", workerID).
-			Msg("Starting worker")
-		go p.runWorker(workerID)
-	}
+			// Signal done after all workers have finished
+			p.logger.Trace().Msg("All workers finished, shutdown complete")
+		},
+	)
 
-	// Signal ready immediately after workers start
-	p.logger.Trace().
-		Msg("All workers started, signaling ready")
-	close(p.ready)
-
-	// Monitor for shutdown
-	go p.monitorShutdown()
+	return p
 }
 
 // runWorker executes jobs from the queue until shutdown.
@@ -136,45 +126,6 @@ func (p *Pool) runWorker(workerID int) {
 				Msg("Worker completed job")
 		}
 	}
-}
-
-// monitorShutdown coordinates graceful shutdown.
-// Waits for context cancellation, closes queue, waits for workers, signals done.
-func (p *Pool) monitorShutdown() {
-	p.logger.Trace().
-		Msg("Shutdown monitor started")
-
-	// Wait for context cancellation
-	<-p.ctx.Done()
-	p.logger.Trace().
-		Msg("Context cancelled, initiating shutdown")
-
-	// Close queue to signal workers to stop
-	p.logger.Trace().
-		Msg("Closing job queue")
-	close(p.queue)
-
-	// Wait for all workers to finish processing
-	p.logger.Trace().
-		Msg("Waiting for all workers to finish")
-	p.wg.Wait()
-
-	// Signal done after all workers have finished
-	p.logger.Trace().
-		Msg("All workers finished, signaling done")
-	close(p.done)
-}
-
-// Ready returns channel signaled when all workers have started.
-// Returns read-only channel closed after successful startup.
-func (p *Pool) Ready() <-chan interface{} {
-	return p.ready
-}
-
-// Done returns channel signaled when all workers have stopped.
-// Returns read-only channel closed after complete shutdown.
-func (p *Pool) Done() <-chan interface{} {
-	return p.done
 }
 
 // Submit adds a job to the queue for processing.

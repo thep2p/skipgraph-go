@@ -3,10 +3,13 @@ package unittest
 import (
 	"fmt"
 	"github.com/stretchr/testify/require"
+	"github.com/thep2p/skipgraph-go/modules"
 	"sync"
 	"testing"
 	"time"
 )
+
+const DefaultReadyDoneTimeout = 100 * time.Millisecond
 
 // CallMustReturnWithinTimeout is a test helper that invokes the given function and fails the test if the invocation
 // does not return prior to the given timeout.
@@ -45,4 +48,22 @@ func ChannelsMustCloseWithinTimeout(t *testing.T, timeout time.Duration, failure
 	}
 
 	CallMustReturnWithinTimeout(t, wg.Wait, timeout, failureMsg)
+}
+
+// RequireAllReady is a test helper that fails the test if any of the given components do not become ready within the default timeout.
+func RequireAllReady(t *testing.T, components ...modules.Component) {
+	readyChans := make([]<-chan interface{}, len(components))
+	for i, c := range components {
+		readyChans[i] = c.Ready()
+	}
+	ChannelsMustCloseWithinTimeout(t, DefaultReadyDoneTimeout, "not all components became ready on time", readyChans...)
+}
+
+// RequireAllDone is a test helper that fails the test if any of the given components do not become done within the default timeout.
+func RequireAllDone(t *testing.T, components ...modules.Component) {
+	doneChans := make([]<-chan interface{}, len(components))
+	for i, c := range components {
+		doneChans[i] = c.Done()
+	}
+	ChannelsMustCloseWithinTimeout(t, DefaultReadyDoneTimeout, "not all components became done on time", doneChans...)
 }

@@ -1,43 +1,51 @@
 package unittest
 
 import (
+	"context"
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/modules"
 	"testing"
-	"time"
 )
 
 // MockThrowableContext is a mock implementation of modules.ThrowableContext for testing purposes.
 // It fails the test if ThrowIrrecoverable is called.
 // Other than that it behaves like a no-op context.
 type MockThrowableContext struct {
-	t *testing.T
+	context.Context
+	cancel context.CancelFunc
+	t      *testing.T
+	throw  func(err error) // Optional logic to run when ThrowIrrecoverable is called
 }
 
-func NewMockThrowableContext(t *testing.T) *MockThrowableContext {
-	return &MockThrowableContext{t: t}
+func WithThrowLogic(throwLogic func(err error)) func(*MockThrowableContext) {
+	return func(m *MockThrowableContext) {
+		m.throw = throwLogic
+	}
 }
 
-func (m *MockThrowableContext) Deadline() (deadline time.Time, ok bool) {
-	return time.Time{}, false
+func NewMockThrowableContext(t *testing.T, opts ...func(*MockThrowableContext)) *MockThrowableContext {
+	ctx, cancel := context.WithCancel(context.Background())
+	throwCtx := &MockThrowableContext{
+		Context: ctx,
+		cancel:  cancel,
+		t:       t,
+		throw: func(err error) {
+			require.Fail(t, "irrecoverable error: "+err.Error())
+		},
+	}
+	for _, opt := range opts {
+		opt(throwCtx)
+	}
+
+	return throwCtx
 }
 
-func (m *MockThrowableContext) Done() <-chan struct{} {
-	done := make(chan struct{})
-	close(done)
-	return done
-}
-
-func (m *MockThrowableContext) Err() error {
-	return nil
-}
-
-func (m *MockThrowableContext) Value(_ any) any {
-	return nil
+func (m *MockThrowableContext) Cancel() {
+	m.cancel()
 }
 
 func (m *MockThrowableContext) ThrowIrrecoverable(err error) {
-	require.Fail(m.t, "irrecoverable error: "+err.Error())
+	m.throw(err)
 }
 
 var _ modules.ThrowableContext = (*MockThrowableContext)(nil)

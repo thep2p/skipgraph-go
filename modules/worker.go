@@ -4,14 +4,14 @@ package modules
 // Jobs should be self-contained and include all necessary data for execution.
 type Job interface {
 	// Execute performs the job's work.
-	// As jobs execute concurrently, there is no returned error. Benign errors should be logged internally.
-	// Fatal errors that should crash the process by throwing at ctx.
+	// As jobs execute concurrently, there is no returned error.
+	// Benign errors should be logged internally within the job implementation.
+	// Fatal errors that require process termination should be thrown via ctx.ThrowIrrecoverable().
 	// The context provided may be used for cancellation and timeouts.
 	// This method should be safe to call concurrently from multiple goroutines.
-	// It represents an atomic unit of work; it should not depend on external state that may change during execution.
-	// If the job cannot be completed successfully, it should return a non-nil error.
-	// The caller is responsible for handling retries or failure logging as needed.
-	// A job should not be cancelled mid-execution; it should either complete successfully or fail with an error.
+	// It represents an atomic unit of work and should not depend on external state that may change during execution.
+	// Jobs are responsible for their own error handling - either logging benign errors or throwing irrecoverable ones.
+	// The worker pool will continue operating unless an irrecoverable error is thrown.
 	Execute(ctx ThrowableContext)
 }
 

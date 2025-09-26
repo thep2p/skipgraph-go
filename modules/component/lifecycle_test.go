@@ -122,7 +122,8 @@ func TestLifecycleManager_Start(t *testing.T) {
 			select {
 			case <-lm.Ready():
 				t.Fatal("ready channel should not be closed when context is cancelled before start")
-			case <-time.After(50 * time.Millisecond):
+			default:
+				time.Sleep(50 * time.Millisecond)
 			}
 		},
 	)
@@ -200,11 +201,7 @@ func TestLifecycleManager_Done(t *testing.T) {
 
 			ctx.Cancel()
 
-			select {
-			case <-doneChan:
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("done channel should be closed after context cancellation")
-			}
+			unittest.ChannelMustCloseWithinTimeout(t, doneChan, 100*time.Millisecond, "done channel should be closed after context cancellation")
 		},
 	)
 
@@ -227,23 +224,7 @@ func TestLifecycleManager_Done(t *testing.T) {
 
 			ctx.Cancel()
 
-			select {
-			case <-doneChan1:
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("all done channels should be closed")
-			}
-
-			select {
-			case <-doneChan2:
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("all done channels should be closed")
-			}
-
-			select {
-			case <-doneChan3:
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("all done channels should be closed")
-			}
+			unittest.ChannelsMustCloseWithinTimeout(t, 100*time.Millisecond, "all done channels should be closed", doneChan1, doneChan2, doneChan3)
 		},
 	)
 }
@@ -291,11 +272,7 @@ func TestLifecycleManager_ShutdownPanic(t *testing.T) {
 
 			assert.True(t, panicOccurred.Load(), "shutdown panic should have occurred")
 
-			select {
-			case <-lm.Done():
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("done channel should still be closed despite panic in shutdown")
-			}
+			unittest.ChannelMustCloseWithinTimeout(t, lm.Done(), 100*time.Millisecond, "done channel should still be closed despite panic in shutdown")
 		},
 	)
 }
@@ -329,13 +306,7 @@ func TestLifecycleManager_ConcurrentOperations(t *testing.T) {
 
 			wg.Wait()
 
-			for i, ch := range readyChannels {
-				select {
-				case <-ch:
-				case <-time.After(100 * time.Millisecond):
-					t.Fatalf("ready channel %d should be closed", i)
-				}
-			}
+			unittest.ChannelsMustCloseWithinTimeout(t, 100*time.Millisecond, "all ready channels should be closed", readyChannels...)
 		},
 	)
 
@@ -368,13 +339,7 @@ func TestLifecycleManager_ConcurrentOperations(t *testing.T) {
 
 			wg.Wait()
 
-			for i, ch := range doneChannels {
-				select {
-				case <-ch:
-				case <-time.After(200 * time.Millisecond):
-					t.Fatalf("done channel %d should be closed", i)
-				}
-			}
+			unittest.ChannelsMustCloseWithinTimeout(t, 200*time.Millisecond, "all done channels should be closed", doneChannels...)
 		},
 	)
 }
@@ -410,7 +375,7 @@ func TestLifecycleManager_StartupError(t *testing.T) {
 func TestLifecycleManager_LongRunningOperations(t *testing.T) {
 	t.Run(
 		"long-running startup does not block Ready", func(t *testing.T) {
-			startupCompleted := make(chan struct{})
+			startupCompleted := make(chan interface{})
 
 			lm := NewLifecycleTracker(
 				func(ctx modules.ThrowableContext) {
@@ -423,23 +388,13 @@ func TestLifecycleManager_LongRunningOperations(t *testing.T) {
 			ctx := unittest.NewMockThrowableContext(t)
 			lm.Start(ctx)
 
-			select {
-			case <-lm.Ready():
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("ready channel should be closed after startup completes")
-			}
-
-			select {
-			case <-startupCompleted:
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("startup should complete")
-			}
+			unittest.ChannelsMustCloseWithinTimeout(t, 100*time.Millisecond, "ready and startup channels should close", lm.Ready(), startupCompleted)
 		},
 	)
 
 	t.Run(
 		"long-running shutdown does not block Done", func(t *testing.T) {
-			shutdownCompleted := make(chan struct{})
+			shutdownCompleted := make(chan interface{})
 
 			lm := NewLifecycleTracker(
 				func(ctx modules.ThrowableContext) {},
@@ -454,17 +409,7 @@ func TestLifecycleManager_LongRunningOperations(t *testing.T) {
 
 			ctx.Cancel()
 
-			select {
-			case <-lm.Done():
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("done channel should be closed after shutdown completes")
-			}
-
-			select {
-			case <-shutdownCompleted:
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("shutdown should complete")
-			}
+			unittest.ChannelsMustCloseWithinTimeout(t, 100*time.Millisecond, "done and shutdown channels should close", lm.Done(), shutdownCompleted)
 		},
 	)
 }
@@ -490,7 +435,7 @@ func TestLifecycleManager_ContextPropagation(t *testing.T) {
 
 	t.Run(
 		"context cancellation triggers shutdown", func(t *testing.T) {
-			shutdownCalled := make(chan struct{})
+			shutdownCalled := make(chan interface{})
 
 			lm := NewLifecycleTracker(
 				func(ctx modules.ThrowableContext) {},
@@ -507,17 +452,7 @@ func TestLifecycleManager_ContextPropagation(t *testing.T) {
 
 			cancel()
 
-			select {
-			case <-shutdownCalled:
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("shutdown should be called after context cancellation")
-			}
-
-			select {
-			case <-lm.Done():
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("done channel should be closed after context cancellation")
-			}
+			unittest.ChannelsMustCloseWithinTimeout(t, 100*time.Millisecond, "shutdown and done channels should close after context cancellation", shutdownCalled, lm.Done())
 		},
 	)
 }
@@ -572,8 +507,8 @@ func TestLifecycleManager_EdgeCases(t *testing.T) {
 func TestLifecycleManager_RealWorldScenarios(t *testing.T) {
 	t.Run(
 		"simulating a server component lifecycle", func(t *testing.T) {
-			serverStarted := make(chan struct{})
-			serverStopped := make(chan struct{})
+			serverStarted := make(chan interface{})
+			serverStopped := make(chan interface{})
 
 			lm := NewLifecycleTracker(
 				func(ctx modules.ThrowableContext) {
@@ -591,31 +526,11 @@ func TestLifecycleManager_RealWorldScenarios(t *testing.T) {
 				lm.Start(ctx)
 			}()
 
-			select {
-			case <-serverStarted:
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("server should start")
-			}
-
-			select {
-			case <-lm.Ready():
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("server should be ready")
-			}
+			unittest.ChannelsMustCloseWithinTimeout(t, 100*time.Millisecond, "server should start and be ready", serverStarted, lm.Ready())
 
 			ctx.Cancel()
 
-			select {
-			case <-serverStopped:
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("server should stop")
-			}
-
-			select {
-			case <-lm.Done():
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("server should be done")
-			}
+			unittest.ChannelsMustCloseWithinTimeout(t, 100*time.Millisecond, "server should stop and be done", serverStopped, lm.Done())
 		},
 	)
 
@@ -646,12 +561,7 @@ func TestLifecycleManager_RealWorldScenarios(t *testing.T) {
 			// Note: In a real scenario, ThrowIrrecoverable would terminate the process,
 			// but in tests it just records the error. The component will still become ready
 			// unless the actual process terminates.
-			select {
-			case <-lm.Ready():
-				// This is expected behavior in test context
-			case <-time.After(50 * time.Millisecond):
-				t.Fatal("ready channel should be closed even when ThrowIrrecoverable is called in test context")
-			}
+			unittest.ChannelMustCloseWithinTimeout(t, lm.Ready(), 50*time.Millisecond, "ready channel should be closed even when ThrowIrrecoverable is called in test context")
 		},
 	)
 }

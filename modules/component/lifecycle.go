@@ -38,12 +38,19 @@ func (l *LifecycleManager) Start(ctx modules.ThrowableContext) {
 		ctx.ThrowIrrecoverable(fmt.Errorf("component already started"))
 	default:
 		close(l.started)
-		l.startupLogic(ctx)
+		if l.startupLogic != nil {
+			l.startupLogic(ctx)
+		}
 		close(l.readyChan)
 		go func() {
+			defer func() {
+				_ = recover()
+				close(l.doneChan)
+			}()
 			<-ctx.Done()
-			l.shutdownLogic()
-			close(l.doneChan)
+			if l.shutdownLogic != nil {
+				l.shutdownLogic()
+			}
 		}()
 	}
 }

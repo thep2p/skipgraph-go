@@ -363,7 +363,7 @@ func TestPool_StartAlreadyStarted(t *testing.T) {
 	select {
 	case err := <-errorCaught:
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "component already started")
+		assert.Contains(t, err.Error(), "already started")
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("expected error for starting already started pool")
 	}

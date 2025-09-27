@@ -20,7 +20,7 @@ import (
 //   - ctx: context for cancellation and error propagation
 //   - logger: structured logger for trace-level events
 type Pool struct {
-	component.LifecycleManager
+	*component.Manager
 	workerCount int
 	queue       chan modules.Job
 	wg          sync.WaitGroup
@@ -50,7 +50,7 @@ func NewWorkerPool(queueSize int, workerCount int) *Pool {
 		logger:      logger,
 	}
 
-	p.LifecycleManager = *component.NewLifecycleTracker(
+	p.Manager = component.NewManagerWithLifecycle(
 		func(ctx modules.ThrowableContext) {
 			// Startup logic - store context
 			p.ctx = ctx

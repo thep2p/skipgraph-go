@@ -30,6 +30,19 @@ func NewManager() *Manager {
 	}
 }
 
+// NewManagerWithLifecycle creates a new Manager with startup and shutdown logic.
+// This replaces the functionality previously provided by LifecycleTracker.
+func NewManagerWithLifecycle(startupLogic func(modules.ThrowableContext), shutdownLogic func()) *Manager {
+	return &Manager{
+		components:    make([]modules.Component, 0),
+		readyChan:     make(chan interface{}),
+		doneChan:      make(chan interface{}),
+		started:       make(chan interface{}),
+		startupLogic:  startupLogic,
+		shutdownLogic: shutdownLogic,
+	}
+}
+
 func (m *Manager) Start(ctx modules.ThrowableContext) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

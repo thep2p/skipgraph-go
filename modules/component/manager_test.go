@@ -1,16 +1,15 @@
-package component_test
+package component
 
 import (
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/modules"
-	"github.com/thep2p/skipgraph-go/modules/component"
 	"github.com/thep2p/skipgraph-go/unittest"
 	"testing"
 	"time"
 )
 
 func TestNewManager(t *testing.T) {
-	manager := component.NewManager()
+	manager := NewManager()
 	require.NotNil(t, manager)
 
 	// Manager should not be nil and should implement ComponentManager interface
@@ -18,7 +17,7 @@ func TestNewManager(t *testing.T) {
 }
 
 func TestManager_Add(t *testing.T) {
-	manager := component.NewManager()
+	manager := NewManager()
 	component1 := unittest.NewMockComponent(t)
 	component2 := unittest.NewMockComponent(t)
 
@@ -32,7 +31,7 @@ func TestManager_Add(t *testing.T) {
 }
 
 func TestManager_Add_SameComponentTwice_ShouldPanic(t *testing.T) {
-	manager := component.NewManager()
+	manager := NewManager()
 	component1 := unittest.NewMockComponent(t)
 
 	manager.Add(component1)
@@ -46,7 +45,7 @@ func TestManager_Add_SameComponentTwice_ShouldPanic(t *testing.T) {
 }
 
 func TestManager_Add_AfterStart_ShouldPanic(t *testing.T) {
-	manager := component.NewManager()
+	manager := NewManager()
 	component1 := unittest.NewMockComponent(t)
 	component2 := unittest.NewMockComponent(t)
 
@@ -64,7 +63,7 @@ func TestManager_Add_AfterStart_ShouldPanic(t *testing.T) {
 }
 
 func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
-	manager := component.NewManager()
+	manager := NewManager()
 	component1 := unittest.NewMockComponent(t)
 
 	manager.Add(component1)
@@ -89,7 +88,7 @@ func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
 }
 
 func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
-	manager := component.NewManager()
+	manager := NewManager()
 
 	// Create components with controlled done behavior
 	doneSignal1 := make(chan struct{})
@@ -163,7 +162,7 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 }
 
 func TestManager_WithNoComponents(t *testing.T) {
-	manager := component.NewManager()
+	manager := NewManager()
 
 	ctx := unittest.NewMockThrowableContext(t)
 	manager.Start(ctx)
@@ -179,7 +178,7 @@ func TestManager_WithNoComponents(t *testing.T) {
 }
 
 func TestManager_MultipleCalls(t *testing.T) {
-	manager := component.NewManager()
+	manager := NewManager()
 	component1 := unittest.NewMockComponent(t)
 
 	manager.Add(component1)
@@ -208,7 +207,7 @@ func TestManager_MultipleCalls(t *testing.T) {
 }
 
 func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
-	manager := component.NewManager()
+	manager := NewManager()
 
 	// Create a blocking ready signal
 	readySignal := make(chan struct{})
@@ -255,7 +254,7 @@ func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
 }
 
 func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
-	manager := component.NewManager()
+	manager := NewManager()
 
 	// Create a blocking done signal
 	doneSignal := make(chan struct{})
@@ -308,8 +307,73 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 100*time.Millisecond, "manager should be done after all components are done")
 }
 
+func TestNewManagerWithLifecycle(t *testing.T) {
+	t.Run("successful lifecycle with startup and shutdown logic", func(t *testing.T) {
+		var startupCalled, shutdownCalled bool
+
+		manager := NewManagerWithLifecycle(
+			func(ctx modules.ThrowableContext) {
+				startupCalled = true
+			},
+			func() {
+				shutdownCalled = true
+			},
+		)
+
+		ctx := unittest.NewMockThrowableContext(t)
+		manager.Start(ctx)
+
+		require.True(t, startupCalled, "startup logic should be called")
+		unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager should be ready")
+
+		require.False(t, shutdownCalled, "shutdown logic should not be called yet")
+
+		ctx.Cancel()
+
+		unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 100*time.Millisecond, "manager should be done")
+		require.True(t, shutdownCalled, "shutdown logic should be called after context cancellation")
+	})
+
+	t.Run("with nil startup and shutdown logic", func(t *testing.T) {
+		manager := NewManagerWithLifecycle(nil, nil)
+		ctx := unittest.NewMockThrowableContext(t)
+
+		require.NotPanics(t, func() {
+			manager.Start(ctx)
+		}, "should handle nil startup/shutdown logic gracefully")
+
+		unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager should be ready")
+		ctx.Cancel()
+		unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 100*time.Millisecond, "manager should be done")
+	})
+
+	t.Run("double start should trigger ThrowIrrecoverable", func(t *testing.T) {
+		manager := NewManagerWithLifecycle(
+			func(ctx modules.ThrowableContext) {},
+			func() {},
+		)
+
+		ctx := unittest.NewMockThrowableContext(t)
+		manager.Start(ctx)
+
+		var thrownErr error
+		ctx2 := unittest.NewMockThrowableContext(
+			t, unittest.WithThrowLogic(
+				func(err error) {
+					thrownErr = err
+				},
+			),
+		)
+
+		manager.Start(ctx2)
+
+		require.NotNil(t, thrownErr)
+		require.Contains(t, thrownErr.Error(), "already started")
+	})
+}
+
 func TestManager_NeverReadyWhenContextCancelledDuringStartup(t *testing.T) {
-	manager := component.NewManager()
+	manager := NewManager()
 
 	// Create a component that blocks on ready
 	readySignal := make(chan struct{})

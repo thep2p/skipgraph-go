@@ -2,18 +2,21 @@ package component
 
 import (
 	"context"
+	"fmt"
 	"github.com/thep2p/skipgraph-go/modules"
 	"sync"
 )
 
 type Manager struct {
-	mu         sync.RWMutex
-	components []modules.Component
-	started    bool
-	readyChan  chan interface{}
-	doneChan   chan interface{}
-	readyOnce  sync.Once
-	doneOnce   sync.Once
+	mu            sync.RWMutex
+	components    []modules.Component
+	started       chan interface{}               // closed when Start is called (the manager has started)
+	readyChan     chan interface{}               // closed when all components are ready
+	doneChan      chan interface{}               // closed when all components are done
+	startupLogic  func(modules.ThrowableContext) // startup logic to be executed on Start
+	shutdownLogic func()                         // shutdown logic to be executed on Done
+	readyOnce     sync.Once
+	doneOnce      sync.Once
 }
 
 var _ modules.ComponentManager = (*Manager)(nil)
@@ -23,6 +26,7 @@ func NewManager() *Manager {
 		components: make([]modules.Component, 0),
 		readyChan:  make(chan interface{}),
 		doneChan:   make(chan interface{}),
+		started:    make(chan interface{}),
 	}
 }
 
@@ -30,10 +34,12 @@ func (m *Manager) Start(ctx modules.ThrowableContext) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if m.started {
-		panic("Manager.Start() called multiple times")
+	select {
+	case <-ctx.Done():
+		return
+	case <-m.started:
+		ctx.ThrowIrrecoverable(fmt.Errorf("component manager already started"))
 	}
-	m.started = true
 
 	// Start all components
 	for _, c := range m.components {
@@ -59,8 +65,10 @@ func (m *Manager) Add(c modules.Component) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if m.started {
-		panic("cannot add component to Manager after it has been started")
+	select {
+	case <-m.started:
+		panic("cannot add component to Manager after it has started")
+	default:
 	}
 
 	// Check if component already exists

@@ -1,11 +1,9 @@
 package component_test
 
 import (
-	"context"
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/modules"
 	"github.com/thep2p/skipgraph-go/modules/component"
-	"github.com/thep2p/skipgraph-go/modules/throwable"
 	"github.com/thep2p/skipgraph-go/unittest"
 	"testing"
 	"time"
@@ -54,7 +52,7 @@ func TestManager_Add_AfterStart_ShouldPanic(t *testing.T) {
 
 	manager.Add(component1)
 
-	ctx := throwable.NewContext(context.Background())
+	ctx := unittest.NewMockThrowableContext(t)
 	manager.Start(ctx)
 
 	// Adding component after start should panic
@@ -71,15 +69,23 @@ func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
 
 	manager.Add(component1)
 
-	ctx := throwable.NewContext(context.Background())
+	ctx := unittest.NewMockThrowableContext(t)
 	manager.Start(ctx)
 
-	// Starting twice should panic
-	require.Panics(
-		t, func() {
-			manager.Start(ctx)
-		},
+	// Starting twice should trigger ThrowIrrecoverable
+	var thrownErr error
+	ctx2 := unittest.NewMockThrowableContext(
+		t, unittest.WithThrowLogic(
+			func(err error) {
+				thrownErr = err
+			},
+		),
 	)
+
+	manager.Start(ctx2)
+
+	require.NotNil(t, thrownErr)
+	require.Contains(t, thrownErr.Error(), "already started")
 }
 
 func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
@@ -104,9 +110,8 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 	manager.Add(component1)
 	manager.Add(component2)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	tCtx := throwable.NewContext(ctx)
-	manager.Start(tCtx)
+	ctx := unittest.NewMockThrowableContext(t)
+	manager.Start(ctx)
 
 	// Components should be started and ready
 	unittest.ChannelMustCloseWithinTimeout(t, component1.Ready(), 100*time.Millisecond, "component1 was not started")
@@ -116,7 +121,7 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager was not ready after all components were ready")
 
 	// Cancel context to signal components to start shutdown
-	cancel()
+	ctx.Cancel()
 
 	// Verify manager is NOT done while components are still blocking
 	require.Eventually(t, func() bool {
@@ -138,8 +143,15 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 	select {
 	case <-manager.Done():
 		require.Fail(t, "manager should not be done while component2 is still running")
-	case <-time.After(100 * time.Millisecond):
-		// Good, manager is still waiting
+	default:
+		time.Sleep(100 * time.Millisecond)
+		// Verify again that manager is still not done
+		select {
+		case <-manager.Done():
+			require.Fail(t, "manager should not be done while component2 is still running")
+		default:
+			// Good, manager is still waiting
+		}
 	}
 
 	// Release component2
@@ -153,13 +165,16 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 func TestManager_WithNoComponents(t *testing.T) {
 	manager := component.NewManager()
 
-	ctx := throwable.NewContext(context.Background())
+	ctx := unittest.NewMockThrowableContext(t)
 	manager.Start(ctx)
 
-	// With no components, manager should be ready and done immediately
+	// With no components, manager should be ready immediately
 	unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager was not ready immediately")
 
-	// Expected - since there are no components, manager should be done immediately
+	// Cancel context to trigger done
+	ctx.Cancel()
+
+	// Expected - since there are no components, manager should be done immediately after cancellation
 	unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 100*time.Millisecond, "manager was not done immediately")
 }
 
@@ -169,9 +184,8 @@ func TestManager_MultipleCalls(t *testing.T) {
 
 	manager.Add(component1)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	tCtx := throwable.NewContext(ctx)
-	manager.Start(tCtx)
+	ctx := unittest.NewMockThrowableContext(t)
+	manager.Start(ctx)
 
 	// Multiple calls to Ready() and Done() should return the same channel
 	readyChan1 := manager.Ready()
@@ -187,7 +201,7 @@ func TestManager_MultipleCalls(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, readyChan2, 100*time.Millisecond, "ready channel was not closed")
 
 	// Cancel context to signal component to be done
-	cancel()
+	ctx.Cancel()
 
 	unittest.ChannelMustCloseWithinTimeout(t, doneChan1, 200*time.Millisecond, "done channel was not closed")
 	unittest.ChannelMustCloseWithinTimeout(t, doneChan2, 200*time.Millisecond, "done channel was not closed")
@@ -210,10 +224,9 @@ func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
 	manager.Add(blockingComponent)
 	manager.Add(normalComponent)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	tCtx := throwable.NewContext(ctx)
-	manager.Start(tCtx)
+	ctx := unittest.NewMockThrowableContext(t)
+	defer ctx.Cancel()
+	manager.Start(ctx)
 
 	// Normal component should be ready quickly
 	unittest.ChannelMustCloseWithinTimeout(t, normalComponent.Ready(), 100*time.Millisecond, "normal component should be ready")
@@ -222,8 +235,15 @@ func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
 	select {
 	case <-manager.Ready():
 		require.Fail(t, "manager should not be ready while blocking component is not ready")
-	case <-time.After(200 * time.Millisecond):
-		// Expected: manager is blocked
+	default:
+		time.Sleep(200 * time.Millisecond)
+		// Verify again that manager is still not ready
+		select {
+		case <-manager.Ready():
+			require.Fail(t, "manager should not be ready while blocking component is not ready")
+		default:
+			// Expected: manager is blocked
+		}
 	}
 
 	// Release the blocking component
@@ -251,9 +271,8 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 	manager.Add(blockingComponent)
 	manager.Add(normalComponent)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	tCtx := throwable.NewContext(ctx)
-	manager.Start(tCtx)
+	ctx := unittest.NewMockThrowableContext(t)
+	manager.Start(ctx)
 
 	// Both components and manager should be ready quickly
 	unittest.ChannelMustCloseWithinTimeout(t, blockingComponent.Ready(), 100*time.Millisecond, "blocking component should be ready")
@@ -261,7 +280,7 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager should be ready")
 
 	// Cancel context to trigger done state
-	cancel()
+	ctx.Cancel()
 
 	// Normal component should be done quickly
 	unittest.ChannelMustCloseWithinTimeout(t, normalComponent.Done(), 200*time.Millisecond, "normal component should be done")
@@ -270,8 +289,15 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 	select {
 	case <-manager.Done():
 		require.Fail(t, "manager should not be done while blocking component is not done")
-	case <-time.After(300 * time.Millisecond):
-		// Expected: manager is blocked
+	default:
+		time.Sleep(300 * time.Millisecond)
+		// Verify again that manager is still not done
+		select {
+		case <-manager.Done():
+			require.Fail(t, "manager should not be done while blocking component is not done")
+		default:
+			// Expected: manager is blocked
+		}
 	}
 
 	// Release the blocking component
@@ -299,23 +325,29 @@ func TestManager_NeverReadyWhenContextCancelledDuringStartup(t *testing.T) {
 	manager.Add(slowComponent)
 	manager.Add(fastComponent)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	tCtx := throwable.NewContext(ctx)
-	manager.Start(tCtx)
+	ctx := unittest.NewMockThrowableContext(t)
+	manager.Start(ctx)
 
 	// Fast component should be ready quickly
 	unittest.ChannelMustCloseWithinTimeout(t, fastComponent.Ready(), 100*time.Millisecond, "fast component should be ready")
 
 	// Cancel the context while the slow component is still not ready
-	cancel()
+	ctx.Cancel()
 
 	// Manager should never become ready because context was cancelled
 	// during the waitForReady loop before all components were ready
 	select {
 	case <-manager.Ready():
 		require.Fail(t, "manager should never become ready when context is cancelled during startup")
-	case <-time.After(500 * time.Millisecond):
-		// Expected: manager never becomes ready
+	default:
+		time.Sleep(500 * time.Millisecond)
+		// Verify again that manager is still not ready
+		select {
+		case <-manager.Ready():
+			require.Fail(t, "manager should never become ready when context is cancelled during startup")
+		default:
+			// Expected: manager never becomes ready
+		}
 	}
 
 	// Even if we release the slow component now, manager should still not be ready
@@ -327,8 +359,15 @@ func TestManager_NeverReadyWhenContextCancelledDuringStartup(t *testing.T) {
 	select {
 	case <-manager.Ready():
 		require.Fail(t, "manager should still not be ready even after all components become ready")
-	case <-time.After(200 * time.Millisecond):
-		// Expected: manager remains not ready because waitForReady returned early
+	default:
+		time.Sleep(200 * time.Millisecond)
+		// Verify again that manager is still not ready
+		select {
+		case <-manager.Ready():
+			require.Fail(t, "manager should still not be ready even after all components become ready")
+		default:
+			// Expected: manager remains not ready because waitForReady returned early
+		}
 	}
 
 	// Manager should eventually be done since context was cancelled

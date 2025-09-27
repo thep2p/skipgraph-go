@@ -102,29 +102,6 @@ func (m *Manager) Done() <-chan interface{} {
 	return m.doneChan
 }
 
-// Add adds a component to the manager. This method is deprecated.
-// Use WithComponent option when creating the Manager instead.
-// Deprecated: Use NewManager(WithComponent(c)) instead.
-func (m *Manager) Add(c modules.Component) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	select {
-	case <-m.started:
-		panic("cannot add component to Manager after it has started")
-	default:
-	}
-
-	// Check if component already exists
-	for _, component := range m.components {
-		if component == c {
-			panic("cannot add the same component to Manager multiple times")
-		}
-	}
-
-	m.components = append(m.components, c)
-}
-
 func (m *Manager) waitForReady(ctx context.Context) {
 	m.mu.RLock()
 	components := make([]modules.Component, len(m.components))

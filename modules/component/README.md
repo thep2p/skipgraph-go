@@ -50,23 +50,22 @@ Done Flow:  Component1,2,3,4,5 → Done  → Managers C,A,B → Done  → Root D
 ## Usage Example
 
 ```go
-// Create root manager
-root := component.NewManager()
+// Create sub-managers with their components
+networkManager := component.NewManager(
+    component.WithComponent(tcpServer),
+    component.WithComponent(grpcServer),
+)
 
-// Create sub-managers
-networkManager := component.NewManager()
-storageManager := component.NewManager()
+storageManager := component.NewManager(
+    component.WithComponent(database),
+    component.WithComponent(cache),
+)
 
-// Add components to sub-managers
-networkManager.Add(tcpServer)
-networkManager.Add(grpcServer)
-
-storageManager.Add(database)
-storageManager.Add(cache)
-
-// Build tree structure
-root.Add(networkManager)
-root.Add(storageManager)
+// Create root manager with sub-managers
+root := component.NewManager(
+    component.WithComponent(networkManager),
+    component.WithComponent(storageManager),
+)
 
 // Start entire tree
 ctx := modules.NewThrowableContext(context.Background())
@@ -92,7 +91,7 @@ ctx.Cancel()
 
 ## Implementation Notes
 
-- Components can only be added before the manager is started
+- Components are added during manager creation using the options pattern
 - Each component can only be started once
 - The same component cannot be added multiple times to a manager
 - Empty managers (with no components) immediately signal ready and done

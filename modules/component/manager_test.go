@@ -17,57 +17,41 @@ func TestNewManager(t *testing.T) {
 	var _ modules.ComponentManager = manager
 }
 
-func TestManager_Add(t *testing.T) {
-	manager := component.NewManager()
-	component1 := unittest.NewMockComponent(t)
-	component2 := unittest.NewMockComponent(t)
+func TestManager_WithComponent(t *testing.T) {
+	t.Run("add multiple components", func(t *testing.T) {
+		component1 := unittest.NewMockComponent(t)
+		component2 := unittest.NewMockComponent(t)
 
-	// Add components before starting
-	require.NotPanics(
-		t, func() {
-			manager.Add(component1)
-			manager.Add(component2)
-		},
-	)
-}
+		require.NotPanics(
+			t, func() {
+				manager := component.NewManager(
+					component.WithComponent(component1),
+					component.WithComponent(component2),
+				)
+				require.NotNil(t, manager)
+			},
+		)
+	})
 
-func TestManager_Add_SameComponentTwice_ShouldPanic(t *testing.T) {
-	manager := component.NewManager()
-	component1 := unittest.NewMockComponent(t)
+	t.Run("same component twice should panic", func(t *testing.T) {
+		component1 := unittest.NewMockComponent(t)
 
-	manager.Add(component1)
-
-	// Adding same component twice should panic
-	require.Panics(
-		t, func() {
-			manager.Add(component1)
-		},
-	)
-}
-
-func TestManager_Add_AfterStart_ShouldPanic(t *testing.T) {
-	manager := component.NewManager()
-	component1 := unittest.NewMockComponent(t)
-	component2 := unittest.NewMockComponent(t)
-
-	manager.Add(component1)
-
-	ctx := unittest.NewMockThrowableContext(t)
-	manager.Start(ctx)
-
-	// Adding component after start should panic
-	require.Panics(
-		t, func() {
-			manager.Add(component2)
-		},
-	)
+		require.Panics(
+			t, func() {
+				component.NewManager(
+					component.WithComponent(component1),
+					component.WithComponent(component1), // duplicate
+				)
+			},
+		)
+	})
 }
 
 func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
-	manager := component.NewManager()
 	component1 := unittest.NewMockComponent(t)
-
-	manager.Add(component1)
+	manager := component.NewManager(
+		component.WithComponent(component1),
+	)
 
 	ctx := unittest.NewMockThrowableContext(t)
 	manager.Start(ctx)
@@ -89,8 +73,6 @@ func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
 }
 
 func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
-	manager := component.NewManager()
-
 	// Create components with controlled done behavior
 	doneSignal1 := make(chan struct{})
 	doneSignal2 := make(chan struct{})
@@ -107,8 +89,10 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 		func() { <-doneSignal2 }, // Block until signal
 	)
 
-	manager.Add(component1)
-	manager.Add(component2)
+	manager := component.NewManager(
+		component.WithComponent(component1),
+		component.WithComponent(component2),
+	)
 
 	ctx := unittest.NewMockThrowableContext(t)
 	manager.Start(ctx)
@@ -179,10 +163,10 @@ func TestManager_WithNoComponents(t *testing.T) {
 }
 
 func TestManager_MultipleCalls(t *testing.T) {
-	manager := component.NewManager()
 	component1 := unittest.NewMockComponent(t)
-
-	manager.Add(component1)
+	manager := component.NewManager(
+		component.WithComponent(component1),
+	)
 
 	ctx := unittest.NewMockThrowableContext(t)
 	manager.Start(ctx)
@@ -208,8 +192,6 @@ func TestManager_MultipleCalls(t *testing.T) {
 }
 
 func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
-	manager := component.NewManager()
-
 	// Create a blocking ready signal
 	readySignal := make(chan struct{})
 	blockingComponent := unittest.NewMockComponentWithLogic(
@@ -221,8 +203,10 @@ func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
 	// Create a non-blocking component for comparison
 	normalComponent := unittest.NewMockComponent(t)
 
-	manager.Add(blockingComponent)
-	manager.Add(normalComponent)
+	manager := component.NewManager(
+		component.WithComponent(blockingComponent),
+		component.WithComponent(normalComponent),
+	)
 
 	ctx := unittest.NewMockThrowableContext(t)
 	defer ctx.Cancel()
@@ -255,8 +239,6 @@ func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
 }
 
 func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
-	manager := component.NewManager()
-
 	// Create a blocking done signal
 	doneSignal := make(chan struct{})
 	blockingComponent := unittest.NewMockComponentWithLogic(
@@ -268,8 +250,10 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 	// Create a non-blocking component for comparison
 	normalComponent := unittest.NewMockComponent(t)
 
-	manager.Add(blockingComponent)
-	manager.Add(normalComponent)
+	manager := component.NewManager(
+		component.WithComponent(blockingComponent),
+		component.WithComponent(normalComponent),
+	)
 
 	ctx := unittest.NewMockThrowableContext(t)
 	manager.Start(ctx)
@@ -410,8 +394,6 @@ func TestManagerWithOptions(t *testing.T) {
 }
 
 func TestManager_NeverReadyWhenContextCancelledDuringStartup(t *testing.T) {
-	manager := component.NewManager()
-
 	// Create a component that blocks on ready
 	readySignal := make(chan struct{})
 	slowComponent := unittest.NewMockComponentWithLogic(
@@ -423,8 +405,10 @@ func TestManager_NeverReadyWhenContextCancelledDuringStartup(t *testing.T) {
 	// Create another component that becomes ready quickly
 	fastComponent := unittest.NewMockComponent(t)
 
-	manager.Add(slowComponent)
-	manager.Add(fastComponent)
+	manager := component.NewManager(
+		component.WithComponent(slowComponent),
+		component.WithComponent(fastComponent),
+	)
 
 	ctx := unittest.NewMockThrowableContext(t)
 	manager.Start(ctx)

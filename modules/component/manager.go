@@ -39,18 +39,22 @@ func (m *Manager) Start(ctx modules.ThrowableContext) {
 		return
 	case <-m.started:
 		ctx.ThrowIrrecoverable(fmt.Errorf("component manager already started"))
+	default:
+		close(m.started)
+		if m.startupLogic != nil {
+			m.startupLogic(ctx)
+		}
+		// Start all components
+		for _, c := range m.components {
+			c.Start(ctx)
+		}
+
+		// Wait for all components to be ready in a separate goroutine
+		go m.waitForReady(ctx)
+
+		// Wait for all components to be done in a separate goroutine
+		go m.waitForDone(ctx)
 	}
-
-	// Start all components
-	for _, c := range m.components {
-		c.Start(ctx)
-	}
-
-	// Wait for all components to be ready in a separate goroutine
-	go m.waitForReady(ctx)
-
-	// Wait for all components to be done in a separate goroutine
-	go m.waitForDone()
 }
 
 func (m *Manager) Ready() <-chan interface{} {
@@ -115,14 +119,14 @@ func (m *Manager) waitForReady(ctx context.Context) {
 	)
 }
 
-func (m *Manager) waitForDone() {
-	m.mu.RLock()
-	components := make([]modules.Component, len(m.components))
-	copy(components, m.components)
-	m.mu.RUnlock()
+func (m *Manager) waitForDone(ctx context.Context) {
+	<-ctx.Done()
+	if m.shutdownLogic != nil {
+		m.shutdownLogic()
+	}
 
 	// If no components, immediately close done channel
-	if len(components) == 0 {
+	if len(m.components) == 0 {
 		m.doneOnce.Do(
 			func() {
 				close(m.doneChan)
@@ -132,7 +136,7 @@ func (m *Manager) waitForDone() {
 	}
 
 	// Wait for all components to be done
-	for _, component := range components {
+	for _, component := range m.components {
 		<-component.Done()
 	}
 

@@ -21,26 +21,50 @@ type Manager struct {
 
 var _ modules.ComponentManager = (*Manager)(nil)
 
-func NewManager() *Manager {
-	return &Manager{
+// Option is a functional option for configuring a Manager
+type Option func(*Manager)
+
+// WithStartupLogic adds startup logic to be executed when the manager starts
+func WithStartupLogic(logic func(modules.ThrowableContext)) Option {
+	return func(m *Manager) {
+		m.startupLogic = logic
+	}
+}
+
+// WithShutdownLogic adds shutdown logic to be executed when the manager stops
+func WithShutdownLogic(logic func()) Option {
+	return func(m *Manager) {
+		m.shutdownLogic = logic
+	}
+}
+
+// WithComponent adds a component to be managed
+func WithComponent(c modules.Component) Option {
+	return func(m *Manager) {
+		// Check if component already exists
+		for _, existing := range m.components {
+			if existing == c {
+				panic("cannot add the same component to Manager multiple times")
+			}
+		}
+		m.components = append(m.components, c)
+	}
+}
+
+// NewManager creates a new Manager with the given options
+func NewManager(opts ...Option) *Manager {
+	m := &Manager{
 		components: make([]modules.Component, 0),
 		readyChan:  make(chan interface{}),
 		doneChan:   make(chan interface{}),
 		started:    make(chan interface{}),
 	}
-}
 
-// NewManagerWithLifecycle creates a new Manager with startup and shutdown logic.
-// This replaces the functionality previously provided by LifecycleTracker.
-func NewManagerWithLifecycle(startupLogic func(modules.ThrowableContext), shutdownLogic func()) *Manager {
-	return &Manager{
-		components:    make([]modules.Component, 0),
-		readyChan:     make(chan interface{}),
-		doneChan:      make(chan interface{}),
-		started:       make(chan interface{}),
-		startupLogic:  startupLogic,
-		shutdownLogic: shutdownLogic,
+	for _, opt := range opts {
+		opt(m)
 	}
+
+	return m
 }
 
 func (m *Manager) Start(ctx modules.ThrowableContext) {
@@ -78,6 +102,9 @@ func (m *Manager) Done() <-chan interface{} {
 	return m.doneChan
 }
 
+// Add adds a component to the manager. This method is deprecated.
+// Use WithComponent option when creating the Manager instead.
+// Deprecated: Use NewManager(WithComponent(c)) instead.
 func (m *Manager) Add(c modules.Component) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

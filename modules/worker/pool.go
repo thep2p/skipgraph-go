@@ -50,8 +50,8 @@ func NewWorkerPool(queueSize int, workerCount int) *Pool {
 		logger:      logger,
 	}
 
-	p.Manager = component.NewManagerWithLifecycle(
-		func(ctx modules.ThrowableContext) {
+	p.Manager = component.NewManager(
+		component.WithStartupLogic(func(ctx modules.ThrowableContext) {
 			// Startup logic - store context
 			p.ctx = ctx
 			p.logger.Trace().Msg("Starting worker pool")
@@ -64,8 +64,8 @@ func NewWorkerPool(queueSize int, workerCount int) *Pool {
 			}
 			// Signal ready immediately after workers start
 			p.logger.Trace().Msg("all workers started, startup complete")
-		},
-		func() {
+		}),
+		component.WithShutdownLogic(func() {
 			p.logger.Trace().Msg("initiating shutdown")
 
 			// Close queue to signal workers to stop
@@ -78,7 +78,7 @@ func NewWorkerPool(queueSize int, workerCount int) *Pool {
 
 			// Signal done after all workers have finished
 			p.logger.Trace().Msg("All workers finished, shutdown complete")
-		},
+		}),
 	)
 
 	return p

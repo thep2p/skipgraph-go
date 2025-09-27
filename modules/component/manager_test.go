@@ -308,17 +308,17 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 100*time.Millisecond, "manager should be done after all components are done")
 }
 
-func TestNewManagerWithLifecycle(t *testing.T) {
+func TestManagerWithOptions(t *testing.T) {
 	t.Run("successful lifecycle with startup and shutdown logic", func(t *testing.T) {
 		var startupCalled, shutdownCalled bool
 
-		manager := component.NewManagerWithLifecycle(
-			func(ctx modules.ThrowableContext) {
+		manager := component.NewManager(
+			component.WithStartupLogic(func(ctx modules.ThrowableContext) {
 				startupCalled = true
-			},
-			func() {
+			}),
+			component.WithShutdownLogic(func() {
 				shutdownCalled = true
-			},
+			}),
 		)
 
 		ctx := unittest.NewMockThrowableContext(t)
@@ -336,7 +336,7 @@ func TestNewManagerWithLifecycle(t *testing.T) {
 	})
 
 	t.Run("with nil startup and shutdown logic", func(t *testing.T) {
-		manager := component.NewManagerWithLifecycle(nil, nil)
+		manager := component.NewManager()
 		ctx := unittest.NewMockThrowableContext(t)
 
 		require.NotPanics(t, func() {
@@ -349,9 +349,9 @@ func TestNewManagerWithLifecycle(t *testing.T) {
 	})
 
 	t.Run("double start should trigger ThrowIrrecoverable", func(t *testing.T) {
-		manager := component.NewManagerWithLifecycle(
-			func(ctx modules.ThrowableContext) {},
-			func() {},
+		manager := component.NewManager(
+			component.WithStartupLogic(func(ctx modules.ThrowableContext) {}),
+			component.WithShutdownLogic(func() {}),
 		)
 
 		ctx := unittest.NewMockThrowableContext(t)
@@ -370,6 +370,42 @@ func TestNewManagerWithLifecycle(t *testing.T) {
 
 		require.NotNil(t, thrownErr)
 		require.Contains(t, thrownErr.Error(), "already started")
+	})
+
+	t.Run("with components", func(t *testing.T) {
+		component1 := unittest.NewMockComponent(t)
+		component2 := unittest.NewMockComponent(t)
+
+		manager := component.NewManager(
+			component.WithComponent(component1),
+			component.WithComponent(component2),
+		)
+
+		ctx := unittest.NewMockThrowableContext(t)
+		manager.Start(ctx)
+
+		// Both components should be started and ready
+		unittest.ChannelMustCloseWithinTimeout(t, component1.Ready(), 100*time.Millisecond, "component1 should be ready")
+		unittest.ChannelMustCloseWithinTimeout(t, component2.Ready(), 100*time.Millisecond, "component2 should be ready")
+		unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager should be ready")
+
+		ctx.Cancel()
+
+		// All should be done
+		unittest.ChannelMustCloseWithinTimeout(t, component1.Done(), 100*time.Millisecond, "component1 should be done")
+		unittest.ChannelMustCloseWithinTimeout(t, component2.Done(), 100*time.Millisecond, "component2 should be done")
+		unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 100*time.Millisecond, "manager should be done")
+	})
+
+	t.Run("duplicate component should panic", func(t *testing.T) {
+		component1 := unittest.NewMockComponent(t)
+
+		require.Panics(t, func() {
+			component.NewManager(
+				component.WithComponent(component1),
+				component.WithComponent(component1), // duplicate
+			)
+		}, "should panic when adding the same component twice")
 	})
 }
 

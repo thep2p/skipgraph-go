@@ -51,6 +51,7 @@ func NewWorkerPool(logger zerolog.Logger, queueSize int, workerCount int) *Pool 
 	}
 
 	p.Manager = component.NewManager(
+		logger,
 		component.WithStartupLogic(func(ctx modules.ThrowableContext) {
 			// Startup logic - store context
 			p.ctx = ctx

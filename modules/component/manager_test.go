@@ -1,6 +1,7 @@
 package component_test
 
 import (
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/modules"
 	"github.com/thep2p/skipgraph-go/modules/component"
@@ -10,7 +11,8 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
-	manager := component.NewManager()
+	logger := unittest.Logger(zerolog.TraceLevel)
+	manager := component.NewManager(logger)
 	require.NotNil(t, manager)
 
 	// Manager should not be nil and should implement Component interface
@@ -24,7 +26,9 @@ func TestManager_WithComponent(t *testing.T) {
 
 		require.NotPanics(
 			t, func() {
+				logger := unittest.Logger(zerolog.TraceLevel)
 				manager := component.NewManager(
+					logger,
 					component.WithComponent(component1),
 					component.WithComponent(component2),
 				)
@@ -38,7 +42,9 @@ func TestManager_WithComponent(t *testing.T) {
 
 		require.Panics(
 			t, func() {
+				logger := unittest.Logger(zerolog.TraceLevel)
 				component.NewManager(
+					logger,
 					component.WithComponent(component1),
 					component.WithComponent(component1), // duplicate
 				)
@@ -49,7 +55,9 @@ func TestManager_WithComponent(t *testing.T) {
 
 func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
 	component1 := unittest.NewMockComponent(t)
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(component1),
 	)
 
@@ -89,7 +97,9 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 		func() { <-doneSignal2 }, // Block until signal
 	)
 
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(component1),
 		component.WithComponent(component2),
 	)
@@ -147,7 +157,8 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 }
 
 func TestManager_WithNoComponents(t *testing.T) {
-	manager := component.NewManager()
+	logger := unittest.Logger(zerolog.TraceLevel)
+	manager := component.NewManager(logger)
 
 	ctx := unittest.NewMockThrowableContext(t)
 	manager.Start(ctx)
@@ -164,7 +175,9 @@ func TestManager_WithNoComponents(t *testing.T) {
 
 func TestManager_MultipleCalls(t *testing.T) {
 	component1 := unittest.NewMockComponent(t)
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(component1),
 	)
 
@@ -203,7 +216,9 @@ func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
 	// Create a non-blocking component for comparison
 	normalComponent := unittest.NewMockComponent(t)
 
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(blockingComponent),
 		component.WithComponent(normalComponent),
 	)
@@ -250,7 +265,9 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 	// Create a non-blocking component for comparison
 	normalComponent := unittest.NewMockComponent(t)
 
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(blockingComponent),
 		component.WithComponent(normalComponent),
 	)
@@ -296,7 +313,9 @@ func TestManagerWithOptions(t *testing.T) {
 	t.Run("successful lifecycle with startup and shutdown logic", func(t *testing.T) {
 		var startupCalled, shutdownCalled bool
 
+		logger := unittest.Logger(zerolog.TraceLevel)
 		manager := component.NewManager(
+			logger,
 			component.WithStartupLogic(func(ctx modules.ThrowableContext) {
 				startupCalled = true
 			}),
@@ -320,7 +339,8 @@ func TestManagerWithOptions(t *testing.T) {
 	})
 
 	t.Run("with nil startup and shutdown logic", func(t *testing.T) {
-		manager := component.NewManager()
+		logger := unittest.Logger(zerolog.TraceLevel)
+		manager := component.NewManager(logger)
 		ctx := unittest.NewMockThrowableContext(t)
 
 		require.NotPanics(t, func() {
@@ -333,7 +353,9 @@ func TestManagerWithOptions(t *testing.T) {
 	})
 
 	t.Run("double start should trigger ThrowIrrecoverable", func(t *testing.T) {
+		logger := unittest.Logger(zerolog.TraceLevel)
 		manager := component.NewManager(
+			logger,
 			component.WithStartupLogic(func(ctx modules.ThrowableContext) {}),
 			component.WithShutdownLogic(func() {}),
 		)
@@ -360,7 +382,9 @@ func TestManagerWithOptions(t *testing.T) {
 		component1 := unittest.NewMockComponent(t)
 		component2 := unittest.NewMockComponent(t)
 
+		logger := unittest.Logger(zerolog.TraceLevel)
 		manager := component.NewManager(
+			logger,
 			component.WithComponent(component1),
 			component.WithComponent(component2),
 		)
@@ -385,7 +409,9 @@ func TestManagerWithOptions(t *testing.T) {
 		component1 := unittest.NewMockComponent(t)
 
 		require.Panics(t, func() {
+			logger := unittest.Logger(zerolog.TraceLevel)
 			component.NewManager(
+				logger,
 				component.WithComponent(component1),
 				component.WithComponent(component1), // duplicate
 			)
@@ -405,7 +431,9 @@ func TestManager_NeverReadyWhenContextCancelledDuringStartup(t *testing.T) {
 	// Create another component that becomes ready quickly
 	fastComponent := unittest.NewMockComponent(t)
 
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(slowComponent),
 		component.WithComponent(fastComponent),
 	)

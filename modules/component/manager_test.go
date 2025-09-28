@@ -13,8 +13,8 @@ func TestNewManager(t *testing.T) {
 	manager := component.NewManager()
 	require.NotNil(t, manager)
 
-	// Manager should not be nil and should implement ComponentManager interface
-	var _ modules.ComponentManager = manager
+	// Manager should not be nil and should implement Component interface
+	var _ modules.Component = manager
 }
 
 func TestManager_WithComponent(t *testing.T) {

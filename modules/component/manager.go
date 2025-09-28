@@ -19,7 +19,7 @@ type Manager struct {
 	doneOnce      sync.Once
 }
 
-var _ modules.ComponentManager = (*Manager)(nil)
+var _ modules.Component = (*Manager)(nil)
 
 // Option is a functional option for configuring a Manager
 type Option func(*Manager)

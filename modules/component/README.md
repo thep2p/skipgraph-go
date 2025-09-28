@@ -4,7 +4,7 @@ The `component` package provides a framework for managing application components
 
 ## Overview
 
-The component system enables building modular applications where each `Component` has a well-defined lifecycle with ready and done states. `Component`s can be organized hierarchically using the `ComponentManager`, creating tree-like structures where parent `Component`s manage their children.
+The component system enables building modular applications where each `Component` has a well-defined lifecycle with ready and done states. `Component`s can be organized hierarchically using the `Manager`, creating tree-like structures where parent `Component`s manage their children.
 
 ## Core Concepts
 
@@ -14,29 +14,29 @@ A `Component` is a module that:
 - Signals when it's **ready** to process requests
 - Signals when it's **done** processing and has shut down
 
-### ComponentManager
-A `ComponentManager` is itself a component that can manage other components:
+### Manager
+A `Manager` is itself a component that can manage other components:
 - Starts all its child components when started
 - Becomes ready only after ALL child components are ready
 - Becomes done only after ALL child components are done
-- Can contain other `ComponentManager`s, enabling recursive tree structures
+- Can contain other `Manager`s, enabling recursive tree structures
 
 ## Architecture
 
 ```
-                    Root ComponentManager
+                    Root Manager
                            │
                            │ Start()
                            ▼
             ┌──────────────┴──────────────┐
             │                             │
             ▼                             ▼
-      ComponentManager A            ComponentManager B
+        Manager A                    Manager B
             │                             │
       ┌─────┴─────┐                 ┌────┴────┐
       │           │                 │         │
       ▼           ▼                 ▼         ▼
-  Component1  Component2        Component3  ComponentManager C
+  Component1  Component2        Component3   Manager C
                                                    │
                                              ┌─────┴─────┐
                                              │           │
@@ -84,7 +84,7 @@ ctx.Cancel()
 ## Key Features
 
 - **Lifecycle Management**: Automatic propagation of start, ready, and done signals through the component tree
-- **Recursive Structure**: ComponentManagers can contain other ComponentManagers, enabling complex hierarchies
+- **Recursive Structure**: Managers can contain other Managers, enabling complex hierarchies
 - **Synchronization**: Parent components wait for all children before signaling ready/done
 - **Thread Safety**: Safe concurrent access to component state
 - **Error Propagation**: Irrecoverable errors bubble up through the ThrowableContext

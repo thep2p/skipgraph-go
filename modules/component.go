@@ -41,10 +41,3 @@ type Component interface {
 	ReadyDoneAware
 }
 
-// ComponentManager is a component that can have other components added to it.
-// When the ComponentManager is started, it starts all its added components.
-// Its ready channel is closed when all its added components are ready.
-// Its done channel is closed when all its added components are done.
-type ComponentManager interface {
-	Component
-}

@@ -63,6 +63,66 @@ This is a Skip Graph middleware implementation in Go. The system follows a layer
 - Update godoc comments when modifying existing code
 - Always follow the guidelines outlined in `AGENTS.md` for code style, testing, and contribution standards
 
+### Logger Dependency Injection
+
+**MANDATORY**: All components must use dependency injection for logging. Loggers must never be initialized internally.
+
+**Function Signatures:**
+- Logger must always be the **first parameter** in constructors and functions
+- Exception: Test helpers with `*testing.T` - logger must be the **second parameter** (after `*testing.T`)
+
+**Struct Definitions:**
+- Logger must always be the **first field** in struct definitions
+- Use `zerolog.Logger` for structured logging
+
+**Examples:**
+
+```go
+// ✅ CORRECT: Constructor with logger first
+func NewWorkerPool(logger zerolog.Logger, queueSize int, workerCount int) *Pool {
+    logger = logger.With().Str("component", "worker_pool").Logger()
+    // ...
+}
+
+// ✅ CORRECT: Struct with logger first
+type Pool struct {
+    logger      zerolog.Logger  // First field
+    workerCount int
+    queue       chan modules.Job
+    // ...
+}
+
+// ✅ CORRECT: Test helper with logger second (after *testing.T)
+func NewMockComponent(t *testing.T, logger zerolog.Logger) *MockComponent {
+    // ...
+}
+
+// ✅ CORRECT: Regular function with logger first
+func ProcessMessage(logger zerolog.Logger, msg Message) error {
+    logger.Debug().Msg("Processing message")
+    // ...
+}
+
+// ❌ INCORRECT: Logger not first
+func NewPool(queueSize int, logger zerolog.Logger) *Pool { /* ... */ }
+
+// ❌ INCORRECT: Logger not first field
+type Pool struct {
+    queueSize int
+    logger    zerolog.Logger  // Should be first
+}
+
+// ❌ INCORRECT: Internal logger initialization
+func NewPool(queueSize int) *Pool {
+    logger := log.With().Str("component", "pool").Logger()  // Don't do this
+    // ...
+}
+```
+
+**Testing:**
+- Use `unittest.Logger(zerolog.TraceLevel)` to create loggers for tests
+- Inject logger into constructors during testing, never use global loggers
+
 ## Testing Best Practices
 
 - **Use unittest package helpers**: The `unittest` package provides test helpers to avoid boilerplate code

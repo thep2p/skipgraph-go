@@ -15,8 +15,6 @@ type Manager struct {
 	doneChan      chan interface{}               // closed when all components are done
 	startupLogic  func(modules.ThrowableContext) // startup logic to be executed on Start
 	shutdownLogic func()                         // shutdown logic to be executed on Done
-	readyOnce     sync.Once
-	doneOnce      sync.Once
 }
 
 var _ modules.Component = (*Manager)(nil)
@@ -110,11 +108,7 @@ func (m *Manager) waitForReady(ctx context.Context) {
 
 	// If no components, immediately close ready channel
 	if len(components) == 0 {
-		m.readyOnce.Do(
-			func() {
-				close(m.readyChan)
-			},
-		)
+		close(m.readyChan)
 		return
 	}
 
@@ -128,12 +122,8 @@ func (m *Manager) waitForReady(ctx context.Context) {
 		}
 	}
 
-	// Close the ready channel exactly once
-	m.readyOnce.Do(
-		func() {
-			close(m.readyChan)
-		},
-	)
+	// Close the ready channel
+	close(m.readyChan)
 }
 
 func (m *Manager) waitForDone(ctx context.Context) {
@@ -144,11 +134,7 @@ func (m *Manager) waitForDone(ctx context.Context) {
 
 	// If no components, immediately close done channel
 	if len(m.components) == 0 {
-		m.doneOnce.Do(
-			func() {
-				close(m.doneChan)
-			},
-		)
+		close(m.doneChan)
 		return
 	}
 
@@ -157,10 +143,6 @@ func (m *Manager) waitForDone(ctx context.Context) {
 		<-component.Done()
 	}
 
-	// Close the done channel exactly once
-	m.doneOnce.Do(
-		func() {
-			close(m.doneChan)
-		},
-	)
+	// Close the done channel
+	close(m.doneChan)
 }

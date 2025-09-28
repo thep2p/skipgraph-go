@@ -44,7 +44,7 @@ func (m *mockJob) Execute(ctx modules.ThrowableContext) {
 func TestPool_HappyPath(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
 	logger := unittest.Logger(zerolog.TraceLevel)
-	pool := NewWorkerPool(10, 3, logger)
+	pool := NewWorkerPool(logger, 10, 3)
 	defer func() {
 		throwCtx.Cancel()
 		unittest.RequireAllDone(t, pool)
@@ -86,7 +86,7 @@ func TestPool_HappyPath(t *testing.T) {
 func TestPool_QueueFull(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
 	logger := unittest.Logger(zerolog.TraceLevel)
-	pool := NewWorkerPool(1, 1, logger)
+	pool := NewWorkerPool(logger, 1, 1)
 	defer func() {
 		throwCtx.Cancel()
 		unittest.RequireAllDone(t, pool)
@@ -154,7 +154,7 @@ func TestPool_ContextCancellation(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
 	logger := unittest.Logger(zerolog.TraceLevel)
 
-	pool := NewWorkerPool(10, 2, logger)
+	pool := NewWorkerPool(logger, 10, 2)
 	pool.Start(throwCtx)
 
 	unittest.RequireAllReady(t, pool)
@@ -192,7 +192,7 @@ func TestPool_JobPanic(t *testing.T) {
 	)
 
 	logger := unittest.Logger(zerolog.TraceLevel)
-	pool := NewWorkerPool(10, 2, logger)
+	pool := NewWorkerPool(logger, 10, 2)
 	defer func() {
 		throwCtx.Cancel()
 		unittest.RequireAllDone(t, pool)
@@ -220,7 +220,7 @@ func TestPool_JobPanic(t *testing.T) {
 func TestPool_QueueSize(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
 	logger := unittest.Logger(zerolog.TraceLevel)
-	pool := NewWorkerPool(10, 1, logger)
+	pool := NewWorkerPool(logger, 10, 1)
 
 	defer func() {
 		throwCtx.Cancel()
@@ -297,7 +297,7 @@ func TestPool_QueueSize(t *testing.T) {
 func TestPool_ConcurrentSubmit(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
 	logger := unittest.Logger(zerolog.TraceLevel)
-	pool := NewWorkerPool(100, 5, logger)
+	pool := NewWorkerPool(logger, 100, 5)
 
 	defer func() {
 		throwCtx.Cancel()
@@ -340,7 +340,7 @@ func TestPool_StartAlreadyStarted(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
 	logger := unittest.Logger(zerolog.TraceLevel)
 
-	pool := NewWorkerPool(10, 3, logger)
+	pool := NewWorkerPool(logger, 10, 3)
 	defer func() {
 		throwCtx.Cancel()
 		unittest.RequireAllDone(t, pool)

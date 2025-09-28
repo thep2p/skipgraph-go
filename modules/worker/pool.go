@@ -29,12 +29,12 @@ type Pool struct {
 
 // NewWorkerPool creates a new worker pool.
 // Args:
+//   - logger: zerolog.Logger for logging
 //   - queueSize: buffer size for job queue (max pending jobs)
 //   - workerCount: number of concurrent workers to spawn
-//   - logger: zerolog.Logger for logging
 //
 // Returns initialized pool (not started).
-func NewWorkerPool(queueSize int, workerCount int, logger zerolog.Logger) *Pool {
+func NewWorkerPool(logger zerolog.Logger, queueSize int, workerCount int) *Pool {
 	logger = logger.With().
 		Str("component", "worker_pool").
 		Int("worker_count", workerCount).

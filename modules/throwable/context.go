@@ -2,6 +2,7 @@ package throwable
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -30,7 +31,7 @@ func (t *Context) ThrowIrrecoverable(err error) {
 		return
 	}
 	// If there is no parent context, panic with the error.
-	panic(err)
+	panic(fmt.Errorf("irrecoverable error: %w", err))
 }
 
 // Deadline returns the underlying context's deadline.

@@ -8,13 +8,13 @@ import (
 )
 
 type Manager struct {
+	logger        zerolog.Logger // structured logger for component events
 	components    []modules.Component
 	started       chan interface{}               // closed when Start is called (the manager has started)
 	readyChan     chan interface{}               // closed when all components are ready
 	doneChan      chan interface{}               // closed when all components are done
 	startupLogic  func(modules.ThrowableContext) // startup logic to be executed on Start
 	shutdownLogic func()                         // shutdown logic to be executed on Done
-	logger        zerolog.Logger                 // structured logger for component events
 }
 
 var _ modules.Component = (*Manager)(nil)

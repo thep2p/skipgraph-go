@@ -19,12 +19,12 @@ import (
 //   - ctx: context for cancellation and error propagation
 //   - logger: structured logger for trace-level events
 type Pool struct {
+	logger zerolog.Logger
 	*component.Manager
 	workerCount int
 	queue       chan modules.Job
 	wg          sync.WaitGroup
 	ctx         modules.ThrowableContext
-	logger      zerolog.Logger
 }
 
 // NewWorkerPool creates a new worker pool.

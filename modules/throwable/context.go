@@ -2,8 +2,10 @@ package throwable
 
 import (
 	"context"
-	"log"
+	"os"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 // Context is a context that can propagate irrecoverable errors up the context chain.
@@ -13,11 +15,16 @@ import (
 // Application: any error during startup that should stop the application from running.
 // This streamlines error handling during startup by avoiding repetitive error checks and propagations.
 type Context struct {
-	ctx context.Context
+	logger zerolog.Logger
+	ctx    context.Context
 }
 
-func NewContext(ctx context.Context) *Context {
-	return &Context{ctx: ctx}
+func NewContext(logger zerolog.Logger, ctx context.Context) *Context {
+	logger = logger.With().Str("component", "throwable_context").Logger()
+	return &Context{
+		logger: logger,
+		ctx:    ctx,
+	}
 }
 
 var _ context.Context = (*Context)(nil)
@@ -28,9 +35,11 @@ func (t *Context) ThrowIrrecoverable(err error) {
 	// Propagate the error to the parent context if it exists
 	if parent, ok := t.ctx.(*Context); ok {
 		parent.ThrowIrrecoverable(err)
+		return
 	}
-	// If there is no parent context, panic with the error.
-	log.Fatal("irrecoverable error: ", err)
+	// If there is no parent context, log the error and terminate the program.
+	t.logger.Fatal().Err(err).Msg("Irrecoverable error occurred")
+	os.Exit(1)
 }
 
 // Deadline returns the underlying context's deadline.

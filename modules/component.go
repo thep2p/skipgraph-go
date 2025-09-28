@@ -40,4 +40,3 @@ type Component interface {
 	Startable
 	ReadyDoneAware
 }
-

@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/thep2p/skipgraph-go/modules"
 )
 
@@ -32,10 +31,11 @@ type Pool struct {
 // Args:
 //   - queueSize: buffer size for job queue (max pending jobs)
 //   - workerCount: number of concurrent workers to spawn
+//   - logger: zerolog.Logger for logging
 //
 // Returns initialized pool (not started).
-func NewWorkerPool(queueSize int, workerCount int) *Pool {
-	logger := log.With().
+func NewWorkerPool(queueSize int, workerCount int, logger zerolog.Logger) *Pool {
+	logger = logger.With().
 		Str("component", "worker_pool").
 		Int("worker_count", workerCount).
 		Int("queue_size", queueSize).

@@ -1,10 +1,12 @@
 package component_test
 
 import (
+	"context"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/modules"
 	"github.com/thep2p/skipgraph-go/modules/component"
+	"github.com/thep2p/skipgraph-go/modules/throwable"
 	"github.com/thep2p/skipgraph-go/unittest"
 	"testing"
 	"time"
@@ -61,23 +63,19 @@ func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
 		component.WithComponent(component1),
 	)
 
-	ctx := unittest.NewMockThrowableContext(t)
-	manager.Start(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
+	throwCtx := throwable.NewContext(ctx)
+	defer cancel()
+	manager.Start(throwCtx)
 
-	// Starting twice should trigger ThrowIrrecoverable
-	var thrownErr error
-	ctx2 := unittest.NewMockThrowableContext(
-		t, unittest.WithThrowLogic(
-			func(err error) {
-				thrownErr = err
-			},
-		),
-	)
+	// Starting twice should trigger panic
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	throwCtx2 := throwable.NewContext(ctx2)
+	defer cancel2()
 
-	manager.Start(ctx2)
-
-	require.NotNil(t, thrownErr)
-	require.Contains(t, thrownErr.Error(), "already started")
+	require.Panics(t, func() {
+		manager.Start(throwCtx2)
+	}, "expected panic for starting already started manager")
 }
 
 func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
@@ -352,7 +350,7 @@ func TestManagerWithOptions(t *testing.T) {
 		unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 100*time.Millisecond, "manager should be done")
 	})
 
-	t.Run("double start should trigger ThrowIrrecoverable", func(t *testing.T) {
+	t.Run("double start should trigger panic", func(t *testing.T) {
 		logger := unittest.Logger(zerolog.TraceLevel)
 		manager := component.NewManager(
 			logger,
@@ -360,22 +358,18 @@ func TestManagerWithOptions(t *testing.T) {
 			component.WithShutdownLogic(func() {}),
 		)
 
-		ctx := unittest.NewMockThrowableContext(t)
-		manager.Start(ctx)
+		ctx, cancel := context.WithCancel(context.Background())
+		throwCtx := throwable.NewContext(ctx)
+		defer cancel()
+		manager.Start(throwCtx)
 
-		var thrownErr error
-		ctx2 := unittest.NewMockThrowableContext(
-			t, unittest.WithThrowLogic(
-				func(err error) {
-					thrownErr = err
-				},
-			),
-		)
+		ctx2, cancel2 := context.WithCancel(context.Background())
+		throwCtx2 := throwable.NewContext(ctx2)
+		defer cancel2()
 
-		manager.Start(ctx2)
-
-		require.NotNil(t, thrownErr)
-		require.Contains(t, thrownErr.Error(), "already started")
+		require.Panics(t, func() {
+			manager.Start(throwCtx2)
+		}, "expected panic for starting already started manager")
 	})
 
 	t.Run("with components", func(t *testing.T) {

@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/thep2p/skipgraph-go/modules"
-	"sync"
 )
 
 type Manager struct {
-	mu            sync.RWMutex
 	components    []modules.Component
 	started       chan interface{}               // closed when Start is called (the manager has started)
 	readyChan     chan interface{}               // closed when all components are ready
@@ -66,9 +64,6 @@ func NewManager(opts ...Option) *Manager {
 }
 
 func (m *Manager) Start(ctx modules.ThrowableContext) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	select {
 	case <-ctx.Done():
 		return
@@ -101,19 +96,14 @@ func (m *Manager) Done() <-chan interface{} {
 }
 
 func (m *Manager) waitForReady(ctx context.Context) {
-	m.mu.RLock()
-	components := make([]modules.Component, len(m.components))
-	copy(components, m.components)
-	m.mu.RUnlock()
-
 	// If no components, immediately close ready channel
-	if len(components) == 0 {
+	if len(m.components) == 0 {
 		close(m.readyChan)
 		return
 	}
 
 	// Wait for all components to be ready
-	for _, component := range components {
+	for _, component := range m.components {
 		select {
 		case <-ctx.Done():
 			return // Exit if context is done

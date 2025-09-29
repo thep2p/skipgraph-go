@@ -48,16 +48,17 @@ func NewWorkerPool(logger zerolog.Logger, queueSize int, workerCount int) *Pool 
 		logger:      logger,
 		workerCount: workerCount,
 		queue:       make(chan modules.Job, queueSize),
-		Manager: component.NewManager(
-			logger,
-			component.WithStartupLogic(func(ctx modules.ThrowableContext) {
-				p.startWorkers(ctx)
-			}),
-			component.WithShutdownLogic(func() {
-				p.stopWorkers()
-			}),
-		),
 	}
+
+	p.Manager = component.NewManager(
+		logger,
+		component.WithStartupLogic(func(ctx modules.ThrowableContext) {
+			p.startWorkers(ctx)
+		}),
+		component.WithShutdownLogic(func() {
+			p.stopWorkers()
+		}),
+	)
 
 	return p
 }
@@ -162,7 +163,7 @@ func (p *Pool) worker(ctx modules.ThrowableContext, id int) {
 			p.logger.Trace().
 				Int("worker_id", id).
 				Msg("Worker executing job")
-			job.Work(ctx)
+			job.Execute(ctx)
 			p.logger.Trace().
 				Int("worker_id", id).
 				Msg("Worker completed job")

@@ -322,7 +322,7 @@ func TestManagerWithOptions(t *testing.T) {
 				func(err error) {
 					thrownErr = err
 				},
-			},
+			),
 		)
 
 		manager.Start(ctx2)

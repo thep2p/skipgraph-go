@@ -4,15 +4,16 @@ import (
 	"context"
 	"fmt"
 	"github.com/thep2p/skipgraph-go/modules"
+	"sync"
 )
 
 type Manager struct {
 	components    []modules.Component
-	started       chan interface{}               // closed when Start is called (the manager has started)
 	readyChan     chan interface{}               // closed when all components are ready
 	doneChan      chan interface{}               // closed when all components are done
 	startupLogic  func(modules.ThrowableContext) // startup logic to be executed on Start
 	shutdownLogic func()                         // shutdown logic to be executed on Done
+	startOnce     sync.Once                      // ensures Start is only called once
 }
 
 var _ modules.Component = (*Manager)(nil)
@@ -53,7 +54,6 @@ func NewManager(opts ...Option) *Manager {
 		components: make([]modules.Component, 0),
 		readyChan:  make(chan interface{}),
 		doneChan:   make(chan interface{}),
-		started:    make(chan interface{}),
 	}
 
 	for _, opt := range opts {
@@ -67,23 +67,33 @@ func (m *Manager) Start(ctx modules.ThrowableContext) {
 	select {
 	case <-ctx.Done():
 		return
-	case <-m.started:
-		ctx.ThrowIrrecoverable(fmt.Errorf("component manager already started"))
 	default:
-		close(m.started)
-		if m.startupLogic != nil {
-			m.startupLogic(ctx)
-		}
-		// Start all components
-		for _, c := range m.components {
-			c.Start(ctx)
-		}
+	}
 
-		// Wait for all components to be ready in a separate goroutine
-		go m.waitForReady(ctx)
+	started := false
 
-		// Wait for all components to be done in a separate goroutine
-		go m.waitForDone(ctx)
+	// Ensure Start is only called once even if called concurrently
+	m.startOnce.Do(
+		func() {
+			started = true // Indicate that Start has been called
+			if m.startupLogic != nil {
+				m.startupLogic(ctx)
+			}
+			// Start all components
+			for _, c := range m.components {
+				c.Start(ctx)
+			}
+
+			// Wait for all components to be ready in a separate goroutine
+			go m.waitForReady(ctx)
+
+			// Wait for all components to be done in a separate goroutine
+			go m.waitForDone(ctx)
+		},
+	)
+
+	if !started {
+		ctx.ThrowIrrecoverable(fmt.Errorf("start called multiple times on Manager"))
 	}
 }
 

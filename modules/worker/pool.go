@@ -63,7 +63,7 @@ func NewWorkerPool(queueSize int, workerCount int) *Pool {
 				go p.runWorker(workerID)
 			}
 			// Signal ready immediately after workers start
-			p.logger.Trace().Msg("all workers started, startup complete")
+			p.logger.Trace().Msg("All workers started, startup complete")
 		}),
 		component.WithShutdownLogic(func() {
 			p.logger.Trace().Msg("initiating shutdown")

@@ -181,28 +181,36 @@ func TestPool_ContextCancellation(t *testing.T) {
 	unittest.RequireAllDone(t, pool)
 }
 
-// TestPool_JobPanic tests that ThrowIrrecoverable properly panics when called.
-func TestPool_JobPanic(t *testing.T) {
+// TestThrowableContext_Panic tests that ThrowIrrecoverable properly panics when called.
+func TestThrowableContext_Panic(t *testing.T) {
 	// Test ThrowIrrecoverable directly to verify panic behavior
-	t.Run("ThrowIrrecoverable should panic", func(t *testing.T) {
-		ctx := context.Background()
-		throwCtx := throwable.NewContext(ctx)
+	t.Run(
+		"ThrowIrrecoverable should panic", func(t *testing.T) {
+			ctx := context.Background()
+			throwCtx := throwable.NewContext(ctx)
 
-		require.Panics(t, func() {
-			throwCtx.ThrowIrrecoverable(assert.AnError)
-		}, "ThrowIrrecoverable should panic")
-	})
+			require.Panics(
+				t, func() {
+					throwCtx.ThrowIrrecoverable(assert.AnError)
+				}, "ThrowIrrecoverable should panic",
+			)
+		},
+	)
 
 	// Test that nested throwable contexts propagate the panic
-	t.Run("nested context should propagate panic", func(t *testing.T) {
-		parentCtx := context.Background()
-		parentThrowCtx := throwable.NewContext(parentCtx)
-		childThrowCtx := throwable.NewContext(parentThrowCtx)
+	t.Run(
+		"nested context should propagate panic", func(t *testing.T) {
+			parentCtx := context.Background()
+			parentThrowCtx := throwable.NewContext(parentCtx)
+			childThrowCtx := throwable.NewContext(parentThrowCtx)
 
-		require.Panics(t, func() {
-			childThrowCtx.ThrowIrrecoverable(assert.AnError)
-		}, "nested ThrowIrrecoverable should panic")
-	})
+			require.Panics(
+				t, func() {
+					childThrowCtx.ThrowIrrecoverable(assert.AnError)
+				}, "nested ThrowIrrecoverable should panic",
+			)
+		},
+	)
 }
 
 // TestPool_QueueSize tests that the QueueSize method accurately reflects

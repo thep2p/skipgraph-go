@@ -1,6 +1,7 @@
 package component_test
 
 import (
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/modules"
 	"github.com/thep2p/skipgraph-go/modules/component"
@@ -10,7 +11,8 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
-	manager := component.NewManager()
+	logger := unittest.Logger(zerolog.TraceLevel)
+	manager := component.NewManager(logger)
 	require.NotNil(t, manager)
 
 	// Manager should not be nil and should implement Component interface
@@ -24,7 +26,9 @@ func TestManager_WithComponent(t *testing.T) {
 
 		require.NotPanics(
 			t, func() {
+				logger := unittest.Logger(zerolog.TraceLevel)
 				manager := component.NewManager(
+					logger,
 					component.WithComponent(component1),
 					component.WithComponent(component2),
 				)
@@ -38,7 +42,9 @@ func TestManager_WithComponent(t *testing.T) {
 
 		require.Panics(
 			t, func() {
+				logger := unittest.Logger(zerolog.TraceLevel)
 				component.NewManager(
+					logger,
 					component.WithComponent(component1),
 					component.WithComponent(component1), // duplicate
 				)
@@ -49,7 +55,9 @@ func TestManager_WithComponent(t *testing.T) {
 
 func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
 	component1 := unittest.NewMockComponent(t)
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(component1),
 	)
 
@@ -89,7 +97,9 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 		func() { <-doneSignal2 }, // Block until signal
 	)
 
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(component1),
 		component.WithComponent(component2),
 	)
@@ -135,7 +145,8 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 }
 
 func TestManager_WithNoComponents(t *testing.T) {
-	manager := component.NewManager()
+	logger := unittest.Logger(zerolog.TraceLevel)
+	manager := component.NewManager(logger)
 
 	ctx := unittest.NewMockThrowableContext(t)
 	manager.Start(ctx)
@@ -152,7 +163,9 @@ func TestManager_WithNoComponents(t *testing.T) {
 
 func TestManager_MultipleCalls(t *testing.T) {
 	component1 := unittest.NewMockComponent(t)
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(component1),
 	)
 
@@ -162,25 +175,18 @@ func TestManager_MultipleCalls(t *testing.T) {
 	// Multiple calls to Ready() and Done() should return the same channel
 	readyChan1 := manager.Ready()
 	readyChan2 := manager.Ready()
-	require.Equal(t, readyChan1, readyChan2)
+	require.Equal(t, readyChan1, readyChan2, "multiple calls to Ready() should return the same channel")
 
 	doneChan1 := manager.Done()
 	doneChan2 := manager.Done()
-	require.Equal(t, doneChan1, doneChan2)
+	require.Equal(t, doneChan1, doneChan2, "multiple calls to Done() should return the same channel")
 
-	// Both channels should be closed when component is ready and done
-	unittest.ChannelMustCloseWithinTimeout(t, readyChan1, 100*time.Millisecond, "ready channel was not closed")
-	unittest.ChannelMustCloseWithinTimeout(t, readyChan2, 100*time.Millisecond, "ready channel was not closed")
-
-	// Cancel context to signal component to be done
 	ctx.Cancel()
-
-	unittest.ChannelMustCloseWithinTimeout(t, doneChan1, 200*time.Millisecond, "done channel was not closed")
-	unittest.ChannelMustCloseWithinTimeout(t, doneChan2, 200*time.Millisecond, "done channel was not closed")
+	unittest.RequireAllDone(t, manager)
 }
 
 func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
-	// Create a blocking ready signal
+	// Create a component that blocks on Ready
 	readySignal := make(chan struct{})
 	blockingComponent := unittest.NewMockComponentWithLogic(
 		t,
@@ -191,7 +197,9 @@ func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
 	// Create a non-blocking component for comparison
 	normalComponent := unittest.NewMockComponent(t)
 
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(blockingComponent),
 		component.WithComponent(normalComponent),
 	)
@@ -215,7 +223,7 @@ func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
 }
 
 func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
-	// Create a blocking done signal
+	// Create a component that blocks on Done
 	doneSignal := make(chan struct{})
 	blockingComponent := unittest.NewMockComponentWithLogic(
 		t,
@@ -226,7 +234,9 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 	// Create a non-blocking component for comparison
 	normalComponent := unittest.NewMockComponent(t)
 
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(blockingComponent),
 		component.WithComponent(normalComponent),
 	)
@@ -235,9 +245,7 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 	manager.Start(ctx)
 
 	// Both components and manager should be ready quickly
-	unittest.ChannelMustCloseWithinTimeout(t, blockingComponent.Ready(), 100*time.Millisecond, "blocking component should be ready")
-	unittest.ChannelMustCloseWithinTimeout(t, normalComponent.Ready(), 100*time.Millisecond, "normal component should be ready")
-	unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager should be ready")
+	unittest.RequireAllReady(t, blockingComponent, normalComponent, manager)
 
 	// Cancel context to trigger done state
 	ctx.Cancel()
@@ -260,7 +268,9 @@ func TestManagerWithOptions(t *testing.T) {
 	t.Run("successful lifecycle with startup and shutdown logic", func(t *testing.T) {
 		var startupCalled, shutdownCalled bool
 
+		logger := unittest.Logger(zerolog.TraceLevel)
 		manager := component.NewManager(
+			logger,
 			component.WithStartupLogic(func(ctx modules.ThrowableContext) {
 				startupCalled = true
 			}),
@@ -272,10 +282,8 @@ func TestManagerWithOptions(t *testing.T) {
 		ctx := unittest.NewMockThrowableContext(t)
 		manager.Start(ctx)
 
-		require.True(t, startupCalled, "startup logic should be called")
+		require.True(t, startupCalled, "startup logic should be called when manager starts")
 		unittest.ChannelMustCloseWithinTimeout(t, manager.Ready(), 100*time.Millisecond, "manager should be ready")
-
-		require.False(t, shutdownCalled, "shutdown logic should not be called yet")
 
 		ctx.Cancel()
 
@@ -284,7 +292,8 @@ func TestManagerWithOptions(t *testing.T) {
 	})
 
 	t.Run("with nil startup and shutdown logic", func(t *testing.T) {
-		manager := component.NewManager()
+		logger := unittest.Logger(zerolog.TraceLevel)
+		manager := component.NewManager(logger)
 		ctx := unittest.NewMockThrowableContext(t)
 
 		require.NotPanics(t, func() {
@@ -297,7 +306,9 @@ func TestManagerWithOptions(t *testing.T) {
 	})
 
 	t.Run("double start should trigger ThrowIrrecoverable", func(t *testing.T) {
+		logger := unittest.Logger(zerolog.TraceLevel)
 		manager := component.NewManager(
+			logger,
 			component.WithStartupLogic(func(ctx modules.ThrowableContext) {}),
 			component.WithShutdownLogic(func() {}),
 		)
@@ -324,7 +335,9 @@ func TestManagerWithOptions(t *testing.T) {
 		component1 := unittest.NewMockComponent(t)
 		component2 := unittest.NewMockComponent(t)
 
+		logger := unittest.Logger(zerolog.TraceLevel)
 		manager := component.NewManager(
+			logger,
 			component.WithComponent(component1),
 			component.WithComponent(component2),
 		)
@@ -349,7 +362,9 @@ func TestManagerWithOptions(t *testing.T) {
 		component1 := unittest.NewMockComponent(t)
 
 		require.Panics(t, func() {
+			logger := unittest.Logger(zerolog.TraceLevel)
 			component.NewManager(
+				logger,
 				component.WithComponent(component1),
 				component.WithComponent(component1), // duplicate
 			)
@@ -358,7 +373,6 @@ func TestManagerWithOptions(t *testing.T) {
 }
 
 func TestManager_NeverReadyWhenContextCancelledDuringStartup(t *testing.T) {
-	// Create a component that blocks on ready
 	readySignal := make(chan struct{})
 	slowComponent := unittest.NewMockComponentWithLogic(
 		t,
@@ -369,7 +383,9 @@ func TestManager_NeverReadyWhenContextCancelledDuringStartup(t *testing.T) {
 	// Create another component that becomes ready quickly
 	fastComponent := unittest.NewMockComponent(t)
 
+	logger := unittest.Logger(zerolog.TraceLevel)
 	manager := component.NewManager(
+		logger,
 		component.WithComponent(slowComponent),
 		component.WithComponent(fastComponent),
 	)

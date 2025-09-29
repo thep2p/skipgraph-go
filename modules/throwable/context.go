@@ -2,7 +2,7 @@ package throwable
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"time"
 )
 
@@ -23,14 +23,15 @@ func NewContext(ctx context.Context) *Context {
 var _ context.Context = (*Context)(nil)
 
 // ThrowIrrecoverable propagates an irrecoverable error up the context chain.
-// When it reaches the top-level context, it logs the error and terminates the program.
+// When it reaches the top-level context, it panics with the error.
 func (t *Context) ThrowIrrecoverable(err error) {
 	// Propagate the error to the parent context if it exists
 	if parent, ok := t.ctx.(*Context); ok {
 		parent.ThrowIrrecoverable(err)
+		return
 	}
 	// If there is no parent context, panic with the error.
-	log.Fatal("irrecoverable error: ", err)
+	panic(fmt.Errorf("irrecoverable error: %w", err))
 }
 
 // Deadline returns the underlying context's deadline.

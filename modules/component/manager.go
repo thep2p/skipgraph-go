@@ -3,11 +3,13 @@ package component
 import (
 	"context"
 	"fmt"
+	"github.com/rs/zerolog"
 	"github.com/thep2p/skipgraph-go/modules"
 	"sync"
 )
 
 type Manager struct {
+	logger        zerolog.Logger // structured logger for component events
 	components    []modules.Component
 	readyChan     chan interface{}               // closed when all components are ready
 	doneChan      chan interface{}               // closed when all components are done
@@ -49,11 +51,21 @@ func WithComponent(c modules.Component) Option {
 }
 
 // NewManager creates a new Manager with the given options
-func NewManager(opts ...Option) *Manager {
+// Args:
+//   - logger: zerolog.Logger for logging component lifecycle events
+//   - opts: variadic options for configuring the manager
+//
+// Returns initialized manager (not started).
+func NewManager(logger zerolog.Logger, opts ...Option) *Manager {
+	logger = logger.With().
+		Str("component", "manager").
+		Logger()
+
 	m := &Manager{
 		components: make([]modules.Component, 0),
 		readyChan:  make(chan interface{}),
 		doneChan:   make(chan interface{}),
+		logger:     logger,
 	}
 
 	for _, opt := range opts {
@@ -66,6 +78,7 @@ func NewManager(opts ...Option) *Manager {
 func (m *Manager) Start(ctx modules.ThrowableContext) {
 	select {
 	case <-ctx.Done():
+		m.logger.Debug().Msg("Start called but context already done")
 		return
 	default:
 	}
@@ -76,33 +89,41 @@ func (m *Manager) Start(ctx modules.ThrowableContext) {
 	m.startOnce.Do(
 		func() {
 			started = true // Indicate that Start has been called
+			m.logger.Info().Int("component_count", len(m.components)).Msg("Starting component manager")
+
 			if m.startupLogic != nil {
+				m.logger.Debug().Msg("Executing startup logic")
 				m.startupLogic(ctx)
 			}
 
 			// Start all components in parallel
+			m.logger.Debug().Msg("Starting all components in parallel")
 			var wg sync.WaitGroup
 			wg.Add(len(m.components))
-			for _, c := range m.components {
-				go func(component modules.Component) {
+			for i, c := range m.components {
+				go func(index int, component modules.Component) {
 					defer wg.Done()
+					m.logger.Debug().Int("component_index", index).Msg("Starting component")
 					component.Start(ctx)
-				}(c)
+				}(i, c)
 			}
 
 			// Wait for all components to be started
 			go func() {
 				wg.Wait()
+				m.logger.Debug().Msg("All components started, waiting for ready")
 				// Now wait for all components to be ready
 				m.waitForReady(ctx)
 			}()
 
 			// Wait for all components to be done in a separate goroutine
 			go m.waitForDone(ctx)
+			m.logger.Debug().Msg("Component manager startup initiated")
 		},
 	)
 
 	if !started {
+		m.logger.Error().Msg("Component manager start called multiple times")
 		ctx.ThrowIrrecoverable(fmt.Errorf("start called multiple times on Manager"))
 	}
 }
@@ -118,24 +139,29 @@ func (m *Manager) Done() <-chan interface{} {
 func (m *Manager) waitForReady(ctx context.Context) {
 	// If no components, immediately close ready channel
 	if len(m.components) == 0 {
+		m.logger.Debug().Msg("No components to wait for, marking ready immediately")
 		close(m.readyChan)
 		return
 	}
+
+	m.logger.Debug().Int("component_count", len(m.components)).Msg("Waiting for all components to be ready")
 
 	// Wait for all components to be ready in parallel
 	var wg sync.WaitGroup
 	wg.Add(len(m.components))
 
-	for _, component := range m.components {
-		go func(c modules.Component) {
+	for i, component := range m.components {
+		go func(index int, c modules.Component) {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
+				m.logger.Warn().Int("component_index", index).Msg("Context cancelled while waiting for component ready")
 				return // Exit if context is done
 			case <-c.Ready():
+				m.logger.Debug().Int("component_index", index).Msg("Component ready")
 				// Component is ready
 			}
-		}(component)
+		}(i, component)
 	}
 
 	// Wait for all goroutines to complete or context to be done
@@ -147,39 +173,50 @@ func (m *Manager) waitForReady(ctx context.Context) {
 
 	select {
 	case <-ctx.Done():
+		m.logger.Warn().Msg("Context cancelled while waiting for components to be ready")
 		return // Exit if context is done
 	case <-done:
 		// All components are ready
+		m.logger.Info().Msg("All components ready")
 		close(m.readyChan)
 	}
 }
 
 func (m *Manager) waitForDone(ctx context.Context) {
 	<-ctx.Done()
+	m.logger.Info().Msg("Context cancelled, initiating shutdown")
+
 	if m.shutdownLogic != nil {
+		m.logger.Debug().Msg("Executing shutdown logic")
 		m.shutdownLogic()
 	}
 
 	// If no components, immediately close done channel
 	if len(m.components) == 0 {
+		m.logger.Debug().Msg("No components to wait for, marking done immediately")
 		close(m.doneChan)
 		return
 	}
+
+	m.logger.Debug().Int("component_count", len(m.components)).Msg("Waiting for all components to be done")
 
 	// Wait for all components to be done in parallel
 	var wg sync.WaitGroup
 	wg.Add(len(m.components))
 
-	for _, component := range m.components {
-		go func(c modules.Component) {
+	for i, component := range m.components {
+		go func(index int, c modules.Component) {
 			defer wg.Done()
+			m.logger.Debug().Int("component_index", index).Msg("Waiting for component to be done")
 			<-c.Done()
-		}(component)
+			m.logger.Debug().Int("component_index", index).Msg("Component done")
+		}(i, component)
 	}
 
 	// Wait for all components to finish
 	wg.Wait()
 
 	// Close the done channel
+	m.logger.Info().Msg("All components done, shutdown complete")
 	close(m.doneChan)
 }

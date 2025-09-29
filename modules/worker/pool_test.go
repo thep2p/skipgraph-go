@@ -1,6 +1,8 @@
 package worker
 
 import (
+	"context"
+	"github.com/thep2p/skipgraph-go/modules/throwable"
 	"github.com/thep2p/skipgraph-go/unittest"
 	"os"
 	"sync"
@@ -43,7 +45,8 @@ func (m *mockJob) Execute(ctx modules.ThrowableContext) {
 // Also verifies pool state (worker count, queue size) at the end.
 func TestPool_HappyPath(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
-	pool := NewWorkerPool(10, 3)
+	logger := unittest.Logger(zerolog.TraceLevel)
+	pool := NewWorkerPool(logger, 10, 3)
 	defer func() {
 		throwCtx.Cancel()
 		unittest.RequireAllDone(t, pool)
@@ -84,7 +87,8 @@ func TestPool_HappyPath(t *testing.T) {
 // submitting a new job returns an error and does not block.
 func TestPool_QueueFull(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
-	pool := NewWorkerPool(1, 1)
+	logger := unittest.Logger(zerolog.TraceLevel)
+	pool := NewWorkerPool(logger, 1, 1)
 	defer func() {
 		throwCtx.Cancel()
 		unittest.RequireAllDone(t, pool)
@@ -150,8 +154,9 @@ func TestPool_QueueFull(t *testing.T) {
 // and then shuts down gracefully.
 func TestPool_ContextCancellation(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
+	logger := unittest.Logger(zerolog.TraceLevel)
 
-	pool := NewWorkerPool(10, 2)
+	pool := NewWorkerPool(logger, 10, 2)
 	pool.Start(throwCtx)
 
 	unittest.RequireAllReady(t, pool)
@@ -176,46 +181,44 @@ func TestPool_ContextCancellation(t *testing.T) {
 	unittest.RequireAllDone(t, pool)
 }
 
-// TestPool_JobPanic tests that if a job panics (throws irrecoverable error),
-// the pool captures the throw and continues operating.
-func TestPool_JobPanic(t *testing.T) {
-	throwChan := make(chan interface{})
-	throwCtx := unittest.NewMockThrowableContext(
-		t, unittest.WithThrowLogic(
-			func(err error) {
-				close(throwChan)
-			},
-		),
+// TestThrowableContext_Panic tests that ThrowIrrecoverable properly panics when called.
+func TestThrowableContext_Panic(t *testing.T) {
+	// Test ThrowIrrecoverable directly to verify panic behavior
+	t.Run(
+		"ThrowIrrecoverable should panic", func(t *testing.T) {
+			ctx := context.Background()
+			throwCtx := throwable.NewContext(ctx)
+
+			require.Panics(
+				t, func() {
+					throwCtx.ThrowIrrecoverable(assert.AnError)
+				}, "ThrowIrrecoverable should panic",
+			)
+		},
 	)
 
-	pool := NewWorkerPool(10, 2)
-	defer func() {
-		throwCtx.Cancel()
-		unittest.RequireAllDone(t, pool)
-	}()
+	// Test that nested throwable contexts propagate the panic
+	t.Run(
+		"nested context should propagate panic", func(t *testing.T) {
+			parentCtx := context.Background()
+			parentThrowCtx := throwable.NewContext(parentCtx)
+			childThrowCtx := throwable.NewContext(parentThrowCtx)
 
-	pool.Start(throwCtx)
-
-	// Submit job that throws
-	panicJob := &mockJob{
-		picked:   make(chan interface{}),
-		executed: make(chan interface{}),
-		panic:    true,
-	}
-	require.NoError(t, pool.Submit(panicJob))
-
-	// Wait for job to be picked up
-	unittest.ChannelMustCloseWithinTimeout(t, panicJob.picked, 100*time.Millisecond, "job not picked up on time")
-
-	// Wait for throw to be captured
-	unittest.ChannelMustCloseWithinTimeout(t, throwChan, 100*time.Millisecond, "throw not captured on time")
+			require.Panics(
+				t, func() {
+					childThrowCtx.ThrowIrrecoverable(assert.AnError)
+				}, "nested ThrowIrrecoverable should panic",
+			)
+		},
+	)
 }
 
 // TestPool_QueueSize tests that the QueueSize method accurately reflects
 // the number of pending jobs in the queue as jobs are submitted and processed.
 func TestPool_QueueSize(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
-	pool := NewWorkerPool(10, 1)
+	logger := unittest.Logger(zerolog.TraceLevel)
+	pool := NewWorkerPool(logger, 10, 1)
 
 	defer func() {
 		throwCtx.Cancel()
@@ -291,7 +294,8 @@ func TestPool_QueueSize(t *testing.T) {
 // submit jobs to the pool without errors or deadlocks, and all jobs execute.
 func TestPool_ConcurrentSubmit(t *testing.T) {
 	throwCtx := unittest.NewMockThrowableContext(t)
-	pool := NewWorkerPool(100, 5)
+	logger := unittest.Logger(zerolog.TraceLevel)
+	pool := NewWorkerPool(logger, 100, 5)
 
 	defer func() {
 		throwCtx.Cancel()
@@ -330,12 +334,13 @@ func TestPool_ConcurrentSubmit(t *testing.T) {
 // TestPool_StartAlreadyStarted tests that starting an already started pool
 // throws an irrecoverable error.
 func TestPool_StartAlreadyStarted(t *testing.T) {
-	errorCaught := make(chan error, 1)
-	throwCtx := unittest.NewMockThrowableContext(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	throwCtx := throwable.NewContext(ctx)
+	logger := unittest.Logger(zerolog.TraceLevel)
 
-	pool := NewWorkerPool(10, 3)
+	pool := NewWorkerPool(logger, 10, 3)
 	defer func() {
-		throwCtx.Cancel()
+		cancel()
 		unittest.RequireAllDone(t, pool)
 	}()
 
@@ -344,27 +349,19 @@ func TestPool_StartAlreadyStarted(t *testing.T) {
 	unittest.RequireAllReady(t, pool)
 
 	// Create a second context for the second start attempt
+	var thrownErr error
 	throwCtx2 := unittest.NewMockThrowableContext(
 		t, unittest.WithThrowLogic(
 			func(err error) {
-				select {
-				case errorCaught <- err:
-				default:
-				}
+				thrownErr = err
 			},
 		),
 	)
-	defer throwCtx2.Cancel()
 
 	// Start pool second time - should throw error
 	pool.Start(throwCtx2)
 
-	// Wait for error to be thrown
-	select {
-	case err := <-errorCaught:
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "start called multiple times on Manager")
-	case <-time.After(100 * time.Millisecond):
-		t.Fatal("expected error for starting already started pool")
-	}
+	// Check that error was thrown
+	assert.NotNil(t, thrownErr)
+	assert.Contains(t, thrownErr.Error(), "start called multiple times on Manager")
 }

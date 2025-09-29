@@ -63,6 +63,17 @@ This is a Skip Graph middleware implementation in Go. The system follows a layer
 - Update godoc comments when modifying existing code
 - Always follow the guidelines outlined in `AGENTS.md` for code style, testing, and contribution standards
 
+## Testing Best Practices
+
+- **Use unittest package helpers**: The `unittest` package provides test helpers to avoid boilerplate code
+  - `ChannelMustCloseWithinTimeout`: Assert a single channel closes within timeout
+  - `ChannelsMustCloseWithinTimeout`: Assert multiple channels close within timeout
+  - `CallMustReturnWithinTimeout`: Assert a function returns within timeout
+  - `RequireAllReady`: Assert components become ready within default timeout
+  - `RequireAllDone`: Assert components become done within default timeout
+- **Avoid redundant patterns**: Never use `select` with `time.After` for channel timeouts - use unittest helpers instead
+- **Channel types**: When testing channels, use `chan interface{}` for compatibility with unittest helpers
+
 ## Dependencies
 
 - Go 1.23+ (Makefile enforces 1.24.0+)

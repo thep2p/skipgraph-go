@@ -40,16 +40,3 @@ type Component interface {
 	Startable
 	ReadyDoneAware
 }
-
-// ComponentManager is a component that can have other components added to it.
-// When the ComponentManager is started, it starts all its added components.
-// Its ready channel is closed when all its added components are ready.
-// Its done channel is closed when all its added components are done.
-type ComponentManager interface {
-	Component
-	// Add method adds a component to the ComponentManager.
-	// A ComponentManager can have multiple components added to it.
-	// Adding a component after the ComponentManager has been started must cause a panic.
-	// Adding the same component multiple times must cause a panic.
-	Add(c Component)
-}

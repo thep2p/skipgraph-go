@@ -67,3 +67,15 @@ func RequireAllDone(t *testing.T, components ...modules.Component) {
 	}
 	ChannelsMustCloseWithinTimeout(t, DefaultReadyDoneTimeout, "not all components became done on time", doneChans...)
 }
+
+// ChannelMustNotCloseWithinTimeout is a test helper that fails the test if the channel closes before the given timeout.
+// This is useful for testing that a channel remains open when it should not close yet.
+func ChannelMustNotCloseWithinTimeout(t *testing.T, c <-chan interface{}, timeout time.Duration, failureMsg string) {
+	select {
+	case <-c:
+		require.Fail(t, fmt.Sprintf("channel closed when it should not have: %s", failureMsg))
+	case <-time.After(timeout):
+		// Expected behavior - channel did not close within timeout
+		return
+	}
+}

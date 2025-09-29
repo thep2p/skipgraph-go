@@ -124,19 +124,7 @@ func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, component1.Done(), 100*time.Millisecond, "component1 should be done after signal")
 
 	// Manager should still be waiting for component2
-	select {
-	case <-manager.Done():
-		require.Fail(t, "manager should not be done while component2 is still running")
-	default:
-		time.Sleep(100 * time.Millisecond)
-		// Verify again that manager is still not done
-		select {
-		case <-manager.Done():
-			require.Fail(t, "manager should not be done while component2 is still running")
-		default:
-			// Good, manager is still waiting
-		}
-	}
+	unittest.ChannelMustNotCloseWithinTimeout(t, manager.Done(), 200*time.Millisecond, "manager should not be done while component2 is still running")
 
 	// Release component2
 	close(doneSignal2)
@@ -216,19 +204,7 @@ func TestManager_NotReadyWhenComponentBlocksOnReady(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, normalComponent.Ready(), 100*time.Millisecond, "normal component should be ready")
 
 	// Manager should NOT be ready while blocking component is not ready
-	select {
-	case <-manager.Ready():
-		require.Fail(t, "manager should not be ready while blocking component is not ready")
-	default:
-		time.Sleep(200 * time.Millisecond)
-		// Verify again that manager is still not ready
-		select {
-		case <-manager.Ready():
-			require.Fail(t, "manager should not be ready while blocking component is not ready")
-		default:
-			// Expected: manager is blocked
-		}
-	}
+	unittest.ChannelMustNotCloseWithinTimeout(t, manager.Ready(), 300*time.Millisecond, "manager should not be ready while blocking component is not ready")
 
 	// Release the blocking component
 	close(readySignal)
@@ -270,19 +246,7 @@ func TestManager_NotDoneWhenComponentBlocksOnDone(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, normalComponent.Done(), 200*time.Millisecond, "normal component should be done")
 
 	// Manager should NOT be done while blocking component is not done
-	select {
-	case <-manager.Done():
-		require.Fail(t, "manager should not be done while blocking component is not done")
-	default:
-		time.Sleep(300 * time.Millisecond)
-		// Verify again that manager is still not done
-		select {
-		case <-manager.Done():
-			require.Fail(t, "manager should not be done while blocking component is not done")
-		default:
-			// Expected: manager is blocked
-		}
-	}
+	unittest.ChannelMustNotCloseWithinTimeout(t, manager.Done(), 400*time.Millisecond, "manager should not be done while blocking component is not done")
 
 	// Release the blocking component
 	close(doneSignal)
@@ -421,19 +385,7 @@ func TestManager_NeverReadyWhenContextCancelledDuringStartup(t *testing.T) {
 
 	// Manager should never become ready because context was cancelled
 	// during the waitForReady loop before all components were ready
-	select {
-	case <-manager.Ready():
-		require.Fail(t, "manager should never become ready when context is cancelled during startup")
-	default:
-		time.Sleep(500 * time.Millisecond)
-		// Verify again that manager is still not ready
-		select {
-		case <-manager.Ready():
-			require.Fail(t, "manager should never become ready when context is cancelled during startup")
-		default:
-			// Expected: manager never becomes ready
-		}
-	}
+	unittest.ChannelMustNotCloseWithinTimeout(t, manager.Ready(), 600*time.Millisecond, "manager should never become ready when context is cancelled during startup")
 
 	// Even if we release the slow component now, manager should still not be ready
 	// because the waitForReady goroutine already returned early
@@ -441,19 +393,7 @@ func TestManager_NeverReadyWhenContextCancelledDuringStartup(t *testing.T) {
 	unittest.ChannelMustCloseWithinTimeout(t, slowComponent.Ready(), 100*time.Millisecond, "slow component should be ready after signal")
 
 	// Manager should still not be ready even after all components are ready
-	select {
-	case <-manager.Ready():
-		require.Fail(t, "manager should still not be ready even after all components become ready")
-	default:
-		time.Sleep(200 * time.Millisecond)
-		// Verify again that manager is still not ready
-		select {
-		case <-manager.Ready():
-			require.Fail(t, "manager should still not be ready even after all components become ready")
-		default:
-			// Expected: manager remains not ready because waitForReady returned early
-		}
-	}
+	unittest.ChannelMustNotCloseWithinTimeout(t, manager.Ready(), 300*time.Millisecond, "manager should still not be ready even after all components become ready")
 
 	// Manager should eventually be done since context was cancelled
 	unittest.ChannelMustCloseWithinTimeout(t, manager.Done(), 500*time.Millisecond, "manager should be done after context cancellation")

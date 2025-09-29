@@ -131,6 +131,7 @@ func NewPool(queueSize int) *Pool {
   - `CallMustReturnWithinTimeout`: Assert a function returns within timeout
   - `RequireAllReady`: Assert components become ready within default timeout
   - `RequireAllDone`: Assert components become done within default timeout
+  - `ChannelMustNotCloseWithinTimeout`: Assert a channel does not close within timeout
 - **Avoid redundant patterns**: Never use `select` with `time.After` for channel timeouts - use unittest helpers instead
 - **Channel types**: When testing channels, use `chan interface{}` for compatibility with unittest helpers
 

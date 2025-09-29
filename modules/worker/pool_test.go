@@ -341,12 +341,19 @@ func TestPool_StartAlreadyStarted(t *testing.T) {
 	unittest.RequireAllReady(t, pool)
 
 	// Create a second context for the second start attempt
-	ctx2, cancel2 := context.WithCancel(context.Background())
-	throwCtx2 := throwable.NewContext(ctx2)
-	defer cancel2()
+	var thrownErr error
+	throwCtx2 := unittest.NewMockThrowableContext(
+		t, unittest.WithThrowLogic(
+			func(err error) {
+				thrownErr = err
+			},
+		),
+	)
 
-	// Start pool second time - should panic
-	assert.Panics(t, func() {
-		pool.Start(throwCtx2)
-	}, "expected panic for starting already started pool")
+	// Start pool second time - should throw error
+	pool.Start(throwCtx2)
+
+	// Check that error was thrown
+	assert.NotNil(t, thrownErr)
+	assert.Contains(t, thrownErr.Error(), "start called multiple times on Manager")
 }

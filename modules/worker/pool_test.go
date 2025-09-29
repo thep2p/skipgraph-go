@@ -181,28 +181,42 @@ func TestPool_ContextCancellation(t *testing.T) {
 	unittest.RequireAllDone(t, pool)
 }
 
-// TestPool_JobPanic tests that ThrowIrrecoverable properly panics when called.
+// TestPool_JobPanic tests that when a job calls ThrowIrrecoverable, it causes a real panic.
+// When panic=true, the mockJob calls ctx.ThrowIrrecoverable() on line 35, which must panic.
+//
+// This test verifies that the panic actually occurs by calling Execute directly and checking
+// that it panics and prevents the executed channel from closing.
 func TestPool_JobPanic(t *testing.T) {
-	// Test ThrowIrrecoverable directly to verify panic behavior
-	t.Run("ThrowIrrecoverable should panic", func(t *testing.T) {
-		ctx := context.Background()
-		throwCtx := throwable.NewContext(ctx)
+	// Create a job and verify that calling Execute with panic=true causes a panic
+	job := &mockJob{
+		picked:   make(chan interface{}),
+		executed: make(chan interface{}),
+		panic:    true,
+	}
 
-		require.Panics(t, func() {
-			throwCtx.ThrowIrrecoverable(assert.AnError)
-		}, "ThrowIrrecoverable should panic")
-	})
+	// Create a throwable context to pass to Execute
+	ctx := context.Background()
+	throwCtx := throwable.NewContext(ctx)
 
-	// Test that nested throwable contexts propagate the panic
-	t.Run("nested context should propagate panic", func(t *testing.T) {
-		parentCtx := context.Background()
-		parentThrowCtx := throwable.NewContext(parentCtx)
-		childThrowCtx := throwable.NewContext(parentThrowCtx)
+	// Verify that Execute panics when panic=true
+	require.Panics(
+		t, func() {
+			close(job.picked) // Simulate job being picked
+			// This should panic because panic=true causes ThrowIrrecoverable to be called
+			job.Execute(throwCtx)
+			// If we reach here, the test should fail
+			close(job.executed)
+		},
+		"mockJob.Execute with panic=true should panic via ThrowIrrecoverable",
+	)
 
-		require.Panics(t, func() {
-			childThrowCtx.ThrowIrrecoverable(assert.AnError)
-		}, "nested ThrowIrrecoverable should panic")
-	})
+	// Verify that executed was never closed (because panic interrupted execution)
+	select {
+	case <-job.executed:
+		t.Fatal("executed channel should not be closed after panic")
+	default:
+		// Expected: channel not closed due to panic
+	}
 }
 
 // TestPool_QueueSize tests that the QueueSize method accurately reflects

@@ -33,6 +33,13 @@ type BootstrapStats struct {
 	ConnectedComponents map[int]int // level -> component count
 }
 
+// bootstrapEntry is an internal structure used during bootstrap process
+// It contains the identity information and lookup table for a node being bootstrapped
+type bootstrapEntry struct {
+	identity model.Identity
+	lt       core.MutableLookupTable
+}
+
 // Bootstrapper encapsulates all bootstrap logic for creating a skip graph with centralized insert.
 // This ensures bootstrap logic is only used for bootstrapping and not borrowed for other purposes.
 type Bootstrapper struct {
@@ -55,23 +62,26 @@ func (b *Bootstrapper) Bootstrap(numNodes int) (*BootstrapResult, error) {
 
 	b.logger.Info().Int("numNodes", numNodes).Msg("Starting bootstrap")
 
-	// Create nodes with unique identifiers and random membership vectors
-	nodes, err := b.createNodes(numNodes)
+	// Create bootstrap entries with unique identifiers and random membership vectors
+	entries, err := b.createBootstrapEntries(numNodes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create nodes: %w", err)
+		return nil, fmt.Errorf("failed to create bootstrap entries: %w", err)
 	}
 
-	// Sort nodes by identifier for level 0
-	b.sortNodesByIdentifier(nodes)
+	// Sort entries by identifier for level 0
+	b.sortEntriesByIdentifier(entries)
 
-	// Insert each node into the skip graph structure using Algorithm 2 of the Skip Graphs paper.
+	// Insert each entry into the skip graph structure using Algorithm 2 of the Skip Graphs paper.
 	maxLevel := 0
-	for i, n := range nodes {
-		level := b.insertNode(nodes, i, n)
+	for i, entry := range entries {
+		level := b.insertEntry(entries, i, entry)
 		if level > maxLevel {
 			maxLevel = level
 		}
 	}
+
+	// Convert bootstrap entries to nodes
+	nodes := b.createNodesFromEntries(entries)
 
 	// Calculate statistics
 	stats := b.calculateStats(nodes, maxLevel)
@@ -89,9 +99,9 @@ func (b *Bootstrapper) Bootstrap(numNodes int) (*BootstrapResult, error) {
 	}, nil
 }
 
-// createNodes creates numNodes nodes with unique identifiers and random membership vectors
-func (b *Bootstrapper) createNodes(numNodes int) ([]*node.SkipGraphNode, error) {
-	nodes := make([]*node.SkipGraphNode, numNodes)
+// createBootstrapEntries creates numNodes bootstrap entries with unique identifiers and random membership vectors
+func (b *Bootstrapper) createBootstrapEntries(numNodes int) ([]*bootstrapEntry, error) {
+	entries := make([]*bootstrapEntry, numNodes)
 	identifierSet := make(map[model.Identifier]bool)
 
 	for i := 0; i < numNodes; i++ {
@@ -120,102 +130,85 @@ func (b *Bootstrapper) createNodes(numNodes int) ([]*node.SkipGraphNode, error) 
 		// Create lookup table
 		lt := &lookup.Table{}
 
-		// Create node
-		nodes[i] = node.NewSkipGraphNode(identity, lt)
+		// Create bootstrap entry
+		entries[i] = &bootstrapEntry{
+			identity: identity,
+			lt:       lt,
+		}
 
 		b.logger.Debug().
 			Int("index", i).
 			Str("identifier", id.String()).
 			Str("membershipVector", mv.String()).
-			Msg("Created node")
+			Msg("Created bootstrap entry")
 	}
 
-	return nodes, nil
+	return entries, nil
 }
 
-// sortNodesByIdentifier sorts nodes in ascending order by identifier
-func (b *Bootstrapper) sortNodesByIdentifier(nodes []*node.SkipGraphNode) {
+// sortEntriesByIdentifier sorts bootstrap entries in ascending order by identifier
+func (b *Bootstrapper) sortEntriesByIdentifier(entries []*bootstrapEntry) {
 	sort.Slice(
-		nodes, func(i, j int) bool {
-			idI := nodes[i].Identifier()
-			idJ := nodes[j].Identifier()
+		entries, func(i, j int) bool {
+			idI := entries[i].identity.GetIdentifier()
+			idJ := entries[j].identity.GetIdentifier()
 			comparison := idI.Compare(&idJ)
 			return comparison.GetComparisonResult() == model.CompareLess
 		},
 	)
 }
 
-// insertNode implements Algorithm 2 insert operation for a single node
-// Returns the maximum level at which this node has neighbors
-func (b *Bootstrapper) insertNode(nodes []*node.SkipGraphNode, nodeIndex int, n *node.SkipGraphNode) int {
-	nodeId := n.Identifier()
+// insertEntry implements Algorithm 2 insert operation for a single bootstrap entry
+// Returns the maximum level at which this entry has neighbors
+func (b *Bootstrapper) insertEntry(entries []*bootstrapEntry, entryIndex int, entry *bootstrapEntry) int {
+	entryId := entry.identity.GetIdentifier()
 	logger := b.logger.With().
-		Int("nodeIndex", nodeIndex).
-		Str("identifier", nodeId.String()).
+		Int("entryIndex", entryIndex).
+		Str("identifier", entryId.String()).
 		Logger()
 
 	// Start at level 0
 	level := core.Level(0)
 	maxLevel := 0
 
-	// Link at level 0 (all nodes are connected in sorted order)
-	b.linkLevel0(logger, nodes, nodeIndex, n)
+	// Link at level 0 (all entries are connected in sorted order)
+	b.linkLevel0(logger, entries, entryIndex, entry)
 
 	// Process higher levels
 	for level < core.MaxLookupTableLevel {
 		level++
 
-		// Find nodes at this level with matching membership vector prefix
-		leftNeighbor, rightNeighbor := b.findNeighborsAtLevel(nodes, nodeIndex, n, int(level))
+		// Find entries at this level with matching membership vector prefix
+		leftNeighbor, rightNeighbor := b.findNeighborsAtLevel(entries, entryIndex, entry, int(level))
 
 		if leftNeighbor == -1 && rightNeighbor == -1 {
-			// Node is in a singleton list at this level
+			// Entry is in a singleton list at this level
 			break
 		}
 
 		// Link with neighbors at this level
 		if leftNeighbor != -1 {
-			leftNode := nodes[leftNeighbor]
-			leftIdentity := model.NewIdentity(
-				leftNode.Identifier(),
-				leftNode.MembershipVector(),
-				model.NewAddress("localhost", fmt.Sprintf("800%d", leftNeighbor)),
-			)
-			// Add left neighbor to this node's lookup table
-			if err := n.SetNeighbor(core.LeftDirection, level, leftIdentity); err != nil {
+			leftEntry := entries[leftNeighbor]
+			// Add left neighbor to this entry's lookup table
+			if err := entry.lt.AddEntry(core.LeftDirection, level, leftEntry.identity); err != nil {
 				logger.Error().Err(err).Msg("Failed to add left neighbor")
 			}
 
-			// Update left neighbor's right pointer to this node
-			nodeIdentity := model.NewIdentity(
-				n.Identifier(),
-				n.MembershipVector(),
-				model.NewAddress("localhost", fmt.Sprintf("800%d", nodeIndex)),
-			)
-			if err := leftNode.SetNeighbor(core.RightDirection, level, nodeIdentity); err != nil {
+			// Update left neighbor's right pointer to this entry
+			if err := leftEntry.lt.AddEntry(core.RightDirection, level, entry.identity); err != nil {
 				logger.Error().Err(err).Msg("Failed to update left neighbor's right pointer")
 			}
 		}
 
 		if rightNeighbor != -1 {
-			rightNode := nodes[rightNeighbor]
-			rightIdentity := model.NewIdentity(
-				rightNode.Identifier(),
-				rightNode.MembershipVector(),
-				model.NewAddress("localhost", fmt.Sprintf("800%d", rightNeighbor)),
-			)
-			// Add right neighbor to this node's lookup table
-			if err := n.SetNeighbor(core.RightDirection, level, rightIdentity); err != nil {
+			rightEntry := entries[rightNeighbor]
+			// Add right neighbor to this entry's lookup table
+			if err := entry.lt.AddEntry(core.RightDirection, level, rightEntry.identity); err != nil {
 				logger.Error().Err(err).Msg("Failed to add right neighbor")
 			}
 
-			// Update right neighbor's left pointer to this node
-			nodeIdentity := model.NewIdentity(
-				n.Identifier(),
-				n.MembershipVector(),
-				model.NewAddress("localhost", fmt.Sprintf("800%d", nodeIndex)),
-			)
-			if err := rightNode.SetNeighbor(core.LeftDirection, level, nodeIdentity); err != nil {
+			// Update right neighbor's left pointer to this entry
+			if err := rightEntry.lt.AddEntry(core.LeftDirection, level, entry.identity); err != nil {
 				logger.Error().Err(err).Msg("Failed to update right neighbor's left pointer")
 			}
 		}
@@ -223,60 +216,50 @@ func (b *Bootstrapper) insertNode(nodes []*node.SkipGraphNode, nodeIndex int, n 
 		maxLevel = int(level)
 	}
 
-	logger.Debug().Int("maxLevel", maxLevel).Msg("Node inserted")
+	logger.Debug().Int("maxLevel", maxLevel).Msg("Entry inserted")
 	return maxLevel
 }
 
-// linkLevel0 links a node at level 0 with its immediate neighbors in sorted order
-func (b *Bootstrapper) linkLevel0(logger zerolog.Logger, nodes []*node.SkipGraphNode, nodeIndex int, n *node.SkipGraphNode) {
+// linkLevel0 links an entry at level 0 with its immediate neighbors in sorted order
+func (b *Bootstrapper) linkLevel0(logger zerolog.Logger, entries []*bootstrapEntry, entryIndex int, entry *bootstrapEntry) {
 	level := core.Level(0)
 
 	// Link with left neighbor
-	if nodeIndex > 0 {
-		leftNode := nodes[nodeIndex-1]
-		leftIdentity := model.NewIdentity(
-			leftNode.Identifier(),
-			leftNode.MembershipVector(),
-			model.NewAddress("localhost", fmt.Sprintf("800%d", nodeIndex-1)),
-		)
-		if err := n.SetNeighbor(core.LeftDirection, level, leftIdentity); err != nil {
+	if entryIndex > 0 {
+		leftEntry := entries[entryIndex-1]
+		if err := entry.lt.AddEntry(core.LeftDirection, level, leftEntry.identity); err != nil {
 			logger.Error().Err(err).Msg("Failed to set left neighbor at level 0")
 		}
 	}
 
 	// Link with right neighbor
-	if nodeIndex < len(nodes)-1 {
-		rightNode := nodes[nodeIndex+1]
-		rightIdentity := model.NewIdentity(
-			rightNode.Identifier(),
-			rightNode.MembershipVector(),
-			model.NewAddress("localhost", fmt.Sprintf("800%d", nodeIndex+1)),
-		)
-		if err := n.SetNeighbor(core.RightDirection, level, rightIdentity); err != nil {
+	if entryIndex < len(entries)-1 {
+		rightEntry := entries[entryIndex+1]
+		if err := entry.lt.AddEntry(core.RightDirection, level, rightEntry.identity); err != nil {
 			logger.Error().Err(err).Msg("Failed to set right neighbor at level 0")
 		}
 	}
 }
 
-// findNeighborsAtLevel finds the left and right neighbors for a node at a specific level
+// findNeighborsAtLevel finds the left and right neighbors for an entry at a specific level
 // based on membership vector prefix matching
-func (b *Bootstrapper) findNeighborsAtLevel(nodes []*node.SkipGraphNode, nodeIndex int, n *node.SkipGraphNode, level int) (int, int) {
+func (b *Bootstrapper) findNeighborsAtLevel(entries []*bootstrapEntry, entryIndex int, entry *bootstrapEntry, level int) (int, int) {
 	leftNeighbor := -1
 	rightNeighbor := -1
 
-	nodeMV := n.MembershipVector()
+	entryMV := entry.identity.GetMembershipVector()
 
-	// Search left for the closest node with matching prefix
-	for i := nodeIndex - 1; i >= 0; i-- {
-		if b.hasMatchingPrefix(nodeMV, nodes[i].MembershipVector(), level) {
+	// Search left for the closest entry with matching prefix
+	for i := entryIndex - 1; i >= 0; i-- {
+		if b.hasMatchingPrefix(entryMV, entries[i].identity.GetMembershipVector(), level) {
 			leftNeighbor = i
 			break
 		}
 	}
 
-	// Search right for the closest node with matching prefix
-	for i := nodeIndex + 1; i < len(nodes); i++ {
-		if b.hasMatchingPrefix(nodeMV, nodes[i].MembershipVector(), level) {
+	// Search right for the closest entry with matching prefix
+	for i := entryIndex + 1; i < len(entries); i++ {
+		if b.hasMatchingPrefix(entryMV, entries[i].identity.GetMembershipVector(), level) {
 			rightNeighbor = i
 			break
 		}
@@ -289,6 +272,15 @@ func (b *Bootstrapper) findNeighborsAtLevel(nodes []*node.SkipGraphNode, nodeInd
 func (b *Bootstrapper) hasMatchingPrefix(mv1, mv2 model.MembershipVector, level int) bool {
 	commonPrefixLength := mv1.CommonPrefix(mv2)
 	return commonPrefixLength >= level
+}
+
+// createNodesFromEntries converts bootstrap entries to SkipGraphNodes
+func (b *Bootstrapper) createNodesFromEntries(entries []*bootstrapEntry) []*node.SkipGraphNode {
+	nodes := make([]*node.SkipGraphNode, len(entries))
+	for i, entry := range entries {
+		nodes[i] = node.NewSkipGraphNode(entry.identity, entry.lt)
+	}
+	return nodes
 }
 
 // calculateStats calculates statistics about the bootstrapped skip graph

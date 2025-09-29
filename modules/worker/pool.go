@@ -73,6 +73,9 @@ func (p *Pool) Submit(job modules.Job) error {
 	p.logger.Trace().
 		Msg("Job submitted to pool")
 
+      if p.ctx == nil {
+          return fmt.Errorf("pool not started")
+      }
 	select {
 	case <-p.ctx.Done():
 		p.logger.Trace().

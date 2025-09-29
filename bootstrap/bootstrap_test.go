@@ -13,6 +13,12 @@ import (
 	"github.com/thep2p/skipgraph-go/unittest"
 )
 
+// isEmptyIdentity checks if an identifier is empty (all zeros)
+func isEmptyIdentity(id model.Identifier) bool {
+	empty := model.Identifier{}
+	return id == empty
+}
+
 // hasNeighbor checks if a node has a valid neighbor in the given direction and level
 func hasNeighbor(n *node.SkipGraphNode, dir core.Direction, level core.Level) bool {
 	neighbor, err := n.GetNeighbor(dir, level)
@@ -25,8 +31,9 @@ func hasNeighbor(n *node.SkipGraphNode, dir core.Direction, level core.Level) bo
 // TestBootstrapSingleNode tests bootstrap with a single node
 func TestBootstrapSingleNode(t *testing.T) {
 	logger := unittest.Logger(zerolog.TraceLevel)
+	bootstrapper := NewBootstrapper(logger)
 
-	result, err := Bootstrap(logger, 1)
+	result, err := bootstrapper.Bootstrap(1)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Len(t, result.Nodes, 1)
@@ -45,8 +52,9 @@ func TestBootstrapSingleNode(t *testing.T) {
 // TestBootstrapSmallGraph tests bootstrap with a small number of nodes
 func TestBootstrapSmallGraph(t *testing.T) {
 	logger := unittest.Logger(zerolog.TraceLevel)
+	bootstrapper := NewBootstrapper(logger)
 
-	result, err := Bootstrap(logger, 5)
+	result, err := bootstrapper.Bootstrap(5)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Len(t, result.Nodes, 5)
@@ -70,8 +78,9 @@ func TestBootstrapSmallGraph(t *testing.T) {
 // TestBootstrapMediumGraph tests bootstrap with a medium number of nodes
 func TestBootstrapMediumGraph(t *testing.T) {
 	logger := unittest.Logger(zerolog.InfoLevel)
+	bootstrapper := NewBootstrapper(logger)
 
-	result, err := Bootstrap(logger, 100)
+	result, err := bootstrapper.Bootstrap(100)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Len(t, result.Nodes, 100)
@@ -109,8 +118,9 @@ func TestBootstrapLargeGraph(t *testing.T) {
 	}
 
 	logger := unittest.Logger(zerolog.WarnLevel)
+	bootstrapper := NewBootstrapper(logger)
 
-	result, err := Bootstrap(logger, 1000)
+	result, err := bootstrapper.Bootstrap(1000)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Len(t, result.Nodes, 1000)
@@ -136,6 +146,7 @@ func TestBootstrapLargeGraph(t *testing.T) {
 // TestBootstrapInvalidInput tests bootstrap with invalid input
 func TestBootstrapInvalidInput(t *testing.T) {
 	logger := unittest.Logger(zerolog.ErrorLevel)
+	bootstrapper := NewBootstrapper(logger)
 
 	testCases := []struct {
 		name     string
@@ -148,7 +159,7 @@ func TestBootstrapInvalidInput(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := Bootstrap(logger, tc.numNodes)
+			result, err := bootstrapper.Bootstrap(tc.numNodes)
 			assert.Error(t, err)
 			assert.Nil(t, result)
 		})
@@ -351,8 +362,9 @@ func dfsReachable(nodes []*node.SkipGraphNode, start *node.SkipGraphNode, level 
 // TestTraversalWithNodeReference tests traversal using (identifier, array_index) pairs
 func TestTraversalWithNodeReference(t *testing.T) {
 	logger := unittest.Logger(zerolog.InfoLevel)
+	bootstrapper := NewBootstrapper(logger)
 
-	result, err := Bootstrap(logger, 10)
+	result, err := bootstrapper.Bootstrap(10)
 	require.NoError(t, err)
 
 	// Create node references for testing
@@ -489,13 +501,14 @@ func traverseLevel(nodes []*node.SkipGraphNode, start NodeReference, level core.
 // BenchmarkBootstrap benchmarks bootstrap performance
 func BenchmarkBootstrap(b *testing.B) {
 	logger := unittest.Logger(zerolog.ErrorLevel)
+	bootstrapper := NewBootstrapper(logger)
 
 	sizes := []int{10, 100, 1000}
 	for _, size := range sizes {
 		b.Run(fmt.Sprintf("Size-%d", size), func(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_, err := Bootstrap(logger, size)
+				_, err := bootstrapper.Bootstrap(size)
 				if err != nil {
 					b.Fatal(err)
 				}

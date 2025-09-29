@@ -12,12 +12,6 @@ import (
 	"github.com/thep2p/skipgraph-go/node"
 )
 
-// isEmptyIdentity checks if an identifier is empty (all zeros)
-func isEmptyIdentity(id model.Identifier) bool {
-	empty := model.Identifier{}
-	return id == empty
-}
-
 // NodeReference represents a reference to a node in the array using both identifier and array index.
 // This is used for testing purposes to enable graph traversal validation.
 type NodeReference struct {
@@ -34,44 +28,55 @@ type BootstrapResult struct {
 
 // BootstrapStats contains statistics about the bootstrapped skip graph
 type BootstrapStats struct {
-	TotalLevels          int
-	AverageNeighbors     float64
-	ConnectedComponents  map[int]int // level -> component count
+	TotalLevels         int
+	AverageNeighbors    float64
+	ConnectedComponents map[int]int // level -> component count
+}
+
+// Bootstrapper encapsulates all bootstrap logic for creating a skip graph with centralized insert.
+// This ensures bootstrap logic is only used for bootstrapping and not borrowed for other purposes.
+type Bootstrapper struct {
+	logger zerolog.Logger
+}
+
+// NewBootstrapper creates a new Bootstrapper instance.
+func NewBootstrapper(logger zerolog.Logger) *Bootstrapper {
+	return &Bootstrapper{
+		logger: logger.With().Str("component", "bootstrap").Logger(),
+	}
 }
 
 // Bootstrap creates a skip graph with the specified number of nodes using centralized insert (Algorithm 2).
 // Returns an array of nodes where each node's lookup table contains references to other nodes in the array.
-func Bootstrap(logger zerolog.Logger, numNodes int) (*BootstrapResult, error) {
-	logger = logger.With().Str("component", "bootstrap").Logger()
-
+func (b *Bootstrapper) Bootstrap(numNodes int) (*BootstrapResult, error) {
 	if numNodes <= 0 {
 		return nil, fmt.Errorf("number of nodes must be positive, got %d", numNodes)
 	}
 
-	logger.Info().Int("numNodes", numNodes).Msg("Starting bootstrap")
+	b.logger.Info().Int("numNodes", numNodes).Msg("Starting bootstrap")
 
 	// Create nodes with unique identifiers and random membership vectors
-	nodes, err := createNodes(logger, numNodes)
+	nodes, err := b.createNodes(numNodes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create nodes: %w", err)
 	}
 
 	// Sort nodes by identifier for level 0
-	sortNodesByIdentifier(nodes)
+	b.sortNodesByIdentifier(nodes)
 
-	// Insert each node into the skip graph structure using Algorithm 2
+	// Insert each node into the skip graph structure using Algorithm 2 of the Skip Graphs paper.
 	maxLevel := 0
 	for i, n := range nodes {
-		level := insertNode(logger, nodes, i, n)
+		level := b.insertNode(nodes, i, n)
 		if level > maxLevel {
 			maxLevel = level
 		}
 	}
 
 	// Calculate statistics
-	stats := calculateStats(nodes, maxLevel)
+	stats := b.calculateStats(nodes, maxLevel)
 
-	logger.Info().
+	b.logger.Info().
 		Int("nodes", len(nodes)).
 		Int("maxLevel", maxLevel).
 		Float64("avgNeighbors", stats.AverageNeighbors).
@@ -85,7 +90,7 @@ func Bootstrap(logger zerolog.Logger, numNodes int) (*BootstrapResult, error) {
 }
 
 // createNodes creates numNodes nodes with unique identifiers and random membership vectors
-func createNodes(logger zerolog.Logger, numNodes int) ([]*node.SkipGraphNode, error) {
+func (b *Bootstrapper) createNodes(numNodes int) ([]*node.SkipGraphNode, error) {
 	nodes := make([]*node.SkipGraphNode, numNodes)
 	identifierSet := make(map[model.Identifier]bool)
 
@@ -118,7 +123,7 @@ func createNodes(logger zerolog.Logger, numNodes int) ([]*node.SkipGraphNode, er
 		// Create node
 		nodes[i] = node.NewSkipGraphNode(identity, lt)
 
-		logger.Debug().
+		b.logger.Debug().
 			Int("index", i).
 			Str("identifier", id.String()).
 			Str("membershipVector", mv.String()).
@@ -129,20 +134,22 @@ func createNodes(logger zerolog.Logger, numNodes int) ([]*node.SkipGraphNode, er
 }
 
 // sortNodesByIdentifier sorts nodes in ascending order by identifier
-func sortNodesByIdentifier(nodes []*node.SkipGraphNode) {
-	sort.Slice(nodes, func(i, j int) bool {
-		idI := nodes[i].Identifier()
-		idJ := nodes[j].Identifier()
-		comparison := idI.Compare(&idJ)
-		return comparison.GetComparisonResult() == model.CompareLess
-	})
+func (b *Bootstrapper) sortNodesByIdentifier(nodes []*node.SkipGraphNode) {
+	sort.Slice(
+		nodes, func(i, j int) bool {
+			idI := nodes[i].Identifier()
+			idJ := nodes[j].Identifier()
+			comparison := idI.Compare(&idJ)
+			return comparison.GetComparisonResult() == model.CompareLess
+		},
+	)
 }
 
 // insertNode implements Algorithm 2 insert operation for a single node
 // Returns the maximum level at which this node has neighbors
-func insertNode(logger zerolog.Logger, nodes []*node.SkipGraphNode, nodeIndex int, n *node.SkipGraphNode) int {
+func (b *Bootstrapper) insertNode(nodes []*node.SkipGraphNode, nodeIndex int, n *node.SkipGraphNode) int {
 	nodeId := n.Identifier()
-	logger = logger.With().
+	logger := b.logger.With().
 		Int("nodeIndex", nodeIndex).
 		Str("identifier", nodeId.String()).
 		Logger()
@@ -152,14 +159,14 @@ func insertNode(logger zerolog.Logger, nodes []*node.SkipGraphNode, nodeIndex in
 	maxLevel := 0
 
 	// Link at level 0 (all nodes are connected in sorted order)
-	linkLevel0(logger, nodes, nodeIndex, n)
+	b.linkLevel0(logger, nodes, nodeIndex, n)
 
 	// Process higher levels
 	for level < core.MaxLookupTableLevel {
 		level++
 
 		// Find nodes at this level with matching membership vector prefix
-		leftNeighbor, rightNeighbor := findNeighborsAtLevel(nodes, nodeIndex, n, int(level))
+		leftNeighbor, rightNeighbor := b.findNeighborsAtLevel(nodes, nodeIndex, n, int(level))
 
 		if leftNeighbor == -1 && rightNeighbor == -1 {
 			// Node is in a singleton list at this level
@@ -221,7 +228,7 @@ func insertNode(logger zerolog.Logger, nodes []*node.SkipGraphNode, nodeIndex in
 }
 
 // linkLevel0 links a node at level 0 with its immediate neighbors in sorted order
-func linkLevel0(logger zerolog.Logger, nodes []*node.SkipGraphNode, nodeIndex int, n *node.SkipGraphNode) {
+func (b *Bootstrapper) linkLevel0(logger zerolog.Logger, nodes []*node.SkipGraphNode, nodeIndex int, n *node.SkipGraphNode) {
 	level := core.Level(0)
 
 	// Link with left neighbor
@@ -253,7 +260,7 @@ func linkLevel0(logger zerolog.Logger, nodes []*node.SkipGraphNode, nodeIndex in
 
 // findNeighborsAtLevel finds the left and right neighbors for a node at a specific level
 // based on membership vector prefix matching
-func findNeighborsAtLevel(nodes []*node.SkipGraphNode, nodeIndex int, n *node.SkipGraphNode, level int) (int, int) {
+func (b *Bootstrapper) findNeighborsAtLevel(nodes []*node.SkipGraphNode, nodeIndex int, n *node.SkipGraphNode, level int) (int, int) {
 	leftNeighbor := -1
 	rightNeighbor := -1
 
@@ -261,7 +268,7 @@ func findNeighborsAtLevel(nodes []*node.SkipGraphNode, nodeIndex int, n *node.Sk
 
 	// Search left for the closest node with matching prefix
 	for i := nodeIndex - 1; i >= 0; i-- {
-		if hasMatchingPrefix(nodeMV, nodes[i].MembershipVector(), level) {
+		if b.hasMatchingPrefix(nodeMV, nodes[i].MembershipVector(), level) {
 			leftNeighbor = i
 			break
 		}
@@ -269,7 +276,7 @@ func findNeighborsAtLevel(nodes []*node.SkipGraphNode, nodeIndex int, n *node.Sk
 
 	// Search right for the closest node with matching prefix
 	for i := nodeIndex + 1; i < len(nodes); i++ {
-		if hasMatchingPrefix(nodeMV, nodes[i].MembershipVector(), level) {
+		if b.hasMatchingPrefix(nodeMV, nodes[i].MembershipVector(), level) {
 			rightNeighbor = i
 			break
 		}
@@ -279,18 +286,18 @@ func findNeighborsAtLevel(nodes []*node.SkipGraphNode, nodeIndex int, n *node.Sk
 }
 
 // hasMatchingPrefix checks if two membership vectors have matching prefix up to the specified level (in bits)
-func hasMatchingPrefix(mv1, mv2 model.MembershipVector, level int) bool {
+func (b *Bootstrapper) hasMatchingPrefix(mv1, mv2 model.MembershipVector, level int) bool {
 	commonPrefixLength := mv1.CommonPrefix(mv2)
 	return commonPrefixLength >= level
 }
 
 // calculateStats calculates statistics about the bootstrapped skip graph
-func calculateStats(nodes []*node.SkipGraphNode, maxLevel int) BootstrapStats {
+func (b *Bootstrapper) calculateStats(nodes []*node.SkipGraphNode, maxLevel int) BootstrapStats {
 	totalNeighbors := 0
 	connectedComponents := make(map[int]int)
 
 	for level := 0; level <= maxLevel; level++ {
-		components := countConnectedComponents(nodes, core.Level(level))
+		components := b.countConnectedComponents(nodes, core.Level(level))
 		connectedComponents[level] = components
 	}
 
@@ -298,11 +305,11 @@ func calculateStats(nodes []*node.SkipGraphNode, maxLevel int) BootstrapStats {
 	for _, n := range nodes {
 		for level := core.Level(0); level <= core.Level(maxLevel); level++ {
 			leftNeighbor, err := n.GetNeighbor(core.LeftDirection, level)
-			if err == nil && !isEmptyIdentity(leftNeighbor.GetIdentifier()) {
+			if err == nil && !b.isEmptyIdentity(leftNeighbor.GetIdentifier()) {
 				totalNeighbors++
 			}
 			rightNeighbor, err := n.GetNeighbor(core.RightDirection, level)
-			if err == nil && !isEmptyIdentity(rightNeighbor.GetIdentifier()) {
+			if err == nil && !b.isEmptyIdentity(rightNeighbor.GetIdentifier()) {
 				totalNeighbors++
 			}
 		}
@@ -317,8 +324,14 @@ func calculateStats(nodes []*node.SkipGraphNode, maxLevel int) BootstrapStats {
 	}
 }
 
+// isEmptyIdentity checks if an identifier is empty (all zeros)
+func (b *Bootstrapper) isEmptyIdentity(id model.Identifier) bool {
+	empty := model.Identifier{}
+	return id == empty
+}
+
 // countConnectedComponents counts the number of connected components at a given level
-func countConnectedComponents(nodes []*node.SkipGraphNode, level core.Level) int {
+func (b *Bootstrapper) countConnectedComponents(nodes []*node.SkipGraphNode, level core.Level) int {
 	visited := make(map[int]bool)
 	components := 0
 
@@ -327,7 +340,7 @@ func countConnectedComponents(nodes []*node.SkipGraphNode, level core.Level) int
 			// Start a new component
 			components++
 			// DFS to mark all nodes in this component
-			dfs(nodes, i, level, visited)
+			b.dfs(nodes, i, level, visited)
 		}
 	}
 
@@ -335,18 +348,18 @@ func countConnectedComponents(nodes []*node.SkipGraphNode, level core.Level) int
 }
 
 // dfs performs depth-first search to mark all nodes in a connected component
-func dfs(nodes []*node.SkipGraphNode, nodeIndex int, level core.Level, visited map[int]bool) {
+func (b *Bootstrapper) dfs(nodes []*node.SkipGraphNode, nodeIndex int, level core.Level, visited map[int]bool) {
 	visited[nodeIndex] = true
 	n := nodes[nodeIndex]
 
 	// Check left neighbor
 	if leftNeighbor, err := n.GetNeighbor(core.LeftDirection, level); err == nil {
 		leftId := leftNeighbor.GetIdentifier()
-		if !isEmptyIdentity(leftId) {
+		if !b.isEmptyIdentity(leftId) {
 			// Find the index of this neighbor
 			for i, other := range nodes {
 				if other.Identifier() == leftId && !visited[i] {
-					dfs(nodes, i, level, visited)
+					b.dfs(nodes, i, level, visited)
 					break
 				}
 			}
@@ -356,11 +369,11 @@ func dfs(nodes []*node.SkipGraphNode, nodeIndex int, level core.Level, visited m
 	// Check right neighbor
 	if rightNeighbor, err := n.GetNeighbor(core.RightDirection, level); err == nil {
 		rightId := rightNeighbor.GetIdentifier()
-		if !isEmptyIdentity(rightId) {
+		if !b.isEmptyIdentity(rightId) {
 			// Find the index of this neighbor
 			for i, other := range nodes {
 				if other.Identifier() == rightId && !visited[i] {
-					dfs(nodes, i, level, visited)
+					b.dfs(nodes, i, level, visited)
 					break
 				}
 			}

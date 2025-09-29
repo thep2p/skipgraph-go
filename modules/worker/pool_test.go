@@ -363,7 +363,7 @@ func TestPool_StartAlreadyStarted(t *testing.T) {
 	select {
 	case err := <-errorCaught:
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "already started")
+		assert.Contains(t, err.Error(), "start called multiple times on Manager")
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("expected error for starting already started pool")
 	}

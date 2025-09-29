@@ -69,7 +69,7 @@ func TestManager_Start_CalledTwice_ShouldPanic(t *testing.T) {
 	manager.Start(ctx2)
 
 	require.NotNil(t, thrownErr)
-	require.Contains(t, thrownErr.Error(), "already started")
+	require.Contains(t, thrownErr.Error(), "start called multiple times on Manager")
 }
 
 func TestManager_Ready_Done_WaitsForAllComponents(t *testing.T) {
@@ -317,7 +317,7 @@ func TestManagerWithOptions(t *testing.T) {
 		manager.Start(ctx2)
 
 		require.NotNil(t, thrownErr)
-		require.Contains(t, thrownErr.Error(), "already started")
+		require.Contains(t, thrownErr.Error(), "start called multiple times on Manager")
 	})
 
 	t.Run("with components", func(t *testing.T) {

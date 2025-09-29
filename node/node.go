@@ -25,3 +25,7 @@ func (n *SkipGraphNode) MembershipVector() model.MembershipVector {
 func (n *SkipGraphNode) GetNeighbor(dir core.Direction, level core.Level) (model.Identity, error) {
 	return n.lt.GetEntry(dir, level)
 }
+
+func (n *SkipGraphNode) SetNeighbor(dir core.Direction, level core.Level, neighbor model.Identity) error {
+	return n.lt.AddEntry(dir, level, neighbor)
+}

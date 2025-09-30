@@ -111,41 +111,9 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 	return entries, nil
 }
 
-// calculateStats calculates statistics about the bootstrapped skip graph
-func (b *Bootstrapper) calculateStats(nodes []*node.SkipGraphNode, maxLevel int) Stats {
-	totalNeighbors := 0
-	connectedComponents := make(map[int]int)
-
-	for level := 0; level <= maxLevel; level++ {
-		components := b.countConnectedComponents(nodes, core.Level(level))
-		connectedComponents[level] = components
-	}
-
-	// Count total neighbors across all nodes and levels
-	for _, n := range nodes {
-		for level := core.Level(0); level <= core.Level(maxLevel); level++ {
-			leftNeighbor, err := n.GetNeighbor(core.LeftDirection, level)
-			if err == nil && leftNeighbor != nil {
-				totalNeighbors++
-			}
-			rightNeighbor, err := n.GetNeighbor(core.RightDirection, level)
-			if err == nil && rightNeighbor != nil {
-				totalNeighbors++
-			}
-		}
-	}
-
-	avgNeighbors := float64(totalNeighbors) / float64(len(nodes))
-
-	return Stats{
-		TotalLevels:         maxLevel + 1,
-		AverageNeighbors:    avgNeighbors,
-		ConnectedComponents: connectedComponents,
-	}
-}
-
-// countConnectedComponents counts the number of connected components at a given level
-func (b *Bootstrapper) countConnectedComponents(nodes []*node.SkipGraphNode, level core.Level) int {
+// CountConnectedComponents counts the number of connected components at a given level.
+// This is useful for verifying skip graph properties during testing.
+func (b *Bootstrapper) CountConnectedComponents(nodes []*node.SkipGraphNode, level core.Level) int {
 	visited := make(map[int]bool)
 	components := 0
 

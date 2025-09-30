@@ -531,6 +531,89 @@ func traverseLevel(nodes []*node.SkipGraphNode, start internal.NodeReference, le
 	return result
 }
 
+// TestConnectedComponentsConstraint verifies that at level i there are at most 2^i connected components
+func TestConnectedComponentsConstraint(t *testing.T) {
+	testCases := []struct {
+		name      string
+		nodeCount int
+		maxLevel  core.Level
+	}{
+		{"Small graph (10 nodes)", 10, 4},
+		{"Medium graph (50 nodes)", 50, 6},
+		{"Large graph (100 nodes)", 100, 7},
+		{"Very large graph (500 nodes)", 500, 9},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			logger := unittest.Logger(zerolog.WarnLevel)
+			bootstrapper := NewBootstrapper(logger, tc.nodeCount)
+
+			nodes, err := bootstrapper.Bootstrap()
+			require.NoError(t, err)
+			require.NotNil(t, nodes)
+			assert.Len(t, nodes, tc.nodeCount)
+
+			// For each level, verify that the number of connected components is at most 2^i
+			for level := core.Level(0); level <= tc.maxLevel && level < core.MaxLookupTableLevel; level++ {
+				componentCount := bootstrapper.CountConnectedComponents(nodes, level)
+				maxComponents := 1 << level // 2^level
+
+				assert.LessOrEqual(
+					t, componentCount, maxComponents,
+					"At level %d, found %d connected components but expected at most %d (2^%d)",
+					level, componentCount, maxComponents, level,
+				)
+
+				t.Logf("Level %d: %d connected components (max allowed: %d)",
+					level, componentCount, maxComponents)
+			}
+		})
+	}
+}
+
+// TestConnectedComponentsDistribution verifies the distribution of connected components across first 10 levels
+func TestConnectedComponentsDistribution(t *testing.T) {
+	nodeCount := 200
+	logger := unittest.Logger(zerolog.InfoLevel)
+	bootstrapper := NewBootstrapper(logger, nodeCount)
+
+	nodes, err := bootstrapper.Bootstrap()
+	require.NoError(t, err)
+
+	// Collect statistics about connected components at each level
+	stats := make(map[core.Level]int)
+	for level := core.Level(0); level <= 10 && level < core.MaxLookupTableLevel; level++ {
+		componentCount := bootstrapper.CountConnectedComponents(nodes, level)
+		stats[level] = componentCount
+	}
+
+	// Verify the constraint and print distribution
+	t.Log("Connected components distribution:")
+	for level := core.Level(0); level <= 10 && level < core.MaxLookupTableLevel; level++ {
+		componentCount := stats[level]
+		maxComponents := 1 << level // 2^level
+
+		require.LessOrEqual(
+			t, componentCount, maxComponents,
+			"Level %d violates constraint: %d components > %d max",
+			level, componentCount, maxComponents,
+		)
+
+		// Calculate utilization percentage
+		utilization := float64(componentCount) / float64(maxComponents) * 100
+		t.Logf("Level %2d: %3d components / %4d max (%.1f%% utilization)",
+			level, componentCount, maxComponents, utilization)
+
+		// At higher levels, we expect to approach the maximum as nodes become more distributed
+		if level > 0 && componentCount == nodeCount {
+			// All nodes are in separate components - we've reached maximum fragmentation
+			t.Logf("  -> Maximum fragmentation reached at level %d", level)
+			break
+		}
+	}
+}
+
 // BenchmarkBootstrap benchmarks bootstrap performance
 func BenchmarkBootstrap(b *testing.B) {
 	logger := unittest.Logger(zerolog.ErrorLevel)

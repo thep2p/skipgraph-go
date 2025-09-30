@@ -52,12 +52,16 @@ func NewWorkerPool(logger zerolog.Logger, queueSize int, workerCount int) *Pool 
 
 	p.Manager = component.NewManager(
 		logger,
-		component.WithStartupLogic(func(ctx modules.ThrowableContext) {
-			p.startWorkers(ctx)
-		}),
-		component.WithShutdownLogic(func() {
-			p.stopWorkers()
-		}),
+		component.WithStartupLogic(
+			func(ctx modules.ThrowableContext) {
+				p.startWorkers(ctx)
+			},
+		),
+		component.WithShutdownLogic(
+			func() {
+				p.stopWorkers()
+			},
+		),
 	)
 
 	return p
@@ -73,6 +77,9 @@ func (p *Pool) Submit(job modules.Job) error {
 	p.logger.Trace().
 		Msg("Job submitted to pool")
 
+	if p.ctx == nil {
+		return fmt.Errorf("pool not started")
+	}
 	select {
 	case <-p.ctx.Done():
 		p.logger.Trace().
@@ -148,10 +155,7 @@ func (p *Pool) worker(ctx modules.ThrowableContext, id int) {
 		case <-ctx.Done():
 			p.logger.Trace().
 				Int("worker_id", id).
-				Msg("Worker received context done signal")
-			p.logger.Trace().
-				Int("worker_id", id).
-				Msg("Worker shutting down")
+				Msg("Worker received context done signal, and is shutting down")
 			return
 		case job, ok := <-p.queue:
 			if !ok {

@@ -277,7 +277,7 @@ func verifyMembershipVectorPrefixes(t *testing.T, nodes []*node.SkipGraphNode) {
 				if leftNeighbor != nil {
 					leftMV := leftNeighbor.GetMembershipVector()
 					commonPrefix := nodeMV.CommonPrefix(leftMV)
-					require.GreaterOrEqual(t, commonPrefix, level, "Left neighbor at level %d should have at least %d bits common prefix, got % bits", level, level, commonPrefix)
+					require.GreaterOrEqual(t, commonPrefix, int(level), "Left neighbor at level %d should have at least %d bits common prefix, got %d bits", level, level, commonPrefix)
 				}
 			}
 
@@ -288,7 +288,7 @@ func verifyMembershipVectorPrefixes(t *testing.T, nodes []*node.SkipGraphNode) {
 				if rightNeighbor != nil {
 					rightMV := rightNeighbor.GetMembershipVector()
 					commonPrefix := nodeMV.CommonPrefix(rightMV)
-					require.GreaterOrEqual(t, commonPrefix, level, "Right neighbor at level %d should have at least %d bits common prefix, got % bits", level, level, commonPrefix)
+					require.GreaterOrEqual(t, commonPrefix, int(level), "Right neighbor at level %d should have at least %d bits common prefix, got %d bits", level, level, commonPrefix)
 				}
 			}
 		}

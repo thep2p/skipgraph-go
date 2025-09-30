@@ -23,8 +23,9 @@ const (
 // e.g., in search operations where the lookup table is not supposed to be modified.
 type ImmutableLookupTable interface {
 	// GetEntry returns the lth left/right neighbor in the lookup table depending on the dir.
+	// Returns nil if no neighbor exists at that position.
 	// lev runs from 0...MaxLookupTableLevel-1.
-	GetEntry(dir Direction, lev Level) (model.Identity, error)
+	GetEntry(dir Direction, lev Level) (*model.Identity, error)
 }
 
 // MutableLookupTable represents a read-write view of a LookupTable.

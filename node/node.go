@@ -22,7 +22,7 @@ func (n *SkipGraphNode) MembershipVector() model.MembershipVector {
 	return n.id.GetMembershipVector()
 }
 
-func (n *SkipGraphNode) GetNeighbor(dir core.Direction, level core.Level) (model.Identity, error) {
+func (n *SkipGraphNode) GetNeighbor(dir core.Direction, level core.Level) (*model.Identity, error) {
 	return n.lt.GetEntry(dir, level)
 }
 

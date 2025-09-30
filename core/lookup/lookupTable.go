@@ -40,26 +40,34 @@ func (l *Table) AddEntry(dir core.Direction, level core.Level, identity model.Id
 }
 
 // GetEntry returns the lth left/right neighbor in the lookup table depending on the dir.
+// Returns nil if no neighbor exists at that position.
 // lev runs from 0...MaxLookupTableLevel-1.
-func (l *Table) GetEntry(dir core.Direction, lev core.Level) (model.Identity, error) {
+func (l *Table) GetEntry(dir core.Direction, lev core.Level) (*model.Identity, error) {
 	// lock the lookup table for read only
 	l.lock.RLock()
 	// release the read-only lock at the end
 	defer l.lock.RUnlock()
 
-	res := model.Identity{}
-
 	// validate the level value
 	if lev >= core.MaxLookupTableLevel {
-		return res, fmt.Errorf("supplied level is larger than the max number of levels: %d", lev)
+		return nil, fmt.Errorf("supplied level is larger than the max number of levels: %d", lev)
 	}
+
+	var res model.Identity
 	switch dir {
 	case core.RightDirection:
 		res = l.rightNeighbors[lev]
 	case core.LeftDirection:
 		res = l.leftNeighbors[lev]
 	default:
-		return res, fmt.Errorf("invalid direction: %s", dir)
+		return nil, fmt.Errorf("invalid direction: %s", dir)
 	}
-	return res, nil
+
+	// Check if the identity is empty (all zeros)
+	empty := model.Identity{}
+	if res == empty {
+		return nil, nil
+	}
+
+	return &res, nil
 }

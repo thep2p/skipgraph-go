@@ -341,40 +341,35 @@ func getPrefixBits(mv model.MembershipVector, numBits int) string {
 
 // dfsReachable performs DFS to find all reachable nodes from a starting node at a given level
 func dfsReachable(nodes []*node.SkipGraphNode, start *node.SkipGraphNode, level core.Level, visited map[model.Identifier]bool) {
-	visited[start.Identifier()] = true
-
-	// Check left neighbor
-	if hasNeighbor(start, core.LeftDirection, level) {
-		leftNeighbor, _ := start.GetNeighbor(core.LeftDirection, level)
-		if leftNeighbor != nil {
-			leftId := leftNeighbor.GetIdentifier()
-			if !visited[leftId] {
-				// Find the node with this identifier
-				for _, n := range nodes {
-					if n.Identifier() == leftId {
-						dfsReachable(nodes, n, level, visited)
-						break
-					}
-				}
-			}
-		}
+	// Create identifier to index map for O(1) lookups
+	idToIndex := make(map[model.Identifier]int)
+	for i, n := range nodes {
+		idToIndex[n.Identifier()] = i
 	}
 
-	// Check right neighbor
-	if hasNeighbor(start, core.RightDirection, level) {
-		rightNeighbor, _ := start.GetNeighbor(core.RightDirection, level)
-		if rightNeighbor != nil {
-			rightId := rightNeighbor.GetIdentifier()
-			if !visited[rightId] {
-				// Find the node with this identifier
-				for _, n := range nodes {
-					if n.Identifier() == rightId {
-						dfsReachable(nodes, n, level, visited)
-						break
-					}
-				}
-			}
+	// Find the starting node's index
+	startIndex := -1
+	for i, n := range nodes {
+		if n.Identifier() == start.Identifier() {
+			startIndex = i
+			break
 		}
+	}
+	if startIndex == -1 {
+		return // Node not found in array
+	}
+
+	// Convert visited map from Identifier->bool to int->bool for TraverseConnectedNodes
+	visitedIndices := make(map[int]bool)
+
+	// Use the consolidated traversal function
+	logger := unittest.Logger(zerolog.TraceLevel)
+	bootstrapper := NewBootstrapper(logger, len(nodes))
+	bootstrapper.TraverseConnectedNodes(nodes, startIndex, level, visitedIndices, idToIndex)
+
+	// Convert visitedIndices back to visited identifiers
+	for index := range visitedIndices {
+		visited[nodes[index].Identifier()] = true
 	}
 }
 

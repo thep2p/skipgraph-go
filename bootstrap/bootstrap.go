@@ -11,6 +11,13 @@ import (
 	"github.com/thep2p/skipgraph-go/node"
 )
 
+const (
+	// DefaultSkipGraphPort is the default port for Skip Graph nodes.
+	// In bootstrap context, this is used as a placeholder since actual network
+	// communication doesn't occur during the bootstrap phase.
+	DefaultSkipGraphPort = "5555"
+)
+
 // Stats contains statistics about the bootstrapped skip graph
 type Stats struct {
 	TotalLevels         int
@@ -86,8 +93,9 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 			return nil, fmt.Errorf("failed to generate membership vector: %w", err)
 		}
 
-		// Create Identity with dummy address (not used in bootstrap)
-		addr := model.NewAddress("localhost", fmt.Sprintf("800%d", i))
+		// Create Identity with placeholder address (not used in bootstrap)
+		// Using the default port since actual network communication doesn't occur during bootstrap
+		addr := model.NewAddress("localhost", DefaultSkipGraphPort)
 		identity := model.NewIdentity(id, mv, addr)
 
 		// Create lookup table

@@ -28,7 +28,6 @@ func (t *Context) ThrowIrrecoverable(err error) {
 	// Propagate the error to the parent context if it exists
 	if parent, ok := t.ctx.(*Context); ok {
 		parent.ThrowIrrecoverable(err)
-		return
 	}
 	// If there is no parent context, panic with the error.
 	panic(fmt.Errorf("irrecoverable error: %w", err))

@@ -114,6 +114,12 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 // CountConnectedComponents counts the number of connected components at a given level.
 // This is useful for verifying skip graph properties during testing.
 func (b *Bootstrapper) CountConnectedComponents(nodes []*node.SkipGraphNode, level core.Level) int {
+	// Create identifier to index map for O(1) lookups
+	idToIndex := make(map[model.Identifier]int)
+	for i, n := range nodes {
+		idToIndex[n.Identifier()] = i
+	}
+
 	visited := make(map[int]bool)
 	components := 0
 
@@ -122,7 +128,7 @@ func (b *Bootstrapper) CountConnectedComponents(nodes []*node.SkipGraphNode, lev
 			// Start a new component
 			components++
 			// DFS to mark all nodes in this component
-			b.dfs(nodes, i, level, visited)
+			b.dfs(nodes, i, level, visited, idToIndex)
 		}
 	}
 
@@ -130,31 +136,25 @@ func (b *Bootstrapper) CountConnectedComponents(nodes []*node.SkipGraphNode, lev
 }
 
 // dfs performs depth-first search to mark all nodes in a connected component
-func (b *Bootstrapper) dfs(nodes []*node.SkipGraphNode, nodeIndex int, level core.Level, visited map[int]bool) {
+func (b *Bootstrapper) dfs(nodes []*node.SkipGraphNode, nodeIndex int, level core.Level, visited map[int]bool, idToIndex map[model.Identifier]int) {
 	visited[nodeIndex] = true
 	n := nodes[nodeIndex]
 
 	// Check left neighbor
 	if leftNeighbor, err := n.GetNeighbor(core.LeftDirection, level); err == nil && leftNeighbor != nil {
 		leftId := leftNeighbor.GetIdentifier()
-		// Find the index of this neighbor
-		for i, other := range nodes {
-			if other.Identifier() == leftId && !visited[i] {
-				b.dfs(nodes, i, level, visited)
-				break
-			}
+		// Use O(1) map lookup instead of linear search
+		if leftIndex, exists := idToIndex[leftId]; exists && !visited[leftIndex] {
+			b.dfs(nodes, leftIndex, level, visited, idToIndex)
 		}
 	}
 
 	// Check right neighbor
 	if rightNeighbor, err := n.GetNeighbor(core.RightDirection, level); err == nil && rightNeighbor != nil {
 		rightId := rightNeighbor.GetIdentifier()
-		// Find the index of this neighbor
-		for i, other := range nodes {
-			if other.Identifier() == rightId && !visited[i] {
-				b.dfs(nodes, i, level, visited)
-				break
-			}
+		// Use O(1) map lookup instead of linear search
+		if rightIndex, exists := idToIndex[rightId]; exists && !visited[rightIndex] {
+			b.dfs(nodes, rightIndex, level, visited, idToIndex)
 		}
 	}
 }

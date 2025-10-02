@@ -65,14 +65,18 @@ This is a Skip Graph middleware implementation in Go. The system follows a layer
 
 ### Logger Dependency Injection
 
-**MANDATORY**: All components must use dependency injection for logging. Loggers must never be initialized internally.
+**MANDATORY**: Components with state or logic must use dependency injection for logging. Loggers must never be initialized internally.
+
+**Scope:**
+- **REQUIRED for**: Components with state, business logic, network operations, or side effects
+- **NOT REQUIRED for**: Pure model data structures that only hold data without behavior (e.g., `NewSortedEntryList`, simple value objects, DTOs)
 
 **Function Signatures:**
-- Logger must always be the **first parameter** in constructors and functions
+- Logger must always be the **first parameter** in constructors and functions (for components that require logging)
 - Exception: Test helpers with `*testing.T` - logger must be the **second parameter** (after `*testing.T`)
 
 **Struct Definitions:**
-- Logger must always be the **first field** in struct definitions
+- Logger must always be the **first field** in struct definitions (for components that require logging)
 - Use `zerolog.Logger` for structured logging
 
 **Examples:**

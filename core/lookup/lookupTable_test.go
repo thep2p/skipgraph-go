@@ -60,8 +60,9 @@ func TestLookupTable_OverWriteLeftEntry(t *testing.T) {
 
 	// check that the new identity has overwritten the previous one
 	retIdentity, err := lt.GetEntry(core.LeftDirection, 0)
-	require.Equal(t, identity1, retIdentity)
 	require.NoError(t, err)
+	require.NotNil(t, retIdentity)
+	require.Equal(t, identity1, *retIdentity)
 }
 
 // TestLookupTable_OverWriteRightEntry test the overwriting of right entry in the lookup table.
@@ -88,8 +89,9 @@ func TestLookupTable_OverWriteRightEntry(t *testing.T) {
 
 	// check that the new identity has overwritten the previous one
 	retIdentity, err := lt.GetEntry(core.RightDirection, 0)
-	require.Equal(t, identity1, retIdentity)
 	require.NoError(t, err)
+	require.NotNil(t, retIdentity)
+	require.Equal(t, identity1, *retIdentity)
 }
 
 // TestLookupTable_GetEntry test the GetEntry method of LookupTable.
@@ -112,13 +114,15 @@ func TestLookupTable_GetEntry(t *testing.T) {
 
 	// check that the inserted identity is retrievable
 	retIdentity, err := lt.GetEntry(core.LeftDirection, 0)
-	require.Equal(t, identity, retIdentity)
 	require.NoError(t, err)
+	require.NotNil(t, retIdentity)
+	require.Equal(t, identity, *retIdentity)
 
 	// check that the inserted identity is retrievable
 	retIdentity1, err := lt.GetEntry(core.RightDirection, 0)
-	require.Equal(t, identity1, retIdentity1)
 	require.NoError(t, err)
+	require.NotNil(t, retIdentity1)
+	require.Equal(t, identity1, *retIdentity1)
 
 	// access a wrong level
 	_, err = lt.GetEntry(core.RightDirection, core.MaxLookupTableLevel)

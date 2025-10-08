@@ -18,13 +18,6 @@ const (
 	DefaultSkipGraphPort = "5555"
 )
 
-// Stats contains statistics about the bootstrapped skip graph
-type Stats struct {
-	TotalLevels         int
-	AverageNeighbors    float64
-	ConnectedComponents map[int]int // level -> component count
-}
-
 // Bootstrapper encapsulates all bootstrap logic for creating a skip graph with centralized insert.
 // This ensures bootstrap logic is only used for bootstrapping and not borrowed for other purposes.
 type Bootstrapper struct {

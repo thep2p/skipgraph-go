@@ -101,6 +101,12 @@ func TestMembershipVector_GetPrefixBits(t *testing.T) {
 	require.Equal(t, "", result)
 	require.Contains(t, err.Error(), "exceeds membership vector size")
 
+	// Test getting negative bits (should return error)
+	result, err = mv.GetPrefixBits(-1)
+	require.Error(t, err)
+	require.Equal(t, "", result)
+	require.Contains(t, err.Error(), "must be non-negative")
+
 	// Test with all zeros
 	mvZero := model.MembershipVector{}
 	result, err = mvZero.GetPrefixBits(8)

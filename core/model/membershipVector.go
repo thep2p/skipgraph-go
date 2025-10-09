@@ -42,8 +42,11 @@ func ToBinaryString(b byte) string {
 }
 
 // GetPrefixBits returns the first numBits bits as a string representation.
-// Returns an error if numBits exceeds the length of the binary representation (256 bits).
+// Returns an error if numBits is negative or exceeds the length of the binary representation (256 bits).
 func (m MembershipVector) GetPrefixBits(numBits int) (string, error) {
+	if numBits < 0 {
+		return "", fmt.Errorf("numBits must be non-negative; found: %d", numBits)
+	}
 	binaryStr := m.ToBinaryString()
 	if numBits > len(binaryStr) {
 		return "", fmt.Errorf("numBits (%d) exceeds membership vector size (%d bits)", numBits, len(binaryStr))

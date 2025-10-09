@@ -18,13 +18,6 @@ const (
 	DefaultSkipGraphPort = "5555"
 )
 
-// Stats contains statistics about the bootstrapped skip graph
-type Stats struct {
-	TotalLevels         int
-	AverageNeighbors    float64
-	ConnectedComponents map[int]int // level -> component count
-}
-
 // Bootstrapper encapsulates all bootstrap logic for creating a skip graph with centralized insert.
 // This ensures bootstrap logic is only used for bootstrapping and not borrowed for other purposes.
 type Bootstrapper struct {
@@ -131,7 +124,7 @@ func (b *Bootstrapper) TraverseConnectedNodes(
 	idToIndex map[model.Identifier]int,
 ) {
 	visited[startIndex] = true
-	node := nodes[startIndex]
+	currentNode := nodes[startIndex]
 
 	// Helper function to visit a neighbor
 	visitNeighbor := func(neighbor *model.Identity) {
@@ -144,12 +137,12 @@ func (b *Bootstrapper) TraverseConnectedNodes(
 	}
 
 	// Check left neighbor
-	if leftNeighbor, err := node.GetNeighbor(core.LeftDirection, level); err == nil {
+	if leftNeighbor, err := currentNode.GetNeighbor(core.LeftDirection, level); err == nil {
 		visitNeighbor(leftNeighbor)
 	}
 
 	// Check right neighbor
-	if rightNeighbor, err := node.GetNeighbor(core.RightDirection, level); err == nil {
+	if rightNeighbor, err := currentNode.GetNeighbor(core.RightDirection, level); err == nil {
 		visitNeighbor(rightNeighbor)
 	}
 }

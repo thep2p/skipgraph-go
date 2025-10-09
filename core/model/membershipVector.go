@@ -47,11 +47,27 @@ func (m MembershipVector) GetPrefixBits(numBits int) (string, error) {
 	if numBits < 0 {
 		return "", fmt.Errorf("numBits must be non-negative; found: %d", numBits)
 	}
-	binaryStr := m.ToBinaryString()
-	if numBits > len(binaryStr) {
-		return "", fmt.Errorf("numBits (%d) exceeds membership vector size (%d bits)", numBits, len(binaryStr))
+	if numBits > MembershipVectorSize*8 {
+		return "", fmt.Errorf("numBits (%d) exceeds membership vector size (%d bits)", numBits, MembershipVectorSize*8)
 	}
-	return binaryStr[:numBits], nil
+
+	// Optimize by generating only the required prefix bits
+	var s string
+	bitsCollected := 0
+	for i := 0; i < MembershipVectorSize && bitsCollected < numBits; i++ {
+		for j := 0; j < 8 && bitsCollected < numBits; j++ {
+			// Extract the jth bit from byte m[i]
+			v := m[i] >> (7 - j)   // Shift to get the jth bit to the least significant position
+			bit := v & 0b00000001  // Mask to get just the least significant bit
+			if bit == 1 {
+				s = s + "1"
+			} else {
+				s = s + "0"
+			}
+			bitsCollected++
+		}
+	}
+	return s, nil
 }
 
 // CommonPrefix returns the longest common bit prefix of the supplied MembershipVectors.

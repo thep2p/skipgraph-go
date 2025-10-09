@@ -24,7 +24,7 @@ func (l *Table) AddEntry(dir core.Direction, level core.Level, identity model.Id
 
 	// validate the level value
 	if level >= core.MaxLookupTableLevel {
-		return fmt.Errorf("level %d exceeds max lookup table level %d", level, core.MaxLookupTableLevel-1)
+		return fmt.Errorf("level %d exceeds maximum valid level %d", level, core.MaxLookupTableLevel-1)
 	}
 
 	switch dir {

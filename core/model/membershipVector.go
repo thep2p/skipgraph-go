@@ -41,6 +41,16 @@ func ToBinaryString(b byte) string {
 	return s
 }
 
+// GetPrefixBits returns the first numBits bits as a string representation.
+// If numBits exceeds the length of the binary representation, returns the full string.
+func (m MembershipVector) GetPrefixBits(numBits int) string {
+	binaryStr := m.ToBinaryString()
+	if numBits > len(binaryStr) {
+		return binaryStr
+	}
+	return binaryStr[:numBits]
+}
+
 // CommonPrefix returns the longest common bit prefix of the supplied MembershipVectors.
 func (m MembershipVector) CommonPrefix(other MembershipVector) int {
 	// convert to bit string

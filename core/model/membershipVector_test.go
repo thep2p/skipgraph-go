@@ -60,3 +60,46 @@ func TestToMembershipVector(t *testing.T) {
 	require.Error(t, err2)
 
 }
+
+// TestMembershipVector_GetPrefixBits tests the GetPrefixBits method.
+func TestMembershipVector_GetPrefixBits(t *testing.T) {
+	// Create a membership vector with known binary representation
+	// Using byte 170 (10101010) and 85 (01010101) for easy pattern verification
+	mv := model.MembershipVector{}
+	mv[0] = 170 // 10101010
+	mv[1] = 85  // 01010101
+
+	// Test getting first 8 bits
+	result := mv.GetPrefixBits(8)
+	require.Equal(t, "10101010", result)
+
+	// Test getting first 16 bits
+	result = mv.GetPrefixBits(16)
+	require.Equal(t, "1010101001010101", result)
+
+	// Test getting first 4 bits
+	result = mv.GetPrefixBits(4)
+	require.Equal(t, "1010", result)
+
+	// Test getting 0 bits
+	result = mv.GetPrefixBits(0)
+	require.Equal(t, "", result)
+
+	// Test getting more bits than available (should return full binary string)
+	fullBinary := mv.ToBinaryString()
+	result = mv.GetPrefixBits(300)
+	require.Equal(t, fullBinary, result)
+
+	// Test with all zeros
+	mvZero := model.MembershipVector{}
+	result = mvZero.GetPrefixBits(8)
+	require.Equal(t, "00000000", result)
+
+	// Test with all ones
+	mvOnes := model.MembershipVector{}
+	for i := 0; i < model.MembershipVectorSize; i++ {
+		mvOnes[i] = 255
+	}
+	result = mvOnes.GetPrefixBits(8)
+	require.Equal(t, "11111111", result)
+}

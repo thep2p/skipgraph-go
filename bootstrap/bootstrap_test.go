@@ -304,7 +304,7 @@ func verifyConnectedComponents(t *testing.T, nodes []*node.SkipGraphNode) {
 		prefixGroups := make(map[string][]*node.SkipGraphNode)
 		for _, n := range nodes {
 			mv := n.MembershipVector()
-			prefix := getPrefixBits(mv, int(level))
+			prefix := mv.GetPrefixBits(int(level))
 			prefixGroups[prefix] = append(prefixGroups[prefix], n)
 		}
 
@@ -327,16 +327,6 @@ func verifyConnectedComponents(t *testing.T, nodes []*node.SkipGraphNode) {
 			}
 		}
 	}
-}
-
-// getPrefixBits returns the first numBits bits of a membership vector as a string
-// TODO: this must be a MembershipVector method
-func getPrefixBits(mv model.MembershipVector, numBits int) string {
-	binaryStr := mv.ToBinaryString()
-	if numBits > len(binaryStr) {
-		return binaryStr
-	}
-	return binaryStr[:numBits]
 }
 
 // dfsReachable performs DFS to find all reachable nodes from a starting node at a given level
@@ -427,10 +417,10 @@ func TestTraversalWithNodeReference(t *testing.T) {
 
 				// Verify all traversed nodes have matching prefix
 				startMV := nodes[startRef.ArrayIndex].MembershipVector()
-				prefix := getPrefixBits(startMV, int(level))
+				prefix := startMV.GetPrefixBits(int(level))
 				for _, ref := range traversed {
 					nodeMV := nodes[ref.ArrayIndex].MembershipVector()
-					nodePrefix := getPrefixBits(nodeMV, int(level))
+					nodePrefix := nodeMV.GetPrefixBits(int(level))
 					assert.Equal(
 						t, prefix, nodePrefix,
 						"All traversed nodes should have same prefix at level %d", level,

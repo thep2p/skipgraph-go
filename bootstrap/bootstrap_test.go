@@ -304,7 +304,8 @@ func verifyConnectedComponents(t *testing.T, nodes []*node.SkipGraphNode) {
 		prefixGroups := make(map[string][]*node.SkipGraphNode)
 		for _, n := range nodes {
 			mv := n.MembershipVector()
-			prefix := mv.GetPrefixBits(int(level))
+			prefix, err := mv.GetPrefixBits(int(level))
+			require.NoError(t, err)
 			prefixGroups[prefix] = append(prefixGroups[prefix], n)
 		}
 
@@ -417,10 +418,12 @@ func TestTraversalWithNodeReference(t *testing.T) {
 
 				// Verify all traversed nodes have matching prefix
 				startMV := nodes[startRef.ArrayIndex].MembershipVector()
-				prefix := startMV.GetPrefixBits(int(level))
+				prefix, err := startMV.GetPrefixBits(int(level))
+				require.NoError(t, err)
 				for _, ref := range traversed {
 					nodeMV := nodes[ref.ArrayIndex].MembershipVector()
-					nodePrefix := nodeMV.GetPrefixBits(int(level))
+					nodePrefix, err := nodeMV.GetPrefixBits(int(level))
+					require.NoError(t, err)
 					assert.Equal(
 						t, prefix, nodePrefix,
 						"All traversed nodes should have same prefix at level %d", level,

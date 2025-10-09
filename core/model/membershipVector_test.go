@@ -70,29 +70,41 @@ func TestMembershipVector_GetPrefixBits(t *testing.T) {
 	mv[1] = 85  // 01010101
 
 	// Test getting first 8 bits
-	result := mv.GetPrefixBits(8)
+	result, err := mv.GetPrefixBits(8)
+	require.NoError(t, err)
 	require.Equal(t, "10101010", result)
 
 	// Test getting first 16 bits
-	result = mv.GetPrefixBits(16)
+	result, err = mv.GetPrefixBits(16)
+	require.NoError(t, err)
 	require.Equal(t, "1010101001010101", result)
 
 	// Test getting first 4 bits
-	result = mv.GetPrefixBits(4)
+	result, err = mv.GetPrefixBits(4)
+	require.NoError(t, err)
 	require.Equal(t, "1010", result)
 
 	// Test getting 0 bits
-	result = mv.GetPrefixBits(0)
+	result, err = mv.GetPrefixBits(0)
+	require.NoError(t, err)
 	require.Equal(t, "", result)
 
-	// Test getting more bits than available (should return full binary string)
+	// Test getting exactly 256 bits (full size)
 	fullBinary := mv.ToBinaryString()
-	result = mv.GetPrefixBits(300)
+	result, err = mv.GetPrefixBits(256)
+	require.NoError(t, err)
 	require.Equal(t, fullBinary, result)
+
+	// Test getting more bits than available (should return error)
+	result, err = mv.GetPrefixBits(300)
+	require.Error(t, err)
+	require.Equal(t, "", result)
+	require.Contains(t, err.Error(), "exceeds membership vector size")
 
 	// Test with all zeros
 	mvZero := model.MembershipVector{}
-	result = mvZero.GetPrefixBits(8)
+	result, err = mvZero.GetPrefixBits(8)
+	require.NoError(t, err)
 	require.Equal(t, "00000000", result)
 
 	// Test with all ones
@@ -100,6 +112,7 @@ func TestMembershipVector_GetPrefixBits(t *testing.T) {
 	for i := 0; i < model.MembershipVectorSize; i++ {
 		mvOnes[i] = 255
 	}
-	result = mvOnes.GetPrefixBits(8)
+	result, err = mvOnes.GetPrefixBits(8)
+	require.NoError(t, err)
 	require.Equal(t, "11111111", result)
 }

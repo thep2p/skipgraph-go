@@ -50,7 +50,7 @@ func (l *Table) GetEntry(dir core.Direction, lev core.Level) (*model.Identity, e
 
 	// validate the level value
 	if lev >= core.MaxLookupTableLevel {
-		return nil, fmt.Errorf("level %d exceeds max lookup table level %d", lev, core.MaxLookupTableLevel-1)
+		return nil, fmt.Errorf("level %d exceeds maximum valid level %d", lev, core.MaxLookupTableLevel-1)
 	}
 
 	var res model.Identity

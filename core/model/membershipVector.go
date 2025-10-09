@@ -57,8 +57,8 @@ func (m MembershipVector) GetPrefixBits(numBits int) (string, error) {
 	for i := 0; i < MembershipVectorSize && bitsCollected < numBits; i++ {
 		for j := 0; j < 8 && bitsCollected < numBits; j++ {
 			// Extract the jth bit from byte m[i]
-			v := m[i] >> (7 - j)   // Shift to get the jth bit to the least significant position
-			bit := v & 0b00000001  // Mask to get just the least significant bit
+			v := m[i] >> (7 - j)  // Shift to get the jth bit to the least significant position
+			bit := v & 0b00000001 // Mask to get just the least significant bit
 			if bit == 1 {
 				s = s + "1"
 			} else {

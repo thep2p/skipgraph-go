@@ -51,10 +51,15 @@ install-tools: check-go-version
 
 
 
-# Linting target with a dependency on Go version check
-.PHONY: lint-fix
+# Linting target that replicates CI behavior (reports issues without fixing)
+.PHONY: lint
 lint: check-go-version tidy
-	 @golangci-lint run --fix --config ./integration/golangci-lint.yml ./...
+	@golangci-lint run --config ./integration/golangci-lint.yml ./...
+
+# Linting target with auto-fix enabled
+.PHONY: lint-fix
+lint-fix: check-go-version tidy
+	@golangci-lint run --fix --config ./integration/golangci-lint.yml ./...
 
 .PHONY: tidy
 tidy: check-go-version

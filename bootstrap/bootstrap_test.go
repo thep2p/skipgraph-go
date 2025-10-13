@@ -126,8 +126,19 @@ func TestBootstrapLargeGraph(t *testing.T) {
 		},
 	)
 
-	// TODO: verify neighbor consistency
-	// TODO: verify connected components
+	// Verify neighbor consistency
+	t.Run(
+		"NeighborConsistency", func(t *testing.T) {
+			verifyNeighborConsistency(t, nodes)
+		},
+	)
+
+	// Verify connected components
+	t.Run(
+		"ConnectedComponents", func(t *testing.T) {
+			verifyConnectedComponents(t, nodes)
+		},
+	)
 }
 
 // TestBootstrapInvalidInput tests bootstrap with invalid input

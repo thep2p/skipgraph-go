@@ -16,6 +16,11 @@ const (
 	// In bootstrap context, this is used as a placeholder since actual network
 	// communication doesn't occur during the bootstrap phase.
 	DefaultSkipGraphPort = "5555"
+
+	// maxIdentifierGenerationRetries is the maximum number of attempts to generate
+	// a unique identifier before returning an error. This prevents infinite loops
+	// in the unlikely event that all identifiers in the space are exhausted.
+	maxIdentifierGenerationRetries = 1000
 )
 
 // Bootstrapper encapsulates all bootstrap logic for creating a skip graph with centralized insert.
@@ -70,14 +75,19 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 	for i := 0; i < b.numNodes; i++ {
 		// Generate unique identifier
 		var id model.Identifier
-		for {
+		var generated bool
+		for attempt := 0; attempt < maxIdentifierGenerationRetries; attempt++ {
 			if _, err := rand.Read(id[:]); err != nil {
 				return nil, fmt.Errorf("failed to generate identifier: %w", err)
 			}
 			if !identifierSet[id] {
 				identifierSet[id] = true
+				generated = true
 				break
 			}
+		}
+		if !generated {
+			return nil, fmt.Errorf("failed to generate unique identifier after %d attempts for node %d", maxIdentifierGenerationRetries, i)
 		}
 
 		// Generate random membership vector

@@ -71,6 +71,7 @@ func (b *Bootstrapper) Bootstrap() ([]*node.SkipGraphNode, error) {
 func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, error) {
 	entries := internal.NewSortedEntryList()
 	identifierSet := make(map[model.Identifier]bool)
+	membershipVectorSet := make(map[model.MembershipVector]bool)
 
 	for i := 0; i < b.numNodes; i++ {
 		// Generate unique identifier
@@ -90,10 +91,21 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 			return nil, fmt.Errorf("failed to generate unique identifier after %d attempts for node %d", maxIdentifierGenerationRetries, i)
 		}
 
-		// Generate random membership vector
+		// Generate unique membership vector
 		var mv model.MembershipVector
-		if _, err := rand.Read(mv[:]); err != nil {
-			return nil, fmt.Errorf("failed to generate membership vector: %w", err)
+		generated = false
+		for attempt := 0; attempt < maxIdentifierGenerationRetries; attempt++ {
+			if _, err := rand.Read(mv[:]); err != nil {
+				return nil, fmt.Errorf("failed to generate membership vector: %w", err)
+			}
+			if !membershipVectorSet[mv] {
+				membershipVectorSet[mv] = true
+				generated = true
+				break
+			}
+		}
+		if !generated {
+			return nil, fmt.Errorf("failed to generate unique membership vector after %d attempts for node %d", maxIdentifierGenerationRetries, i)
 		}
 
 		// Create Identity with placeholder address (not used in bootstrap)

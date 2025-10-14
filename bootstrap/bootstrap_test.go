@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/model"
-	"github.com/thep2p/skipgraph-go/node"
 	"github.com/thep2p/skipgraph-go/unittest"
 )
 
@@ -18,22 +17,6 @@ import (
 func hasNeighbor(entry *BootstrapEntry, dir core.Direction, level core.Level) bool {
 	neighbor, err := entry.LookupTable.GetEntry(dir, level)
 	return err == nil && neighbor != nil
-}
-
-// hasNodeNeighbor checks if a node has a valid neighbor in the given direction and level.
-// This is used only for node-based tests (TestTraversalWithNodeReference).
-func hasNodeNeighbor(n *node.SkipGraphNode, dir core.Direction, level core.Level) bool {
-	neighbor, err := n.GetNeighbor(dir, level)
-	return err == nil && neighbor != nil
-}
-
-// createNodesFromEntries converts bootstrap entries to SkipGraphNode instances
-func createNodesFromEntries(entries []*BootstrapEntry) []*node.SkipGraphNode {
-	nodes := make([]*node.SkipGraphNode, len(entries))
-	for i, entry := range entries {
-		nodes[i] = node.NewSkipGraphNode(entry.Identity, entry.LookupTable)
-	}
-	return nodes
 }
 
 // TestBootstrapSingleNode tests bootstrap with a single node
@@ -384,14 +367,11 @@ func TestTraversalWithNodeReference(t *testing.T) {
 	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
 
-	// Convert entries to nodes for verification
-	nodes := createNodesFromEntries(entries)
-
-	// Create node references for testing
-	nodeRefs := make([]internal.NodeReference, len(nodes))
-	for i, n := range nodes {
-		nodeRefs[i] = internal.NodeReference{
-			Identifier: n.Identifier(),
+	// Create entry references for testing
+	entryRefs := make([]internal.NodeReference, len(entries))
+	for i, e := range entries {
+		entryRefs[i] = internal.NodeReference{
+			Identifier: e.Identity.GetIdentifier(),
 			ArrayIndex: i,
 		}
 	}
@@ -399,15 +379,15 @@ func TestTraversalWithNodeReference(t *testing.T) {
 	// Test traversal at level 0
 	t.Run(
 		"TraverseLevel0", func(t *testing.T) {
-			traversed := traverseLevel(nodes, nodeRefs[0], core.Level(0))
-			assert.Len(t, traversed, len(nodes), "Should traverse all nodes at level 0")
+			traversed := traverseLevel(entries, entryRefs[0], core.Level(0))
+			assert.Len(t, traversed, len(entries), "Should traverse all entries at level 0")
 
-			// Verify order; identifiers at level zero should be in acsending order
+			// Verify order; identifiers at level zero should be in ascending order
 			for i := 1; i < len(traversed); i++ {
 				idPrev := traversed[i-1].Identifier
 				idCurr := traversed[i].Identifier
 				comp := idPrev.Compare(&idCurr)
-				assert.Equal(t, model.CompareLess, comp.GetComparisonResult(), "Nodes should be in sorted order")
+				assert.Equal(t, model.CompareLess, comp.GetComparisonResult(), "Entries should be in sorted order")
 			}
 		},
 	)
@@ -415,32 +395,32 @@ func TestTraversalWithNodeReference(t *testing.T) {
 	// Test traversal at higher levels
 	t.Run("TraverseHigherLevels", func(t *testing.T) {
 		for level := core.Level(1); level <= core.MaxLookupTableLevel; level++ {
-			// Find a node that has neighbors at this level
+			// Find an entry that has neighbors at this level
 			var startRef internal.NodeReference
 			hasNeighborAtLevel := false
-			for i, n := range nodes {
-				if hasNodeNeighbor(n, core.RightDirection, level) {
-					startRef = nodeRefs[i]
+			for i, e := range entries {
+				if hasNeighbor(e, core.RightDirection, level) {
+					startRef = entryRefs[i]
 					hasNeighborAtLevel = true
 					break
 				}
 			}
 
 			if hasNeighborAtLevel {
-				traversed := traverseLevel(nodes, startRef, level)
-				require.NotEmpty(t, traversed, "Should traverse at least one node at level %d", level)
+				traversed := traverseLevel(entries, startRef, level)
+				require.NotEmpty(t, traversed, "Should traverse at least one entry at level %d", level)
 
-				// Verify all traversed nodes have matching prefix
-				startMV := nodes[startRef.ArrayIndex].MembershipVector()
+				// Verify all traversed entries have matching prefix
+				startMV := entries[startRef.ArrayIndex].Identity.GetMembershipVector()
 				prefix, err := startMV.GetPrefixBits(int(level))
 				require.NoError(t, err)
 				for _, ref := range traversed {
-					nodeMV := nodes[ref.ArrayIndex].MembershipVector()
-					nodePrefix, err := nodeMV.GetPrefixBits(int(level))
+					entryMV := entries[ref.ArrayIndex].Identity.GetMembershipVector()
+					entryPrefix, err := entryMV.GetPrefixBits(int(level))
 					require.NoError(t, err)
 					assert.Equal(
-						t, prefix, nodePrefix,
-						"All traversed nodes should have same prefix at level %d", level,
+						t, prefix, entryPrefix,
+						"All traversed entries should have same prefix at level %d", level,
 					)
 				}
 			}
@@ -449,8 +429,8 @@ func TestTraversalWithNodeReference(t *testing.T) {
 	)
 }
 
-// traverseLevel traverses all connected nodes at a given level starting from a node reference
-func traverseLevel(nodes []*node.SkipGraphNode, start internal.NodeReference, level core.Level) []internal.NodeReference {
+// traverseLevel traverses all connected entries at a given level starting from a node reference
+func traverseLevel(entries []*BootstrapEntry, start internal.NodeReference, level core.Level) []internal.NodeReference {
 	visited := make(map[model.Identifier]bool)
 	result := []internal.NodeReference{}
 
@@ -462,15 +442,15 @@ func traverseLevel(nodes []*node.SkipGraphNode, start internal.NodeReference, le
 		}
 		visited[current.Identifier] = true
 
-		n := nodes[current.ArrayIndex]
-		if hasNodeNeighbor(n, core.LeftDirection, level) {
-			leftNeighbor, _ := n.GetNeighbor(core.LeftDirection, level)
+		entry := entries[current.ArrayIndex]
+		if hasNeighbor(entry, core.LeftDirection, level) {
+			leftNeighbor, _ := entry.LookupTable.GetEntry(core.LeftDirection, level)
 			if leftNeighbor != nil {
 				leftId := leftNeighbor.GetIdentifier()
 				// Find the array index of this neighbor
 				found := false
-				for i, other := range nodes {
-					if other.Identifier() == leftId {
+				for i, other := range entries {
+					if other.Identity.GetIdentifier() == leftId {
 						current = internal.NodeReference{
 							Identifier: leftId,
 							ArrayIndex: i,
@@ -490,7 +470,7 @@ func traverseLevel(nodes []*node.SkipGraphNode, start internal.NodeReference, le
 		}
 	}
 
-	// Now traverse right from the leftmost node
+	// Now traverse right from the leftmost entry
 	leftmost := current
 	current = leftmost
 	for {
@@ -499,9 +479,9 @@ func traverseLevel(nodes []*node.SkipGraphNode, start internal.NodeReference, le
 		}
 		result = append(result, current)
 
-		n := nodes[current.ArrayIndex]
-		if hasNodeNeighbor(n, core.RightDirection, level) {
-			rightNeighbor, _ := n.GetNeighbor(core.RightDirection, level)
+		entry := entries[current.ArrayIndex]
+		if hasNeighbor(entry, core.RightDirection, level) {
+			rightNeighbor, _ := entry.LookupTable.GetEntry(core.RightDirection, level)
 			if rightNeighbor != nil {
 				rightId := rightNeighbor.GetIdentifier()
 				if visited[rightId] {
@@ -509,8 +489,8 @@ func traverseLevel(nodes []*node.SkipGraphNode, start internal.NodeReference, le
 				}
 				// Find the array index of this neighbor
 				found := false
-				for i, other := range nodes {
-					if other.Identifier() == rightId {
+				for i, other := range entries {
+					if other.Identity.GetIdentifier() == rightId {
 						current = internal.NodeReference{
 							Identifier: rightId,
 							ArrayIndex: i,

@@ -8,7 +8,6 @@ import (
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/lookup"
 	"github.com/thep2p/skipgraph-go/core/model"
-	"github.com/thep2p/skipgraph-go/node"
 )
 
 const (
@@ -130,59 +129,59 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 	return entries, nil
 }
 
-// TraverseConnectedNodes performs a depth-first traversal of connected nodes at a given level.
-// It starts from the specified node and marks all reachable nodes as visited.
-// The idToIndex map provides O(1) lookup from identifier to node index.
+// TraverseConnectedNodes performs a depth-first traversal of connected entries at a given level.
+// It starts from the specified entry and marks all reachable entries as visited.
+// The idToIndex map provides O(1) lookup from identifier to entry index.
 // This is a reusable DFS function used by both CountConnectedComponents and test utilities.
 func (b *Bootstrapper) TraverseConnectedNodes(
-	nodes []*node.SkipGraphNode,
+	entries []BootstrapEntry,
 	startIndex int,
 	level core.Level,
 	visited map[int]bool,
 	idToIndex map[model.Identifier]int,
 ) {
 	visited[startIndex] = true
-	currentNode := nodes[startIndex]
+	currentEntry := entries[startIndex]
 
 	// Helper function to visit a neighbor
 	visitNeighbor := func(neighbor *model.Identity) {
 		if neighbor != nil {
 			neighborId := neighbor.GetIdentifier()
 			if neighborIndex, exists := idToIndex[neighborId]; exists && !visited[neighborIndex] {
-				b.TraverseConnectedNodes(nodes, neighborIndex, level, visited, idToIndex)
+				b.TraverseConnectedNodes(entries, neighborIndex, level, visited, idToIndex)
 			}
 		}
 	}
 
 	// Check left neighbor
-	if leftNeighbor, err := currentNode.GetNeighbor(core.LeftDirection, level); err == nil {
+	if leftNeighbor, err := currentEntry.LookupTable.GetEntry(core.LeftDirection, level); err == nil {
 		visitNeighbor(leftNeighbor)
 	}
 
 	// Check right neighbor
-	if rightNeighbor, err := currentNode.GetNeighbor(core.RightDirection, level); err == nil {
+	if rightNeighbor, err := currentEntry.LookupTable.GetEntry(core.RightDirection, level); err == nil {
 		visitNeighbor(rightNeighbor)
 	}
 }
 
 // CountConnectedComponents counts the number of connected components at a given level.
 // This is useful for verifying skip graph properties during testing.
-func (b *Bootstrapper) CountConnectedComponents(nodes []*node.SkipGraphNode, level core.Level) int {
+func (b *Bootstrapper) CountConnectedComponents(entries []BootstrapEntry, level core.Level) int {
 	// Create identifier to index map for O(1) lookups
 	idToIndex := make(map[model.Identifier]int)
-	for i, n := range nodes {
-		idToIndex[n.Identifier()] = i
+	for i, entry := range entries {
+		idToIndex[entry.Identity.GetIdentifier()] = i
 	}
 
 	visited := make(map[int]bool)
 	components := 0
 
-	for i := range nodes {
+	for i := range entries {
 		if !visited[i] {
 			// Start a new component
 			components++
-			// DFS to mark all nodes in this component
-			b.TraverseConnectedNodes(nodes, i, level, visited, idToIndex)
+			// DFS to mark all entries in this component
+			b.TraverseConnectedNodes(entries, i, level, visited, idToIndex)
 		}
 	}
 

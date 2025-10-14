@@ -166,6 +166,7 @@ func (e *SortedEntryList) leftNeighborIndexAtLevel(entryIndex int, level int) (i
 	return -1, false
 }
 
+// rightNeighborIndexAtLevel finds the right neighbor of the entry at entryIndex at the given level.
 func (e *SortedEntryList) rightNeighborIndexAtLevel(entryIndex int, level int) (int, bool) {
 	entry := e.Get(entryIndex)
 	entryMV := entry.Identity.GetMembershipVector()

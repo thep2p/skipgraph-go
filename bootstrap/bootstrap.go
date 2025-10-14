@@ -42,8 +42,9 @@ func NewBootstrapper(logger zerolog.Logger, numNodes int) *Bootstrapper {
 }
 
 // Bootstrap creates a skip graph with the specified number of nodes using centralized insert (Algorithm 2).
-// Returns an array of nodes where each node's lookup table contains references to other nodes in the array.
-func (b *Bootstrapper) Bootstrap() ([]*node.SkipGraphNode, error) {
+// Returns an array of BootstrapEntry where each entry's lookup table contains references to other entries.
+// Users can create SkipGraphNode instances from these entries with their own network configuration.
+func (b *Bootstrapper) Bootstrap() ([]BootstrapEntry, error) {
 	if b.numNodes <= 0 {
 		return nil, fmt.Errorf("number of nodes must be positive, got %d", b.numNodes)
 	}
@@ -58,16 +59,25 @@ func (b *Bootstrapper) Bootstrap() ([]*node.SkipGraphNode, error) {
 	}
 
 	// Insert each entry into the skip graph structure using Algorithm 2 of the Skip Graphs paper.
-	nodes, err := entries.InsertAll()
+	internalEntries, err := entries.InsertAll()
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert entries into skip graph: %w", err)
 	}
 
+	// Convert internal entries to public BootstrapEntry type
+	result := make([]BootstrapEntry, len(internalEntries))
+	for i, entry := range internalEntries {
+		result[i] = BootstrapEntry{
+			Identity:    entry.Identity,
+			LookupTable: entry.LookupTable,
+		}
+	}
+
 	b.logger.Info().
-		Int("nodes", len(nodes)).
+		Int("entries", len(result)).
 		Msg("bootstrap completed")
 
-	return nodes, nil
+	return result, nil
 }
 
 // createBootstrapEntries creates numNodes bootstrap entries with unique identifiers and random membership vectors

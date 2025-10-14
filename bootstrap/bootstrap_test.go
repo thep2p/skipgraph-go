@@ -21,7 +21,7 @@ func hasNeighbor(n *node.SkipGraphNode, dir core.Direction, level core.Level) bo
 }
 
 // createNodesFromEntries converts bootstrap entries to SkipGraphNode instances
-func createNodesFromEntries(entries []BootstrapEntry) []*node.SkipGraphNode {
+func createNodesFromEntries(entries []*BootstrapEntry) []*node.SkipGraphNode {
 	nodes := make([]*node.SkipGraphNode, len(entries))
 	for i, entry := range entries {
 		nodes[i] = node.NewSkipGraphNode(entry.Identity, entry.LookupTable)
@@ -317,7 +317,7 @@ func verifyMembershipVectorPrefixes(t *testing.T, nodes []*node.SkipGraphNode) {
 }
 
 // verifyConnectedComponents verifies that entries with matching prefixes form connected components
-func verifyConnectedComponents(t *testing.T, entries []BootstrapEntry) {
+func verifyConnectedComponents(t *testing.T, entries []*BootstrapEntry) {
 	t.Helper()
 
 	// Create nodes from entries for verification
@@ -356,7 +356,7 @@ func verifyConnectedComponents(t *testing.T, entries []BootstrapEntry) {
 
 // dfsReachable performs DFS to find all reachable entries from a starting identifier at a given level.
 // Uses entries only, eliminating redundancy of passing both entries and nodes.
-func dfsReachable(entries []BootstrapEntry, startId model.Identifier, level core.Level, visited map[model.Identifier]bool) {
+func dfsReachable(entries []*BootstrapEntry, startId model.Identifier, level core.Level, visited map[model.Identifier]bool) {
 	// Create identifier to index map for O(1) lookups
 	idToIndex := make(map[model.Identifier]int)
 	for i, entry := range entries {

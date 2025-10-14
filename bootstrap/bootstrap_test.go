@@ -20,15 +20,27 @@ func hasNeighbor(n *node.SkipGraphNode, dir core.Direction, level core.Level) bo
 	return err == nil && neighbor != nil
 }
 
+// createNodesFromEntries converts bootstrap entries to SkipGraphNode instances
+func createNodesFromEntries(entries []BootstrapEntry) []*node.SkipGraphNode {
+	nodes := make([]*node.SkipGraphNode, len(entries))
+	for i, entry := range entries {
+		nodes[i] = node.NewSkipGraphNode(entry.Identity, entry.LookupTable)
+	}
+	return nodes
+}
+
 // TestBootstrapSingleNode tests bootstrap with a single node
 func TestBootstrapSingleNode(t *testing.T) {
 	logger := unittest.Logger(zerolog.TraceLevel)
 	bootstrapper := NewBootstrapper(logger, 1)
 
-	nodes, err := bootstrapper.Bootstrap()
+	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
-	require.NotNil(t, nodes)
-	assert.Len(t, nodes, 1)
+	require.NotNil(t, entries)
+	assert.Len(t, entries, 1)
+
+	// Convert entries to nodes for verification
+	nodes := createNodesFromEntries(entries)
 
 	// Single node should have no neighbors
 	n := nodes[0]
@@ -47,10 +59,13 @@ func TestBootstrapSmallGraph(t *testing.T) {
 	logger := unittest.Logger(zerolog.TraceLevel)
 	bootstrapper := NewBootstrapper(logger, nodeCount)
 
-	nodes, err := bootstrapper.Bootstrap()
+	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
-	require.NotNil(t, nodes)
-	assert.Len(t, nodes, nodeCount)
+	require.NotNil(t, entries)
+	assert.Len(t, entries, nodeCount)
+
+	// Convert entries to nodes for verification
+	nodes := createNodesFromEntries(entries)
 
 	// Verify level 0 is properly sorted and linked
 	t.Run(
@@ -80,10 +95,13 @@ func TestBootstrapMediumGraph(t *testing.T) {
 	logger := unittest.Logger(zerolog.InfoLevel)
 	bootstrapper := NewBootstrapper(logger, 100)
 
-	nodes, err := bootstrapper.Bootstrap()
+	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
-	require.NotNil(t, nodes)
-	assert.Len(t, nodes, nodeCount)
+	require.NotNil(t, entries)
+	assert.Len(t, entries, nodeCount)
+
+	// Convert entries to nodes for verification
+	nodes := createNodesFromEntries(entries)
 
 	// Verify level 0 is properly sorted and linked
 	t.Run(
@@ -102,7 +120,7 @@ func TestBootstrapMediumGraph(t *testing.T) {
 	// Verify connected components at each level
 	t.Run(
 		"ConnectedComponents", func(t *testing.T) {
-			verifyConnectedComponents(t, nodes)
+			verifyConnectedComponents(t, entries, nodes)
 		},
 	)
 }
@@ -114,10 +132,13 @@ func TestBootstrapLargeGraph(t *testing.T) {
 	logger := unittest.Logger(zerolog.WarnLevel)
 	bootstrapper := NewBootstrapper(logger, nodeCount)
 
-	nodes, err := bootstrapper.Bootstrap()
+	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
-	require.NotNil(t, nodes)
-	assert.Len(t, nodes, nodeCount)
+	require.NotNil(t, entries)
+	assert.Len(t, entries, nodeCount)
+
+	// Convert entries to nodes for verification
+	nodes := createNodesFromEntries(entries)
 
 	// Verify basic properties
 	t.Run(
@@ -296,7 +317,7 @@ func verifyMembershipVectorPrefixes(t *testing.T, nodes []*node.SkipGraphNode) {
 }
 
 // verifyConnectedComponents verifies that nodes with matching prefixes form connected components
-func verifyConnectedComponents(t *testing.T, nodes []*node.SkipGraphNode) {
+func verifyConnectedComponents(t *testing.T, entries []BootstrapEntry, nodes []*node.SkipGraphNode) {
 	t.Helper()
 
 	for level := core.Level(1); level <= core.MaxLookupTableLevel; level++ {
@@ -318,7 +339,7 @@ func verifyConnectedComponents(t *testing.T, nodes []*node.SkipGraphNode) {
 			// Pick the first node and verify all others are reachable
 			start := group[0]
 			reachable := make(map[model.Identifier]bool)
-			dfsReachable(nodes, start, level, reachable)
+			dfsReachable(entries, nodes, start, level, reachable)
 
 			for _, n := range group {
 				assert.True(
@@ -331,11 +352,11 @@ func verifyConnectedComponents(t *testing.T, nodes []*node.SkipGraphNode) {
 }
 
 // dfsReachable performs DFS to find all reachable nodes from a starting node at a given level
-func dfsReachable(nodes []*node.SkipGraphNode, start *node.SkipGraphNode, level core.Level, visited map[model.Identifier]bool) {
+func dfsReachable(entries []BootstrapEntry, nodes []*node.SkipGraphNode, start *node.SkipGraphNode, level core.Level, visited map[model.Identifier]bool) {
 	// Create identifier to index map for O(1) lookups
 	idToIndex := make(map[model.Identifier]int)
-	for i, n := range nodes {
-		idToIndex[n.Identifier()] = i
+	for i, entry := range entries {
+		idToIndex[entry.Identity.GetIdentifier()] = i
 	}
 
 	// Find the starting node's index
@@ -355,8 +376,8 @@ func dfsReachable(nodes []*node.SkipGraphNode, start *node.SkipGraphNode, level 
 
 	// Use the consolidated traversal function
 	logger := unittest.Logger(zerolog.TraceLevel)
-	bootstrapper := NewBootstrapper(logger, len(nodes))
-	bootstrapper.TraverseConnectedNodes(nodes, startIndex, level, visitedIndices, idToIndex)
+	bootstrapper := NewBootstrapper(logger, len(entries))
+	bootstrapper.TraverseConnectedNodes(entries, startIndex, level, visitedIndices, idToIndex)
 
 	// Convert visitedIndices back to visited identifiers
 	for index := range visitedIndices {
@@ -370,8 +391,11 @@ func TestTraversalWithNodeReference(t *testing.T) {
 	logger := unittest.Logger(zerolog.InfoLevel)
 	bootstrapper := NewBootstrapper(logger, nodeCount)
 
-	nodes, err := bootstrapper.Bootstrap()
+	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
+
+	// Convert entries to nodes for verification
+	nodes := createNodesFromEntries(entries)
 
 	// Create node references for testing
 	nodeRefs := make([]internal.NodeReference, len(nodes))
@@ -537,14 +561,14 @@ func TestConnectedComponentsConstraint(t *testing.T) {
 			logger := unittest.Logger(zerolog.WarnLevel)
 			bootstrapper := NewBootstrapper(logger, tc.nodeCount)
 
-			nodes, err := bootstrapper.Bootstrap()
+			entries, err := bootstrapper.Bootstrap()
 			require.NoError(t, err)
-			require.NotNil(t, nodes)
-			assert.Len(t, nodes, tc.nodeCount)
+			require.NotNil(t, entries)
+			assert.Len(t, entries, tc.nodeCount)
 
 			// For each level, verify that the number of connected components is at most 2^i
 			for level := core.Level(0); level <= tc.maxLevel && level < core.MaxLookupTableLevel; level++ {
-				componentCount := bootstrapper.CountConnectedComponents(nodes, level)
+				componentCount := bootstrapper.CountConnectedComponents(entries, level)
 				maxComponents := 1 << level // 2^level
 
 				assert.LessOrEqual(
@@ -566,13 +590,13 @@ func TestConnectedComponentsDistribution(t *testing.T) {
 	logger := unittest.Logger(zerolog.InfoLevel)
 	bootstrapper := NewBootstrapper(logger, nodeCount)
 
-	nodes, err := bootstrapper.Bootstrap()
+	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
 
 	// Collect statistics about connected components at each level
 	stats := make(map[core.Level]int)
 	for level := core.Level(0); level <= 10 && level < core.MaxLookupTableLevel; level++ {
-		componentCount := bootstrapper.CountConnectedComponents(nodes, level)
+		componentCount := bootstrapper.CountConnectedComponents(entries, level)
 		stats[level] = componentCount
 	}
 

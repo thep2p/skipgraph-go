@@ -41,9 +41,9 @@ func NewBootstrapper(logger zerolog.Logger, numNodes int) *Bootstrapper {
 }
 
 // Bootstrap creates a skip graph with the specified number of nodes using centralized insert (Algorithm 2).
-// Returns an array of BootstrapEntry where each entry's lookup table contains references to other entries.
+// Returns an array of pointers to BootstrapEntry where each entry's lookup table contains references to other entries.
 // Users can create SkipGraphNode instances from these entries with their own network configuration.
-func (b *Bootstrapper) Bootstrap() ([]BootstrapEntry, error) {
+func (b *Bootstrapper) Bootstrap() ([]*BootstrapEntry, error) {
 	if b.numNodes <= 0 {
 		return nil, fmt.Errorf("number of nodes must be positive, got %d", b.numNodes)
 	}
@@ -63,10 +63,10 @@ func (b *Bootstrapper) Bootstrap() ([]BootstrapEntry, error) {
 		return nil, fmt.Errorf("failed to insert entries into skip graph: %w", err)
 	}
 
-	// Convert internal entries to public BootstrapEntry type
-	result := make([]BootstrapEntry, len(internalEntries))
+	// Convert internal entries to public BootstrapEntry pointers
+	result := make([]*BootstrapEntry, len(internalEntries))
 	for i, entry := range internalEntries {
-		result[i] = BootstrapEntry{
+		result[i] = &BootstrapEntry{
 			Identity:    entry.Identity,
 			LookupTable: entry.LookupTable,
 		}
@@ -134,7 +134,7 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 // The idToIndex map provides O(1) lookup from identifier to entry index.
 // This is a reusable DFS function used by both CountConnectedComponents and test utilities.
 func (b *Bootstrapper) TraverseConnectedNodes(
-	entries []BootstrapEntry,
+	entries []*BootstrapEntry,
 	startIndex int,
 	level core.Level,
 	visited map[int]bool,
@@ -166,7 +166,7 @@ func (b *Bootstrapper) TraverseConnectedNodes(
 
 // CountConnectedComponents counts the number of connected components at a given level.
 // This is useful for verifying skip graph properties during testing.
-func (b *Bootstrapper) CountConnectedComponents(entries []BootstrapEntry, level core.Level) int {
+func (b *Bootstrapper) CountConnectedComponents(entries []*BootstrapEntry, level core.Level) int {
 	// Create identifier to index map for O(1) lookups
 	idToIndex := make(map[model.Identifier]int)
 	for i, entry := range entries {

@@ -18,6 +18,14 @@ const (
 	DefaultSkipGraphPort = "5555"
 )
 
+// BootstrapEntry represents a bootstrapped skip graph entry containing
+// the node's identity and its lookup table. This allows users to create
+// SkipGraphNode instances with their own network configuration.
+type BootstrapEntry struct {
+	Identity    model.Identity
+	LookupTable core.MutableLookupTable
+}
+
 // Bootstrapper encapsulates all bootstrap logic for creating a skip graph with centralized insert.
 // This ensures bootstrap logic is only used for bootstrapping and not borrowed for other purposes.
 type Bootstrapper struct {

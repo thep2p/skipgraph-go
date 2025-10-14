@@ -120,7 +120,7 @@ func TestBootstrapMediumGraph(t *testing.T) {
 	// Verify connected components at each level
 	t.Run(
 		"ConnectedComponents", func(t *testing.T) {
-			verifyConnectedComponents(t, entries, nodes)
+			verifyConnectedComponents(t, entries)
 		},
 	)
 }
@@ -316,9 +316,12 @@ func verifyMembershipVectorPrefixes(t *testing.T, nodes []*node.SkipGraphNode) {
 	}
 }
 
-// verifyConnectedComponents verifies that nodes with matching prefixes form connected components
-func verifyConnectedComponents(t *testing.T, entries []BootstrapEntry, nodes []*node.SkipGraphNode) {
+// verifyConnectedComponents verifies that entries with matching prefixes form connected components
+func verifyConnectedComponents(t *testing.T, entries []BootstrapEntry) {
 	t.Helper()
+
+	// Create nodes from entries for verification
+	nodes := createNodesFromEntries(entries)
 
 	for level := core.Level(1); level <= core.MaxLookupTableLevel; level++ {
 		// Group nodes by their membership vector prefix at this level
@@ -337,9 +340,9 @@ func verifyConnectedComponents(t *testing.T, entries []BootstrapEntry, nodes []*
 			}
 
 			// Pick the first node and verify all others are reachable
-			start := group[0]
+			startId := group[0].Identifier()
 			reachable := make(map[model.Identifier]bool)
-			dfsReachable(entries, nodes, start, level, reachable)
+			dfsReachable(entries, startId, level, reachable)
 
 			for _, n := range group {
 				assert.True(
@@ -351,24 +354,19 @@ func verifyConnectedComponents(t *testing.T, entries []BootstrapEntry, nodes []*
 	}
 }
 
-// dfsReachable performs DFS to find all reachable nodes from a starting node at a given level
-func dfsReachable(entries []BootstrapEntry, nodes []*node.SkipGraphNode, start *node.SkipGraphNode, level core.Level, visited map[model.Identifier]bool) {
+// dfsReachable performs DFS to find all reachable entries from a starting identifier at a given level.
+// Uses entries only, eliminating redundancy of passing both entries and nodes.
+func dfsReachable(entries []BootstrapEntry, startId model.Identifier, level core.Level, visited map[model.Identifier]bool) {
 	// Create identifier to index map for O(1) lookups
 	idToIndex := make(map[model.Identifier]int)
 	for i, entry := range entries {
 		idToIndex[entry.Identity.GetIdentifier()] = i
 	}
 
-	// Find the starting node's index
-	startIndex := -1
-	for i, n := range nodes {
-		if n.Identifier() == start.Identifier() {
-			startIndex = i
-			break
-		}
-	}
-	if startIndex == -1 {
-		return // Node not found in array
+	// Find the starting entry's index
+	startIndex, exists := idToIndex[startId]
+	if !exists {
+		return // Entry not found
 	}
 
 	// Convert visited map from Identifier->bool to int->bool for TraverseConnectedNodes
@@ -381,7 +379,7 @@ func dfsReachable(entries []BootstrapEntry, nodes []*node.SkipGraphNode, start *
 
 	// Convert visitedIndices back to visited identifiers
 	for index := range visitedIndices {
-		visited[nodes[index].Identifier()] = true
+		visited[entries[index].Identity.GetIdentifier()] = true
 	}
 }
 

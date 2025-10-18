@@ -18,8 +18,13 @@ const (
 	DefaultSkipGraphPort = "5555"
 
 	// maxIdentifierGenerationRetries is the maximum number of attempts to generate
-	// a unique identifier before returning an error. This prevents infinite loops
-	// in the unlikely event that all identifiers in the space are exhausted.
+	// a unique identifier or membership vector before returning an error.
+	// This prevents infinite loops in the unlikely event of hash collisions.
+	//
+	// The value 1000 is set as a defensive upper bound. With 256-bit identifiers
+	// and membership vectors, collision probability is negligible (~10^-71 for 1000 nodes
+	// based on birthday paradox calculations). This limit ensures guaranteed termination
+	// without impacting normal operation, as collisions should never occur in practice.
 	maxIdentifierGenerationRetries = 1000
 )
 

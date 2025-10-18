@@ -55,7 +55,7 @@ func (e *SortedEntryList) sort() {
 }
 
 // InsertAll inserts all entries into the skip graph using the insertion algorithm.
-// Returns a slice of pointers to Entry representing the bootstrapped skip graph structure.
+// Returns a slice of pointers to Entry instances representing the bootstrapped skip graph structure.
 // Returns an error if any insertion fails; any error is fatal and indicates a serious bug in the bootstrap logic; crash if it occurs.
 func (e *SortedEntryList) InsertAll() ([]*Entry, error) {
 	for i := 0; i < e.Len(); i++ {

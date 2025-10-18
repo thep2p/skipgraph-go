@@ -128,14 +128,14 @@ func TestBootstrapLargeGraph(t *testing.T) {
 	// Verify neighbor consistency
 	t.Run(
 		"NeighborConsistency", func(t *testing.T) {
-			verifyNeighborConsistency(t, nodes)
+			verifyNeighborConsistency(t, entries)
 		},
 	)
 
 	// Verify connected components
 	t.Run(
 		"ConnectedComponents", func(t *testing.T) {
-			verifyConnectedComponents(t, nodes)
+			verifyConnectedComponents(t, entries)
 		},
 	)
 }

@@ -355,13 +355,13 @@ func dfsReachable(entries []*BootstrapEntry, startId model.Identifier, level cor
 		return // Entry not found
 	}
 
-	// Convert visited map from Identifier->bool to int->bool for TraverseConnectedNodes
+	// Convert visited map from Identifier->bool to int->bool for TraverseConnectedEntries
 	visitedIndices := make(map[int]bool)
 
 	// Use the consolidated traversal function
 	logger := unittest.Logger(zerolog.TraceLevel)
 	bootstrapper := NewBootstrapper(logger, len(entries))
-	bootstrapper.TraverseConnectedNodes(entries, startIndex, level, visitedIndices, idToIndex)
+	bootstrapper.TraverseConnectedEntries(entries, startIndex, level, visitedIndices, idToIndex)
 
 	// Convert visitedIndices back to visited identifiers
 	for index := range visitedIndices {

@@ -170,11 +170,11 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 	return entries, nil
 }
 
-// TraverseConnectedNodes performs a depth-first traversal of connected entries at a given level.
+// TraverseConnectedEntries performs a depth-first traversal of connected entries at a given level.
 // It starts from the specified entry and marks all reachable entries as visited.
 // The idToIndex map provides O(1) lookup from identifier to entry index.
 // This is a reusable DFS function used by both CountConnectedComponents and test utilities.
-func (b *Bootstrapper) TraverseConnectedNodes(
+func (b *Bootstrapper) TraverseConnectedEntries(
 	entries []*BootstrapEntry,
 	startIndex int,
 	level core.Level,
@@ -189,7 +189,7 @@ func (b *Bootstrapper) TraverseConnectedNodes(
 		if neighbor != nil {
 			neighborId := neighbor.GetIdentifier()
 			if neighborIndex, exists := idToIndex[neighborId]; exists && !visited[neighborIndex] {
-				b.TraverseConnectedNodes(entries, neighborIndex, level, visited, idToIndex)
+				b.TraverseConnectedEntries(entries, neighborIndex, level, visited, idToIndex)
 			}
 		}
 	}
@@ -222,7 +222,7 @@ func (b *Bootstrapper) CountConnectedComponents(entries []*BootstrapEntry, level
 			// Start a new component
 			components++
 			// DFS to mark all entries in this component
-			b.TraverseConnectedNodes(entries, i, level, visited, idToIndex)
+			b.TraverseConnectedEntries(entries, i, level, visited, idToIndex)
 		}
 	}
 

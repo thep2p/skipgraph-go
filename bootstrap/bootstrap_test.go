@@ -309,6 +309,12 @@ func verifyMembershipVectorPrefixes(t *testing.T, entries []*BootstrapEntry) {
 func verifyConnectedComponents(t *testing.T, entries []*BootstrapEntry) {
 	t.Helper()
 
+	// Create identifier to index map once for O(1) lookups
+	idToIndex := make(map[model.Identifier]int)
+	for i, entry := range entries {
+		idToIndex[entry.Identity.GetIdentifier()] = i
+	}
+
 	for level := core.Level(1); level <= core.MaxLookupTableLevel; level++ {
 		// Group entries by their membership vector prefix at this level
 		prefixGroups := make(map[string][]*BootstrapEntry)
@@ -328,7 +334,7 @@ func verifyConnectedComponents(t *testing.T, entries []*BootstrapEntry) {
 			// Pick the first entry and verify all others are reachable
 			startId := group[0].Identity.GetIdentifier()
 			reachable := make(map[model.Identifier]bool)
-			dfsReachable(entries, startId, level, reachable)
+			dfsReachable(entries, startId, level, reachable, idToIndex)
 
 			for _, e := range group {
 				assert.True(
@@ -341,14 +347,8 @@ func verifyConnectedComponents(t *testing.T, entries []*BootstrapEntry) {
 }
 
 // dfsReachable performs DFS to find all reachable entries from a starting identifier at a given level.
-// Uses entries only, eliminating redundancy of passing both entries and nodes.
-func dfsReachable(entries []*BootstrapEntry, startId model.Identifier, level core.Level, visited map[model.Identifier]bool) {
-	// Create identifier to index map for O(1) lookups
-	idToIndex := make(map[model.Identifier]int)
-	for i, entry := range entries {
-		idToIndex[entry.Identity.GetIdentifier()] = i
-	}
-
+// The idToIndex map is passed in to avoid redundant map creation on each call.
+func dfsReachable(entries []*BootstrapEntry, startId model.Identifier, level core.Level, visited map[model.Identifier]bool, idToIndex map[model.Identifier]int) {
 	// Find the starting entry's index
 	startIndex, exists := idToIndex[startId]
 	if !exists {

@@ -2,6 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Agent Routing
+
+**MANDATORY**: All prompts and tasks in this project must be routed through specialized agents:
+
+1. **skipgraph-protocol-architect** (inherit)
+   - Use for Skip Graph protocol implementation, algorithm correctness, distributed systems properties
+   - Required for core Skip Graph operations (search, insert, delete)
+   - Validates complexity bounds and theoretical properties
+   - Ensures adherence to academic Skip Graph specifications
+
+2. **skipgraph-go-engineer** (inherit)
+   - Use for all Go implementation work in this project
+   - Required for feature implementation, code review, testing, and refactoring
+   - Enforces project-specific conventions (logger injection, testing standards, etc.)
+   - Ensures adherence to project architecture and coding standards
+
+**Routing Pattern:**
+- Protocol/algorithm questions → `skipgraph-protocol-architect`
+- Implementation/coding tasks → `skipgraph-go-engineer`
+- Complex tasks requiring both protocol and implementation expertise → Both agents in sequence or parallel as appropriate
+
 ## Development Commands
 
 - **Build**: `make build` - Builds the entire project

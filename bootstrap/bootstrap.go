@@ -97,6 +97,11 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 		}
 
 		// Generate unique membership vector
+		// Design Decision: While Skip Graph theory doesn't strictly require unique membership vectors,
+		// this implementation enforces uniqueness to guarantee better performance characteristics.
+		// Non-unique membership vectors can lead to unbalanced skip graph structures and degraded
+		// search performance. With 256-bit vectors, enforcing uniqueness is practical and provides
+		// stronger structural guarantees without meaningful overhead.
 		var mv model.MembershipVector
 		generated = false
 		for attempt := 0; attempt < maxIdentifierGenerationRetries; attempt++ {

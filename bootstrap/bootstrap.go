@@ -76,6 +76,14 @@ func (b *Bootstrapper) Bootstrap() ([]*BootstrapEntry, error) {
 	// Convert internal entries to public BootstrapEntry pointers
 	result := make([]*BootstrapEntry, len(internalEntries))
 	for i, entry := range internalEntries {
+		// Defensive checks - these should never fail, but validate to catch bugs early
+		if entry == nil {
+			return nil, fmt.Errorf("internal entry at index %d is nil - indicates serious bug in bootstrap logic", i)
+		}
+		if entry.LookupTable == nil {
+			return nil, fmt.Errorf("lookup table is nil for entry at index %d - indicates serious bug in bootstrap logic", i)
+		}
+
 		result[i] = &BootstrapEntry{
 			Identity:    entry.Identity,
 			LookupTable: entry.LookupTable,

@@ -80,6 +80,10 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 
 	for i := 0; i < b.numNodes; i++ {
 		// Generate unique identifier
+		// Note: Retry exhaustion is not tested as it would require mocking crypto/rand.
+		// With 256-bit identifiers, collision probability is ~10^-71 for 1000 nodes,
+		// making this error path unreachable in practice. The defensive check ensures
+		// guaranteed termination if the RNG fails catastrophically.
 		var id model.Identifier
 		var generated bool
 		for attempt := 0; attempt < maxIdentifierGenerationRetries; attempt++ {
@@ -102,6 +106,11 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 		// Non-unique membership vectors can lead to unbalanced skip graph structures and degraded
 		// search performance. With 256-bit vectors, enforcing uniqueness is practical and provides
 		// stronger structural guarantees without meaningful overhead.
+		//
+		// Note: Retry exhaustion is not tested as it would require mocking crypto/rand.
+		// With 256-bit membership vectors, collision probability is ~10^-71 for 1000 nodes,
+		// making this error path unreachable in practice. The defensive check ensures
+		// guaranteed termination if the RNG fails catastrophically.
 		var mv model.MembershipVector
 		generated = false
 		for attempt := 0; attempt < maxIdentifierGenerationRetries; attempt++ {

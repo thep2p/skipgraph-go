@@ -409,7 +409,7 @@ func TestTraversalWithNodeReference(t *testing.T) {
 // traverseLevel traverses all connected entries at a given level starting from a node reference
 func traverseLevel(entries []*BootstrapEntry, start internal.NodeReference, level core.Level) []internal.NodeReference {
 	visited := make(map[model.Identifier]bool)
-	result := []internal.NodeReference{}
+	var result []internal.NodeReference
 
 	// Traverse left
 	current := start

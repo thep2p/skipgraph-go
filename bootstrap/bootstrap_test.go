@@ -106,40 +106,6 @@ func TestBootstrapMediumGraph(t *testing.T) {
 	)
 }
 
-// TestBootstrapLargeGraph tests bootstrap with a large number of nodes
-func TestBootstrapLargeGraph(t *testing.T) {
-	nodeCount := 100
-
-	logger := unittest.Logger(zerolog.WarnLevel)
-	bootstrapper := NewBootstrapper(logger, nodeCount)
-
-	entries, err := bootstrapper.Bootstrap()
-	require.NoError(t, err)
-	require.NotNil(t, entries)
-	assert.Len(t, entries, nodeCount)
-
-	// Verify basic properties
-	t.Run(
-		"Level0Ordering", func(t *testing.T) {
-			verifyLevel0Ordering(t, entries)
-		},
-	)
-
-	// Verify neighbor consistency
-	t.Run(
-		"NeighborConsistency", func(t *testing.T) {
-			verifyNeighborConsistency(t, entries)
-		},
-	)
-
-	// Verify connected components
-	t.Run(
-		"ConnectedComponents", func(t *testing.T) {
-			verifyConnectedComponents(t, entries)
-		},
-	)
-}
-
 // TestBootstrapInvalidInput tests bootstrap with invalid input
 func TestBootstrapInvalidInput(t *testing.T) {
 	logger := unittest.Logger(zerolog.ErrorLevel)

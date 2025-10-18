@@ -16,6 +16,16 @@ const (
 	// In bootstrap context, this is used as a placeholder since actual network
 	// communication doesn't occur during the bootstrap phase.
 	DefaultSkipGraphPort = "5555"
+
+	// maxIdentifierGenerationRetries is the maximum number of attempts to generate
+	// a unique identifier or membership vector before returning an error.
+	// This prevents infinite loops in the unlikely event of hash collisions.
+	//
+	// The value 1000 is set as a defensive upper bound. With 256-bit identifiers
+	// and membership vectors, collision probability is negligible (~10^-71 for 1000 nodes
+	// based on birthday paradox calculations). This limit ensures guaranteed termination
+	// without impacting normal operation, as collisions should never occur in practice.
+	maxIdentifierGenerationRetries = 1000
 )
 
 // Bootstrapper encapsulates all bootstrap logic for creating a skip graph with centralized insert.
@@ -66,24 +76,55 @@ func (b *Bootstrapper) Bootstrap() ([]*node.SkipGraphNode, error) {
 func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, error) {
 	entries := internal.NewSortedEntryList()
 	identifierSet := make(map[model.Identifier]bool)
+	membershipVectorSet := make(map[model.MembershipVector]bool)
 
 	for i := 0; i < b.numNodes; i++ {
 		// Generate unique identifier
+		// Note: Retry exhaustion is not tested as it would require mocking crypto/rand.
+		// With 256-bit identifiers, collision probability is ~10^-71 for 1000 nodes,
+		// making this error path unreachable in practice. The defensive check ensures
+		// guaranteed termination if the RNG fails catastrophically.
 		var id model.Identifier
-		for {
+		var generated bool
+		for attempt := 0; attempt < maxIdentifierGenerationRetries; attempt++ {
 			if _, err := rand.Read(id[:]); err != nil {
 				return nil, fmt.Errorf("failed to generate identifier: %w", err)
 			}
 			if !identifierSet[id] {
 				identifierSet[id] = true
+				generated = true
 				break
 			}
 		}
+		if !generated {
+			return nil, fmt.Errorf("failed to generate unique identifier after %d attempts for node %d", maxIdentifierGenerationRetries, i)
+		}
 
-		// Generate random membership vector
+		// Generate unique membership vector
+		// Design Decision: While Skip Graph theory doesn't strictly require unique membership vectors,
+		// this implementation enforces uniqueness to guarantee better performance characteristics.
+		// Non-unique membership vectors can lead to unbalanced skip graph structures and degraded
+		// search performance. With 256-bit vectors, enforcing uniqueness is practical and provides
+		// stronger structural guarantees without meaningful overhead.
+		//
+		// Note: Retry exhaustion is not tested as it would require mocking crypto/rand.
+		// With 256-bit membership vectors, collision probability is ~10^-71 for 1000 nodes,
+		// making this error path unreachable in practice. The defensive check ensures
+		// guaranteed termination if the RNG fails catastrophically.
 		var mv model.MembershipVector
-		if _, err := rand.Read(mv[:]); err != nil {
-			return nil, fmt.Errorf("failed to generate membership vector: %w", err)
+		generated = false
+		for attempt := 0; attempt < maxIdentifierGenerationRetries; attempt++ {
+			if _, err := rand.Read(mv[:]); err != nil {
+				return nil, fmt.Errorf("failed to generate membership vector: %w", err)
+			}
+			if !membershipVectorSet[mv] {
+				membershipVectorSet[mv] = true
+				generated = true
+				break
+			}
+		}
+		if !generated {
+			return nil, fmt.Errorf("failed to generate unique membership vector after %d attempts for node %d", maxIdentifierGenerationRetries, i)
 		}
 
 		// Create Identity with placeholder address (not used in bootstrap)

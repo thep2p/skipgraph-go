@@ -58,13 +58,13 @@ logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 bootstrapper := bootstrap.NewBootstrapper(logger, 100)
 
 // Bootstrap the skip graph
-nodes, err := bootstrapper.Bootstrap()
+entries, err := bootstrapper.Bootstrap()
 if err != nil {
     log.Fatal("Bootstrap failed:", err)
 }
 
-// nodes is now an array of 100 SkipGraphNode instances
-// Each node's lookup table contains references to other nodes in the array
+// entries is now an array of 100 BootstrapEntry instances
+// Each entry contains Identity and LookupTable that references other entries
 ```
 
 ### Testing with Bootstrap
@@ -73,14 +73,18 @@ if err != nil {
 func TestSkipGraphRouting(t *testing.T) {
     // Create a test skip graph
     bootstrapper := bootstrap.NewBootstrapper(testLogger, 50)
-    nodes, err := bootstrapper.Bootstrap()
+    entries, err := bootstrapper.Bootstrap()
     require.NoError(t, err)
 
-    // Test routing between nodes
-    source := nodes[0]
-    target := nodes[25]
+    // Test routing between entries
+    sourceEntry := entries[0]
+    targetEntry := entries[25]
 
-    // Perform routing operations...
+    // Access identity and lookup table
+    sourceId := sourceEntry.Identity.GetIdentifier()
+    targetId := targetEntry.Identity.GetIdentifier()
+
+    // Perform routing operations using lookup tables...
 }
 ```
 
@@ -89,7 +93,7 @@ func TestSkipGraphRouting(t *testing.T) {
 ```go
 // Count connected components at different levels
 for level := 0; level <= 10; level++ {
-    components := bootstrapper.CountConnectedComponents(nodes, level)
+    components := bootstrapper.CountConnectedComponents(entries, level)
     fmt.Printf("Level %d: %d components\n", level, components)
 }
 ```
@@ -107,14 +111,13 @@ type Bootstrapper struct {
 }
 ```
 
-#### `Stats`
-Statistics about the bootstrapped skip graph.
+#### `BootstrapEntry`
+Represents a bootstrapped skip graph entry containing the node's identity and lookup table.
 
 ```go
-type Stats struct {
-    TotalLevels         int
-    AverageNeighbors    float64
-    ConnectedComponents map[int]int // level -> component count
+type BootstrapEntry struct {
+    Identity    model.Identity
+    LookupTable core.MutableLookupTable
 }
 ```
 
@@ -129,18 +132,18 @@ Creates a new bootstrapper instance.
 
 **Returns:** Bootstrapper instance
 
-#### `Bootstrap() ([]*node.SkipGraphNode, error)`
+#### `Bootstrap() ([]*BootstrapEntry, error)`
 Creates a skip graph with the configured number of nodes.
 
 **Returns:**
-- Array of skip graph nodes with populated lookup tables
+- Array of BootstrapEntry instances with populated lookup tables
 - Error if bootstrap fails (invalid parameters, etc.)
 
-#### `CountConnectedComponents(nodes []*node.SkipGraphNode, level core.Level) int`
+#### `CountConnectedComponents(entries []*BootstrapEntry, level core.Level) int`
 Counts the number of connected components at a given level.
 
 **Parameters:**
-- `nodes`: Array of nodes from bootstrap
+- `entries`: Array of bootstrap entries
 - `level`: Level to analyze (0 to MaxLookupTableLevel)
 
 **Returns:** Number of connected components

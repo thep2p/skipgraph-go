@@ -10,13 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/model"
-	"github.com/thep2p/skipgraph-go/node"
 	"github.com/thep2p/skipgraph-go/unittest"
 )
 
-// hasNeighbor checks if a node has a valid neighbor in the given direction and level
-func hasNeighbor(n *node.SkipGraphNode, dir core.Direction, level core.Level) bool {
-	neighbor, err := n.GetNeighbor(dir, level)
+// hasNeighbor checks if a bootstrap entry has a valid neighbor in the given direction and level
+func hasNeighbor(entry *BootstrapEntry, dir core.Direction, level core.Level) bool {
+	neighbor, err := entry.LookupTable.GetEntry(dir, level)
 	return err == nil && neighbor != nil
 }
 
@@ -25,18 +24,18 @@ func TestBootstrapSingleNode(t *testing.T) {
 	logger := unittest.Logger(zerolog.TraceLevel)
 	bootstrapper := NewBootstrapper(logger, 1)
 
-	nodes, err := bootstrapper.Bootstrap()
+	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
-	require.NotNil(t, nodes)
-	assert.Len(t, nodes, 1)
+	require.NotNil(t, entries)
+	assert.Len(t, entries, 1)
 
 	// Single node should have no neighbors
-	n := nodes[0]
-	leftNeighbor, err := n.GetNeighbor(core.LeftDirection, 0)
+	entry := entries[0]
+	leftNeighbor, err := entry.LookupTable.GetEntry(core.LeftDirection, 0)
 	require.NoError(t, err)
 	assert.Nil(t, leftNeighbor, "Single node should have no left neighbor")
 
-	rightNeighbor, err := n.GetNeighbor(core.RightDirection, 0)
+	rightNeighbor, err := entry.LookupTable.GetEntry(core.RightDirection, 0)
 	require.NoError(t, err)
 	assert.Nil(t, rightNeighbor, "Single node should have no right neighbor")
 }
@@ -47,29 +46,29 @@ func TestBootstrapSmallGraph(t *testing.T) {
 	logger := unittest.Logger(zerolog.TraceLevel)
 	bootstrapper := NewBootstrapper(logger, nodeCount)
 
-	nodes, err := bootstrapper.Bootstrap()
+	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
-	require.NotNil(t, nodes)
-	assert.Len(t, nodes, nodeCount)
+	require.NotNil(t, entries)
+	assert.Len(t, entries, nodeCount)
 
 	// Verify level 0 is properly sorted and linked
 	t.Run(
 		"Level0Ordering", func(t *testing.T) {
-			verifyLevel0Ordering(t, nodes)
+			verifyLevel0Ordering(t, entries)
 		},
 	)
 
 	// Verify neighbor consistency
 	t.Run(
 		"NeighborConsistency", func(t *testing.T) {
-			verifyNeighborConsistency(t, nodes)
+			verifyNeighborConsistency(t, entries)
 		},
 	)
 
 	// Verify membership vector prefixes
 	t.Run(
 		"MembershipVectorPrefixes", func(t *testing.T) {
-			verifyMembershipVectorPrefixes(t, nodes)
+			verifyMembershipVectorPrefixes(t, entries)
 		},
 	)
 }
@@ -80,63 +79,29 @@ func TestBootstrapMediumGraph(t *testing.T) {
 	logger := unittest.Logger(zerolog.InfoLevel)
 	bootstrapper := NewBootstrapper(logger, 100)
 
-	nodes, err := bootstrapper.Bootstrap()
+	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
-	require.NotNil(t, nodes)
-	assert.Len(t, nodes, nodeCount)
+	require.NotNil(t, entries)
+	assert.Len(t, entries, nodeCount)
 
 	// Verify level 0 is properly sorted and linked
 	t.Run(
 		"Level0Ordering", func(t *testing.T) {
-			verifyLevel0Ordering(t, nodes)
+			verifyLevel0Ordering(t, entries)
 		},
 	)
 
 	// Verify neighbor consistency
 	t.Run(
 		"NeighborConsistency", func(t *testing.T) {
-			verifyNeighborConsistency(t, nodes)
+			verifyNeighborConsistency(t, entries)
 		},
 	)
 
 	// Verify connected components at each level
 	t.Run(
 		"ConnectedComponents", func(t *testing.T) {
-			verifyConnectedComponents(t, nodes)
-		},
-	)
-}
-
-// TestBootstrapLargeGraph tests bootstrap with a large number of nodes
-func TestBootstrapLargeGraph(t *testing.T) {
-	nodeCount := 100
-
-	logger := unittest.Logger(zerolog.WarnLevel)
-	bootstrapper := NewBootstrapper(logger, nodeCount)
-
-	nodes, err := bootstrapper.Bootstrap()
-	require.NoError(t, err)
-	require.NotNil(t, nodes)
-	assert.Len(t, nodes, nodeCount)
-
-	// Verify basic properties
-	t.Run(
-		"Level0Ordering", func(t *testing.T) {
-			verifyLevel0Ordering(t, nodes)
-		},
-	)
-
-	// Verify neighbor consistency
-	t.Run(
-		"NeighborConsistency", func(t *testing.T) {
-			verifyNeighborConsistency(t, nodes)
-		},
-	)
-
-	// Verify connected components
-	t.Run(
-		"ConnectedComponents", func(t *testing.T) {
-			verifyConnectedComponents(t, nodes)
+			verifyConnectedComponents(t, entries)
 		},
 	)
 }
@@ -167,76 +132,76 @@ func TestBootstrapInvalidInput(t *testing.T) {
 }
 
 // verifyLevel0Ordering verifies that level 0 forms a sorted doubly-linked list
-func verifyLevel0Ordering(t *testing.T, nodes []*node.SkipGraphNode) {
+func verifyLevel0Ordering(t *testing.T, entries []*BootstrapEntry) {
 	t.Helper()
 
-	// Verify nodes are sorted by identifier
-	for i := 1; i < len(nodes); i++ {
-		idPrev := nodes[i-1].Identifier()
-		idCurr := nodes[i].Identifier()
+	// Verify entries are sorted by identifier
+	for i := 1; i < len(entries); i++ {
+		idPrev := entries[i-1].Identity.GetIdentifier()
+		idCurr := entries[i].Identity.GetIdentifier()
 		comp := idPrev.Compare(&idCurr)
 		assert.Equal(
 			t, model.CompareLess, comp.GetComparisonResult(),
-			"Nodes should be sorted in ascending order at index %d", i,
+			"Entries should be sorted in ascending order at index %d", i,
 		)
 	}
 
-	// Traverse from left to right and verify we visit all nodes
+	// Traverse from left to right and verify we visit all entries
 	visited := make(map[model.Identifier]bool)
-	current := nodes[0]
-	visited[current.Identifier()] = true
+	current := entries[0]
+	visited[current.Identity.GetIdentifier()] = true
 
 	for {
 		if !hasNeighbor(current, core.RightDirection, 0) {
 			break // Reached the end
 		}
 
-		rightNeighbor, _ := current.GetNeighbor(core.RightDirection, 0)
+		rightNeighbor, _ := current.LookupTable.GetEntry(core.RightDirection, 0)
 		if rightNeighbor != nil {
 			rightId := rightNeighbor.GetIdentifier()
-			assert.False(t, visited[rightId], "Should not visit same node twice")
+			assert.False(t, visited[rightId], "Should not visit same entry twice")
 			visited[rightId] = true
 
-			// Find the node with this identifier
+			// Find the entry with this identifier
 			found := false
-			for _, n := range nodes {
-				if n.Identifier() == rightId {
-					current = n
+			for _, e := range entries {
+				if e.Identity.GetIdentifier() == rightId {
+					current = e
 					found = true
 					break
 				}
 			}
-			assert.True(t, found, "Neighbor should exist in nodes array")
+			assert.True(t, found, "Neighbor should exist in entries array")
 		}
 	}
 
-	assert.Len(t, visited, len(nodes), "Should visit all nodes when traversing level 0")
+	assert.Len(t, visited, len(entries), "Should visit all entries when traversing level 0")
 }
 
 // verifyNeighborConsistency verifies that neighbor relationships are bidirectional
-func verifyNeighborConsistency(t *testing.T, nodes []*node.SkipGraphNode) {
+func verifyNeighborConsistency(t *testing.T, entries []*BootstrapEntry) {
 	t.Helper()
 
 	for level := core.Level(0); level <= core.MaxLookupTableLevel; level++ {
-		for _, n := range nodes {
+		for _, e := range entries {
 
 			// Check left neighbor consistency
-			// If node n has a left neighbor, verify that the left neighbor points back to n as its right neighbor
-			if hasNeighbor(n, core.LeftDirection, level) {
-				leftNeighbor, _ := n.GetNeighbor(core.LeftDirection, level)
+			// If entry e has a left neighbor, verify that the left neighbor points back to e as its right neighbor
+			if hasNeighbor(e, core.LeftDirection, level) {
+				leftNeighbor, _ := e.LookupTable.GetEntry(core.LeftDirection, level)
 				if leftNeighbor != nil {
 					leftId := leftNeighbor.GetIdentifier()
-					// Find the left neighbor node
-					for _, other := range nodes {
-						if other.Identifier() == leftId {
-							// Verify that the left neighbor points back to this node as its right neighbor
+					// Find the left neighbor entry
+					for _, other := range entries {
+						if other.Identity.GetIdentifier() == leftId {
+							// Verify that the left neighbor points back to this entry as its right neighbor
 							assert.True(
 								t, hasNeighbor(other, core.RightDirection, level), "Left neighbor should have a right neighbor at level %d", level,
 							)
-							rightOfLeft, _ := other.GetNeighbor(core.RightDirection, level)
+							rightOfLeft, _ := other.LookupTable.GetEntry(core.RightDirection, level)
 							require.NotNil(t, rightOfLeft, "Right neighbor of left should not be nil")
 							assert.Equal(
-								t, n.Identifier(), rightOfLeft.GetIdentifier(),
+								t, e.Identity.GetIdentifier(), rightOfLeft.GetIdentifier(),
 								"Bidirectional neighbor relationship broken at level %d", level,
 							)
 							break
@@ -246,22 +211,22 @@ func verifyNeighborConsistency(t *testing.T, nodes []*node.SkipGraphNode) {
 			}
 
 			// Check right neighbor consistency
-			if hasNeighbor(n, core.RightDirection, level) {
-				rightNeighbor, _ := n.GetNeighbor(core.RightDirection, level)
+			if hasNeighbor(e, core.RightDirection, level) {
+				rightNeighbor, _ := e.LookupTable.GetEntry(core.RightDirection, level)
 				if rightNeighbor != nil {
 					rightId := rightNeighbor.GetIdentifier()
-					// Find the right neighbor node
-					for _, other := range nodes {
-						if other.Identifier() == rightId {
-							// Verify that the right neighbor points back to this node as its left neighbor
+					// Find the right neighbor entry
+					for _, other := range entries {
+						if other.Identity.GetIdentifier() == rightId {
+							// Verify that the right neighbor points back to this entry as its left neighbor
 							assert.True(
 								t, hasNeighbor(other, core.LeftDirection, level),
 								"Right neighbor should have a left neighbor at level %d", level,
 							)
-							leftOfRight, _ := other.GetNeighbor(core.LeftDirection, level)
+							leftOfRight, _ := other.LookupTable.GetEntry(core.LeftDirection, level)
 							require.NotNil(t, leftOfRight, "Left neighbor of right should not be nil")
 							assert.Equal(
-								t, n.Identifier(), leftOfRight.GetIdentifier(),
+								t, e.Identity.GetIdentifier(), leftOfRight.GetIdentifier(),
 								"Bidirectional neighbor relationship broken at level %d", level,
 							)
 							break
@@ -274,31 +239,31 @@ func verifyNeighborConsistency(t *testing.T, nodes []*node.SkipGraphNode) {
 }
 
 // verifyMembershipVectorPrefixes verifies that neighbors at each level have matching membership vector prefixes
-func verifyMembershipVectorPrefixes(t *testing.T, nodes []*node.SkipGraphNode) {
+func verifyMembershipVectorPrefixes(t *testing.T, entries []*BootstrapEntry) {
 	t.Helper()
 
 	for level := core.Level(1); level <= core.MaxLookupTableLevel; level++ {
-		for _, n := range nodes {
-			nodeMV := n.MembershipVector()
+		for _, e := range entries {
+			entryMV := e.Identity.GetMembershipVector()
 
 			// Check left neighbor
-			// If node n has a left neighbor, verify that the left neighbor shares at least 'level' bits of prefix
-			if hasNeighbor(n, core.LeftDirection, level) {
-				leftNeighbor, _ := n.GetNeighbor(core.LeftDirection, level)
+			// If entry e has a left neighbor, verify that the left neighbor shares at least 'level' bits of prefix
+			if hasNeighbor(e, core.LeftDirection, level) {
+				leftNeighbor, _ := e.LookupTable.GetEntry(core.LeftDirection, level)
 				if leftNeighbor != nil {
 					leftMV := leftNeighbor.GetMembershipVector()
-					commonPrefix := nodeMV.CommonPrefix(leftMV)
+					commonPrefix := entryMV.CommonPrefix(leftMV)
 					require.GreaterOrEqual(t, commonPrefix, int(level), "Left neighbor at level %d should have at least %d bits common prefix, got %d bits", level, level, commonPrefix)
 				}
 			}
 
 			// Check right neighbor
-			// If node n has a right neighbor, verify that the right neighbor shares at least 'level' bits of prefix
-			if hasNeighbor(n, core.RightDirection, level) {
-				rightNeighbor, _ := n.GetNeighbor(core.RightDirection, level)
+			// If entry e has a right neighbor, verify that the right neighbor shares at least 'level' bits of prefix
+			if hasNeighbor(e, core.RightDirection, level) {
+				rightNeighbor, _ := e.LookupTable.GetEntry(core.RightDirection, level)
 				if rightNeighbor != nil {
 					rightMV := rightNeighbor.GetMembershipVector()
-					commonPrefix := nodeMV.CommonPrefix(rightMV)
+					commonPrefix := entryMV.CommonPrefix(rightMV)
 					require.GreaterOrEqual(t, commonPrefix, int(level), "Right neighbor at level %d should have at least %d bits common prefix, got %d bits", level, level, commonPrefix)
 				}
 			}
@@ -306,72 +271,67 @@ func verifyMembershipVectorPrefixes(t *testing.T, nodes []*node.SkipGraphNode) {
 	}
 }
 
-// verifyConnectedComponents verifies that nodes with matching prefixes form connected components
-func verifyConnectedComponents(t *testing.T, nodes []*node.SkipGraphNode) {
+// verifyConnectedComponents verifies that entries with matching prefixes form connected components
+func verifyConnectedComponents(t *testing.T, entries []*BootstrapEntry) {
 	t.Helper()
 
+	// Create identifier to index map once for O(1) lookups
+	idToIndex := make(map[model.Identifier]int)
+	for i, entry := range entries {
+		idToIndex[entry.Identity.GetIdentifier()] = i
+	}
+
 	for level := core.Level(1); level <= core.MaxLookupTableLevel; level++ {
-		// Group nodes by their membership vector prefix at this level
-		prefixGroups := make(map[string][]*node.SkipGraphNode)
-		for _, n := range nodes {
-			mv := n.MembershipVector()
+		// Group entries by their membership vector prefix at this level
+		prefixGroups := make(map[string][]*BootstrapEntry)
+		for _, e := range entries {
+			mv := e.Identity.GetMembershipVector()
 			prefix, err := mv.GetPrefixBits(int(level))
 			require.NoError(t, err)
-			prefixGroups[prefix] = append(prefixGroups[prefix], n)
+			prefixGroups[prefix] = append(prefixGroups[prefix], e)
 		}
 
 		// For each group, verify they form a connected component
 		for prefix, group := range prefixGroups {
 			if len(group) <= 1 {
-				continue // Single node is trivially connected
+				continue // Single entry is trivially connected
 			}
 
-			// Pick the first node and verify all others are reachable
-			start := group[0]
+			// Pick the first entry and verify all others are reachable
+			startId := group[0].Identity.GetIdentifier()
 			reachable := make(map[model.Identifier]bool)
-			dfsReachable(nodes, start, level, reachable)
+			dfsReachable(entries, startId, level, reachable, idToIndex)
 
-			for _, n := range group {
+			for _, e := range group {
 				assert.True(
-					t, reachable[n.Identifier()],
-					"Node with prefix %s should be reachable at level %d", prefix, level,
+					t, reachable[e.Identity.GetIdentifier()],
+					"Entry with prefix %s should be reachable at level %d", prefix, level,
 				)
 			}
 		}
 	}
 }
 
-// dfsReachable performs DFS to find all reachable nodes from a starting node at a given level
-func dfsReachable(nodes []*node.SkipGraphNode, start *node.SkipGraphNode, level core.Level, visited map[model.Identifier]bool) {
-	// Create identifier to index map for O(1) lookups
-	idToIndex := make(map[model.Identifier]int)
-	for i, n := range nodes {
-		idToIndex[n.Identifier()] = i
+// dfsReachable performs DFS to find all reachable entries from a starting identifier at a given level.
+// The idToIndex map is passed in to avoid redundant map creation on each call.
+func dfsReachable(entries []*BootstrapEntry, startId model.Identifier, level core.Level, visited map[model.Identifier]bool, idToIndex map[model.Identifier]int) {
+	// Find the starting entry's index
+	startIndex, exists := idToIndex[startId]
+	if !exists {
+		return // Entry not found
 	}
 
-	// Find the starting node's index
-	startIndex := -1
-	for i, n := range nodes {
-		if n.Identifier() == start.Identifier() {
-			startIndex = i
-			break
-		}
-	}
-	if startIndex == -1 {
-		return // Node not found in array
-	}
-
-	// Convert visited map from Identifier->bool to int->bool for TraverseConnectedNodes
+	// Convert visited map from Identifier->bool to int->bool for TraverseConnectedEntries
 	visitedIndices := make(map[int]bool)
 
 	// Use the consolidated traversal function
 	logger := unittest.Logger(zerolog.TraceLevel)
-	bootstrapper := NewBootstrapper(logger, len(nodes))
-	bootstrapper.TraverseConnectedNodes(nodes, startIndex, level, visitedIndices, idToIndex)
+	bootstrapper := NewBootstrapper(logger, len(entries))
+	bootstrapper.TraverseConnectedEntries(entries, startIndex, level, visitedIndices, idToIndex)
 
 	// Convert visitedIndices back to visited identifiers
 	for index := range visitedIndices {
-		visited[nodes[index].Identifier()] = true
+		visited[entries[index].Identity.GetIdentifier()] = true
 	}
 }
 
@@ -381,14 +341,14 @@ func TestTraversalWithNodeReference(t *testing.T) {
 	logger := unittest.Logger(zerolog.InfoLevel)
 	bootstrapper := NewBootstrapper(logger, nodeCount)
 
-	nodes, err := bootstrapper.Bootstrap()
+	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
 
-	// Create node references for testing
-	nodeRefs := make([]internal.NodeReference, len(nodes))
-	for i, n := range nodes {
-		nodeRefs[i] = internal.NodeReference{
-			Identifier: n.Identifier(),
+	// Create entry references for testing
+	entryRefs := make([]internal.NodeReference, len(entries))
+	for i, e := range entries {
+		entryRefs[i] = internal.NodeReference{
+			Identifier: e.Identity.GetIdentifier(),
 			ArrayIndex: i,
 		}
 	}
@@ -396,15 +356,15 @@ func TestTraversalWithNodeReference(t *testing.T) {
 	// Test traversal at level 0
 	t.Run(
 		"TraverseLevel0", func(t *testing.T) {
-			traversed := traverseLevel(nodes, nodeRefs[0], core.Level(0))
-			assert.Len(t, traversed, len(nodes), "Should traverse all nodes at level 0")
+			traversed := traverseLevel(entries, entryRefs[0], core.Level(0))
+			assert.Len(t, traversed, len(entries), "Should traverse all entries at level 0")
 
-			// Verify order; identifiers at level zero should be in acsending order
+			// Verify order; identifiers at level zero should be in ascending order
 			for i := 1; i < len(traversed); i++ {
 				idPrev := traversed[i-1].Identifier
 				idCurr := traversed[i].Identifier
 				comp := idPrev.Compare(&idCurr)
-				assert.Equal(t, model.CompareLess, comp.GetComparisonResult(), "Nodes should be in sorted order")
+				assert.Equal(t, model.CompareLess, comp.GetComparisonResult(), "Entries should be in sorted order")
 			}
 		},
 	)
@@ -412,32 +372,32 @@ func TestTraversalWithNodeReference(t *testing.T) {
 	// Test traversal at higher levels
 	t.Run("TraverseHigherLevels", func(t *testing.T) {
 		for level := core.Level(1); level <= core.MaxLookupTableLevel; level++ {
-			// Find a node that has neighbors at this level
+			// Find an entry that has neighbors at this level
 			var startRef internal.NodeReference
 			hasNeighborAtLevel := false
-			for i, n := range nodes {
-				if hasNeighbor(n, core.RightDirection, level) {
-					startRef = nodeRefs[i]
+			for i, e := range entries {
+				if hasNeighbor(e, core.RightDirection, level) {
+					startRef = entryRefs[i]
 					hasNeighborAtLevel = true
 					break
 				}
 			}
 
 			if hasNeighborAtLevel {
-				traversed := traverseLevel(nodes, startRef, level)
-				require.NotEmpty(t, traversed, "Should traverse at least one node at level %d", level)
+				traversed := traverseLevel(entries, startRef, level)
+				require.NotEmpty(t, traversed, "Should traverse at least one entry at level %d", level)
 
-				// Verify all traversed nodes have matching prefix
-				startMV := nodes[startRef.ArrayIndex].MembershipVector()
+				// Verify all traversed entries have matching prefix
+				startMV := entries[startRef.ArrayIndex].Identity.GetMembershipVector()
 				prefix, err := startMV.GetPrefixBits(int(level))
 				require.NoError(t, err)
 				for _, ref := range traversed {
-					nodeMV := nodes[ref.ArrayIndex].MembershipVector()
-					nodePrefix, err := nodeMV.GetPrefixBits(int(level))
+					entryMV := entries[ref.ArrayIndex].Identity.GetMembershipVector()
+					entryPrefix, err := entryMV.GetPrefixBits(int(level))
 					require.NoError(t, err)
 					assert.Equal(
-						t, prefix, nodePrefix,
-						"All traversed nodes should have same prefix at level %d", level,
+						t, prefix, entryPrefix,
+						"All traversed entries should have same prefix at level %d", level,
 					)
 				}
 			}
@@ -446,10 +406,10 @@ func TestTraversalWithNodeReference(t *testing.T) {
 	)
 }
 
-// traverseLevel traverses all connected nodes at a given level starting from a node reference
-func traverseLevel(nodes []*node.SkipGraphNode, start internal.NodeReference, level core.Level) []internal.NodeReference {
+// traverseLevel traverses all connected entries at a given level starting from a node reference
+func traverseLevel(entries []*BootstrapEntry, start internal.NodeReference, level core.Level) []internal.NodeReference {
 	visited := make(map[model.Identifier]bool)
-	result := []internal.NodeReference{}
+	var result []internal.NodeReference
 
 	// Traverse left
 	current := start
@@ -459,15 +419,15 @@ func traverseLevel(nodes []*node.SkipGraphNode, start internal.NodeReference, le
 		}
 		visited[current.Identifier] = true
 
-		n := nodes[current.ArrayIndex]
-		if hasNeighbor(n, core.LeftDirection, level) {
-			leftNeighbor, _ := n.GetNeighbor(core.LeftDirection, level)
+		entry := entries[current.ArrayIndex]
+		if hasNeighbor(entry, core.LeftDirection, level) {
+			leftNeighbor, _ := entry.LookupTable.GetEntry(core.LeftDirection, level)
 			if leftNeighbor != nil {
 				leftId := leftNeighbor.GetIdentifier()
 				// Find the array index of this neighbor
 				found := false
-				for i, other := range nodes {
-					if other.Identifier() == leftId {
+				for i, other := range entries {
+					if other.Identity.GetIdentifier() == leftId {
 						current = internal.NodeReference{
 							Identifier: leftId,
 							ArrayIndex: i,
@@ -487,7 +447,7 @@ func traverseLevel(nodes []*node.SkipGraphNode, start internal.NodeReference, le
 		}
 	}
 
-	// Now traverse right from the leftmost node
+	// Now traverse right from the leftmost entry
 	leftmost := current
 	current = leftmost
 	for {
@@ -496,9 +456,9 @@ func traverseLevel(nodes []*node.SkipGraphNode, start internal.NodeReference, le
 		}
 		result = append(result, current)
 
-		n := nodes[current.ArrayIndex]
-		if hasNeighbor(n, core.RightDirection, level) {
-			rightNeighbor, _ := n.GetNeighbor(core.RightDirection, level)
+		entry := entries[current.ArrayIndex]
+		if hasNeighbor(entry, core.RightDirection, level) {
+			rightNeighbor, _ := entry.LookupTable.GetEntry(core.RightDirection, level)
 			if rightNeighbor != nil {
 				rightId := rightNeighbor.GetIdentifier()
 				if visited[rightId] {
@@ -506,8 +466,8 @@ func traverseLevel(nodes []*node.SkipGraphNode, start internal.NodeReference, le
 				}
 				// Find the array index of this neighbor
 				found := false
-				for i, other := range nodes {
-					if other.Identifier() == rightId {
+				for i, other := range entries {
+					if other.Identity.GetIdentifier() == rightId {
 						current = internal.NodeReference{
 							Identifier: rightId,
 							ArrayIndex: i,
@@ -548,14 +508,14 @@ func TestConnectedComponentsConstraint(t *testing.T) {
 			logger := unittest.Logger(zerolog.WarnLevel)
 			bootstrapper := NewBootstrapper(logger, tc.nodeCount)
 
-			nodes, err := bootstrapper.Bootstrap()
+			entries, err := bootstrapper.Bootstrap()
 			require.NoError(t, err)
-			require.NotNil(t, nodes)
-			assert.Len(t, nodes, tc.nodeCount)
+			require.NotNil(t, entries)
+			assert.Len(t, entries, tc.nodeCount)
 
 			// For each level, verify that the number of connected components is at most 2^i
 			for level := core.Level(0); level <= tc.maxLevel && level < core.MaxLookupTableLevel; level++ {
-				componentCount := bootstrapper.CountConnectedComponents(nodes, level)
+				componentCount := bootstrapper.CountConnectedComponents(entries, level)
 				maxComponents := 1 << level // 2^level
 
 				assert.LessOrEqual(
@@ -577,13 +537,13 @@ func TestConnectedComponentsDistribution(t *testing.T) {
 	logger := unittest.Logger(zerolog.InfoLevel)
 	bootstrapper := NewBootstrapper(logger, nodeCount)
 
-	nodes, err := bootstrapper.Bootstrap()
+	entries, err := bootstrapper.Bootstrap()
 	require.NoError(t, err)
 
 	// Collect statistics about connected components at each level
 	stats := make(map[core.Level]int)
 	for level := core.Level(0); level <= 10 && level < core.MaxLookupTableLevel; level++ {
-		componentCount := bootstrapper.CountConnectedComponents(nodes, level)
+		componentCount := bootstrapper.CountConnectedComponents(entries, level)
 		stats[level] = componentCount
 	}
 

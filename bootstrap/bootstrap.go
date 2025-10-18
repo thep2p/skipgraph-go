@@ -8,7 +8,6 @@ import (
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/lookup"
 	"github.com/thep2p/skipgraph-go/core/model"
-	"github.com/thep2p/skipgraph-go/node"
 )
 
 const (
@@ -28,6 +27,14 @@ const (
 	maxIdentifierGenerationRetries = 1000
 )
 
+// BootstrapEntry represents a bootstrapped skip graph entry containing
+// the node's identity and its lookup table. This allows users to create
+// SkipGraphNode instances with their own network configuration.
+type BootstrapEntry struct {
+	Identity    model.Identity
+	LookupTable core.MutableLookupTable
+}
+
 // Bootstrapper encapsulates all bootstrap logic for creating a skip graph with centralized insert.
 // This ensures bootstrap logic is only used for bootstrapping and not borrowed for other purposes.
 type Bootstrapper struct {
@@ -44,8 +51,9 @@ func NewBootstrapper(logger zerolog.Logger, numNodes int) *Bootstrapper {
 }
 
 // Bootstrap creates a skip graph with the specified number of nodes using centralized insert (Algorithm 2).
-// Returns an array of nodes where each node's lookup table contains references to other nodes in the array.
-func (b *Bootstrapper) Bootstrap() ([]*node.SkipGraphNode, error) {
+// Returns an array of pointers to BootstrapEntry where each entry's lookup table contains references to other entries.
+// Users can create SkipGraphNode instances from these entries with their own network configuration.
+func (b *Bootstrapper) Bootstrap() ([]*BootstrapEntry, error) {
 	if b.numNodes <= 0 {
 		return nil, fmt.Errorf("number of nodes must be positive, got %d", b.numNodes)
 	}
@@ -60,16 +68,33 @@ func (b *Bootstrapper) Bootstrap() ([]*node.SkipGraphNode, error) {
 	}
 
 	// Insert each entry into the skip graph structure using Algorithm 2 of the Skip Graphs paper.
-	nodes, err := entries.InsertAll()
+	internalEntries, err := entries.InsertAll()
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert entries into skip graph: %w", err)
 	}
 
+	// Convert internal entries to public BootstrapEntry pointers
+	result := make([]*BootstrapEntry, len(internalEntries))
+	for i, entry := range internalEntries {
+		// Defensive checks - these should never fail, but validate to catch bugs early
+		if entry == nil {
+			return nil, fmt.Errorf("internal entry at index %d is nil - indicates serious bug in bootstrap logic", i)
+		}
+		if entry.LookupTable == nil {
+			return nil, fmt.Errorf("lookup table is nil for entry at index %d - indicates serious bug in bootstrap logic", i)
+		}
+
+		result[i] = &BootstrapEntry{
+			Identity:    entry.Identity,
+			LookupTable: entry.LookupTable,
+		}
+	}
+
 	b.logger.Info().
-		Int("nodes", len(nodes)).
+		Int("entries", len(result)).
 		Msg("bootstrap completed")
 
-	return nodes, nil
+	return result, nil
 }
 
 // createBootstrapEntries creates numNodes bootstrap entries with unique identifiers and random membership vectors
@@ -153,59 +178,59 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 	return entries, nil
 }
 
-// TraverseConnectedNodes performs a depth-first traversal of connected nodes at a given level.
-// It starts from the specified node and marks all reachable nodes as visited.
-// The idToIndex map provides O(1) lookup from identifier to node index.
+// TraverseConnectedEntries performs a depth-first traversal of connected entries at a given level.
+// It starts from the specified entry and marks all reachable entries as visited.
+// The idToIndex map provides O(1) lookup from identifier to entry index.
 // This is a reusable DFS function used by both CountConnectedComponents and test utilities.
-func (b *Bootstrapper) TraverseConnectedNodes(
-	nodes []*node.SkipGraphNode,
+func (b *Bootstrapper) TraverseConnectedEntries(
+	entries []*BootstrapEntry,
 	startIndex int,
 	level core.Level,
 	visited map[int]bool,
 	idToIndex map[model.Identifier]int,
 ) {
 	visited[startIndex] = true
-	currentNode := nodes[startIndex]
+	currentEntry := entries[startIndex]
 
 	// Helper function to visit a neighbor
 	visitNeighbor := func(neighbor *model.Identity) {
 		if neighbor != nil {
 			neighborId := neighbor.GetIdentifier()
 			if neighborIndex, exists := idToIndex[neighborId]; exists && !visited[neighborIndex] {
-				b.TraverseConnectedNodes(nodes, neighborIndex, level, visited, idToIndex)
+				b.TraverseConnectedEntries(entries, neighborIndex, level, visited, idToIndex)
 			}
 		}
 	}
 
 	// Check left neighbor
-	if leftNeighbor, err := currentNode.GetNeighbor(core.LeftDirection, level); err == nil {
+	if leftNeighbor, err := currentEntry.LookupTable.GetEntry(core.LeftDirection, level); err == nil {
 		visitNeighbor(leftNeighbor)
 	}
 
 	// Check right neighbor
-	if rightNeighbor, err := currentNode.GetNeighbor(core.RightDirection, level); err == nil {
+	if rightNeighbor, err := currentEntry.LookupTable.GetEntry(core.RightDirection, level); err == nil {
 		visitNeighbor(rightNeighbor)
 	}
 }
 
 // CountConnectedComponents counts the number of connected components at a given level.
 // This is useful for verifying skip graph properties during testing.
-func (b *Bootstrapper) CountConnectedComponents(nodes []*node.SkipGraphNode, level core.Level) int {
+func (b *Bootstrapper) CountConnectedComponents(entries []*BootstrapEntry, level core.Level) int {
 	// Create identifier to index map for O(1) lookups
 	idToIndex := make(map[model.Identifier]int)
-	for i, n := range nodes {
-		idToIndex[n.Identifier()] = i
+	for i, entry := range entries {
+		idToIndex[entry.Identity.GetIdentifier()] = i
 	}
 
 	visited := make(map[int]bool)
 	components := 0
 
-	for i := range nodes {
+	for i := range entries {
 		if !visited[i] {
 			// Start a new component
 			components++
-			// DFS to mark all nodes in this component
-			b.TraverseConnectedNodes(nodes, i, level, visited, idToIndex)
+			// DFS to mark all entries in this component
+			b.TraverseConnectedEntries(entries, i, level, visited, idToIndex)
 		}
 	}
 

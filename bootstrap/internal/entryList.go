@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/model"
-	"github.com/thep2p/skipgraph-go/node"
 	"sort"
 )
 
@@ -56,19 +55,16 @@ func (e *SortedEntryList) sort() {
 }
 
 // InsertAll inserts all entries into the skip graph using the insertion algorithm.
+// Returns a slice of pointers to Entry instances representing the bootstrapped skip graph structure.
 // Returns an error if any insertion fails; any error is fatal and indicates a serious bug in the bootstrap logic; crash if it occurs.
-func (e *SortedEntryList) InsertAll() ([]*node.SkipGraphNode, error) {
+func (e *SortedEntryList) InsertAll() ([]*Entry, error) {
 	for i := 0; i < e.Len(); i++ {
 		if err := e.insert(i); err != nil {
 			return nil, fmt.Errorf("failed to insert entry at index %d: %w", i, err)
 		}
 	}
 
-	nodes := make([]*node.SkipGraphNode, e.Len())
-	for i, entry := range e.list {
-		nodes[i] = node.NewSkipGraphNode(entry.Identity, entry.LookupTable)
-	}
-	return nodes, nil
+	return e.list, nil
 }
 
 // Insert implements Algorithm 2 insert operation (ref. Skip Graph paper) for a single bootstrap entry
@@ -170,6 +166,7 @@ func (e *SortedEntryList) leftNeighborIndexAtLevel(entryIndex int, level int) (i
 	return -1, false
 }
 
+// rightNeighborIndexAtLevel finds the right neighbor of the entry at entryIndex at the given level.
 func (e *SortedEntryList) rightNeighborIndexAtLevel(entryIndex int, level int) (int, bool) {
 	entry := e.Get(entryIndex)
 	entryMV := entry.Identity.GetMembershipVector()

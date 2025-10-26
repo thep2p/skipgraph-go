@@ -110,57 +110,25 @@ func TestRandomDirectionFixture(t *testing.T) {
 
 // TestRandomLookupTable tests the RandomLookupTable function.
 func TestRandomLookupTable(t *testing.T) {
-	t.Run("generates valid lookup table without constraints", func(t *testing.T) {
+	t.Run("generates full lookup table without constraints", func(t *testing.T) {
 		// Generate multiple lookup tables to ensure they're all valid
 		for i := 0; i < 10; i++ {
 			table := RandomLookupTable(t)
 			require.NotNil(t, table, "lookup table should not be nil")
 
-			// Try to read from all levels and directions to verify table is valid
+			// Verify all levels have neighbors in both directions
 			for level := types.Level(0); level < core.MaxLookupTableLevel; level++ {
-				// These calls should not panic or return errors
+				// Left neighbor should exist
 				leftEntry, err := table.GetEntry(types.DirectionLeft, level)
 				require.NoError(t, err, "GetEntry should not return error for valid level")
+				require.NotNil(t, leftEntry, "left entry should exist at level %d", level)
 
+				// Right neighbor should exist
 				rightEntry, err := table.GetEntry(types.DirectionRight, level)
 				require.NoError(t, err, "GetEntry should not return error for valid level")
-
-				// Entries can be nil (no neighbor at this level) or non-nil (has neighbor)
-				// Both are valid states
-				_ = leftEntry
-				_ = rightEntry
+				require.NotNil(t, rightEntry, "right entry should exist at level %d", level)
 			}
 		}
-	})
-
-	t.Run("generates lookup table with some neighbors", func(t *testing.T) {
-		// Over multiple generations, we should see tables with neighbors
-		foundTableWithNeighbors := false
-
-		for i := 0; i < 20; i++ {
-			table := RandomLookupTable(t)
-
-			// Check if any level has a neighbor
-			for level := types.Level(0); level < core.MaxLookupTableLevel; level++ {
-				leftEntry, err := table.GetEntry(types.DirectionLeft, level)
-				require.NoError(t, err)
-
-				rightEntry, err := table.GetEntry(types.DirectionRight, level)
-				require.NoError(t, err)
-
-				if leftEntry != nil || rightEntry != nil {
-					foundTableWithNeighbors = true
-					break
-				}
-			}
-
-			if foundTableWithNeighbors {
-				break
-			}
-		}
-
-		// With 20 tables, we should have at least one with neighbors
-		require.True(t, foundTableWithNeighbors, "should generate at least one table with neighbors")
 	})
 
 	t.Run("WithIdsGreaterThan generates all IDs greater than constraint", func(t *testing.T) {
@@ -177,24 +145,22 @@ func TestRandomLookupTable(t *testing.T) {
 				// Check left neighbor
 				leftEntry, err := table.GetEntry(types.DirectionLeft, level)
 				require.NoError(t, err)
-				if leftEntry != nil {
-					id := leftEntry.GetIdentifier()
-					comparison := id.Compare(&constraintID)
-					require.Equal(t, "compare-greater", comparison.GetComparisonResult(),
-						"left neighbor ID at level %d should be greater than constraint: %s",
-						level, comparison.DebugInfo())
-				}
+				require.NotNil(t, leftEntry, "left entry should exist at level %d", level)
+				id := leftEntry.GetIdentifier()
+				comparison := id.Compare(&constraintID)
+				require.Equal(t, "compare-greater", comparison.GetComparisonResult(),
+					"left neighbor ID at level %d should be greater than constraint: %s",
+					level, comparison.DebugInfo())
 
 				// Check right neighbor
 				rightEntry, err := table.GetEntry(types.DirectionRight, level)
 				require.NoError(t, err)
-				if rightEntry != nil {
-					id := rightEntry.GetIdentifier()
-					comparison := id.Compare(&constraintID)
-					require.Equal(t, "compare-greater", comparison.GetComparisonResult(),
-						"right neighbor ID at level %d should be greater than constraint: %s",
-						level, comparison.DebugInfo())
-				}
+				require.NotNil(t, rightEntry, "right entry should exist at level %d", level)
+				id = rightEntry.GetIdentifier()
+				comparison = id.Compare(&constraintID)
+				require.Equal(t, "compare-greater", comparison.GetComparisonResult(),
+					"right neighbor ID at level %d should be greater than constraint: %s",
+					level, comparison.DebugInfo())
 			}
 		}
 	})
@@ -213,24 +179,22 @@ func TestRandomLookupTable(t *testing.T) {
 				// Check left neighbor
 				leftEntry, err := table.GetEntry(types.DirectionLeft, level)
 				require.NoError(t, err)
-				if leftEntry != nil {
-					id := leftEntry.GetIdentifier()
-					comparison := id.Compare(&constraintID)
-					require.Equal(t, "compare-less", comparison.GetComparisonResult(),
-						"left neighbor ID at level %d should be less than constraint: %s",
-						level, comparison.DebugInfo())
-				}
+				require.NotNil(t, leftEntry, "left entry should exist at level %d", level)
+				id := leftEntry.GetIdentifier()
+				comparison := id.Compare(&constraintID)
+				require.Equal(t, "compare-less", comparison.GetComparisonResult(),
+					"left neighbor ID at level %d should be less than constraint: %s",
+					level, comparison.DebugInfo())
 
 				// Check right neighbor
 				rightEntry, err := table.GetEntry(types.DirectionRight, level)
 				require.NoError(t, err)
-				if rightEntry != nil {
-					id := rightEntry.GetIdentifier()
-					comparison := id.Compare(&constraintID)
-					require.Equal(t, "compare-less", comparison.GetComparisonResult(),
-						"right neighbor ID at level %d should be less than constraint: %s",
-						level, comparison.DebugInfo())
-				}
+				require.NotNil(t, rightEntry, "right entry should exist at level %d", level)
+				id = rightEntry.GetIdentifier()
+				comparison = id.Compare(&constraintID)
+				require.Equal(t, "compare-less", comparison.GetComparisonResult(),
+					"right neighbor ID at level %d should be less than constraint: %s",
+					level, comparison.DebugInfo())
 			}
 		}
 	})
@@ -261,40 +225,38 @@ func TestRandomLookupTable(t *testing.T) {
 				// Check left neighbor
 				leftEntry, err := table.GetEntry(types.DirectionLeft, level)
 				require.NoError(t, err)
-				if leftEntry != nil {
-					id := leftEntry.GetIdentifier()
+				require.NotNil(t, leftEntry, "left entry should exist at level %d", level)
+				id := leftEntry.GetIdentifier()
 
-					// Check greater than minID
-					minComparison := id.Compare(&minID)
-					require.Equal(t, "compare-greater", minComparison.GetComparisonResult(),
-						"left neighbor ID at level %d should be greater than minID: %s",
-						level, minComparison.DebugInfo())
+				// Check greater than minID
+				minComparison := id.Compare(&minID)
+				require.Equal(t, "compare-greater", minComparison.GetComparisonResult(),
+					"left neighbor ID at level %d should be greater than minID: %s",
+					level, minComparison.DebugInfo())
 
-					// Check less than maxID
-					maxComparison := id.Compare(&maxID)
-					require.Equal(t, "compare-less", maxComparison.GetComparisonResult(),
-						"left neighbor ID at level %d should be less than maxID: %s",
-						level, maxComparison.DebugInfo())
-				}
+				// Check less than maxID
+				maxComparison := id.Compare(&maxID)
+				require.Equal(t, "compare-less", maxComparison.GetComparisonResult(),
+					"left neighbor ID at level %d should be less than maxID: %s",
+					level, maxComparison.DebugInfo())
 
 				// Check right neighbor
 				rightEntry, err := table.GetEntry(types.DirectionRight, level)
 				require.NoError(t, err)
-				if rightEntry != nil {
-					id := rightEntry.GetIdentifier()
+				require.NotNil(t, rightEntry, "right entry should exist at level %d", level)
+				id = rightEntry.GetIdentifier()
 
-					// Check greater than minID
-					minComparison := id.Compare(&minID)
-					require.Equal(t, "compare-greater", minComparison.GetComparisonResult(),
-						"right neighbor ID at level %d should be greater than minID: %s",
-						level, minComparison.DebugInfo())
+				// Check greater than minID
+				minComparison = id.Compare(&minID)
+				require.Equal(t, "compare-greater", minComparison.GetComparisonResult(),
+					"right neighbor ID at level %d should be greater than minID: %s",
+					level, minComparison.DebugInfo())
 
-					// Check less than maxID
-					maxComparison := id.Compare(&maxID)
-					require.Equal(t, "compare-less", maxComparison.GetComparisonResult(),
-						"right neighbor ID at level %d should be less than maxID: %s",
-						level, maxComparison.DebugInfo())
-				}
+				// Check less than maxID
+				maxComparison = id.Compare(&maxID)
+				require.Equal(t, "compare-less", maxComparison.GetComparisonResult(),
+					"right neighbor ID at level %d should be less than maxID: %s",
+					level, maxComparison.DebugInfo())
 			}
 		}
 	})
@@ -303,37 +265,36 @@ func TestRandomLookupTable(t *testing.T) {
 		table := RandomLookupTable(t)
 		require.NotNil(t, table)
 
-		// Check that any neighbors have complete identities
+		// Check that all neighbors have complete identities
 		for level := types.Level(0); level < core.MaxLookupTableLevel; level++ {
 			leftEntry, err := table.GetEntry(types.DirectionLeft, level)
 			require.NoError(t, err)
-			if leftEntry != nil {
-				// Identity should have non-zero ID, membership vector, and address
-				id := leftEntry.GetIdentifier()
-				memVec := leftEntry.GetMembershipVector()
-				addr := leftEntry.GetAddress()
+			require.NotNil(t, leftEntry, "left entry should exist at level %d", level)
 
-				// Verify these are not zero values (at least some bytes should be non-zero)
-				// We can't test for complete randomness, but we can check they exist
-				_ = id
-				_ = memVec
-				require.NotEmpty(t, addr.HostName(), "address should have hostname")
-				require.NotEmpty(t, addr.Port(), "address should have port")
-			}
+			// Identity should have non-zero ID, membership vector, and address
+			id := leftEntry.GetIdentifier()
+			memVec := leftEntry.GetMembershipVector()
+			addr := leftEntry.GetAddress()
+
+			// Verify these are not zero values
+			_ = id
+			_ = memVec
+			require.NotEmpty(t, addr.HostName(), "address should have hostname")
+			require.NotEmpty(t, addr.Port(), "address should have port")
 
 			rightEntry, err := table.GetEntry(types.DirectionRight, level)
 			require.NoError(t, err)
-			if rightEntry != nil {
-				// Identity should have non-zero ID, membership vector, and address
-				id := rightEntry.GetIdentifier()
-				memVec := rightEntry.GetMembershipVector()
-				addr := rightEntry.GetAddress()
+			require.NotNil(t, rightEntry, "right entry should exist at level %d", level)
 
-				_ = id
-				_ = memVec
-				require.NotEmpty(t, addr.HostName(), "address should have hostname")
-				require.NotEmpty(t, addr.Port(), "address should have port")
-			}
+			// Identity should have non-zero ID, membership vector, and address
+			id = rightEntry.GetIdentifier()
+			memVec = rightEntry.GetMembershipVector()
+			addr = rightEntry.GetAddress()
+
+			_ = id
+			_ = memVec
+			require.NotEmpty(t, addr.HostName(), "address should have hostname")
+			require.NotEmpty(t, addr.Port(), "address should have port")
 		}
 	})
 }

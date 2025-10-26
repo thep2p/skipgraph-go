@@ -81,7 +81,7 @@ func IdentifierFixture(t *testing.T, opts ...IdentifierFixtureOption) model.Iden
 
 	// If we have constraints, generate an ID that satisfies them
 	if config.minID != nil || config.maxID != nil {
-		maxAttempts := 1000
+		maxAttempts := 10000
 		for attempt := 0; attempt < maxAttempts; attempt++ {
 			id := generateRandomIdentifier(t)
 
@@ -258,10 +258,10 @@ func WithIdsLessThan(id model.Identifier) IdentifierFixtureOption {
 	}
 }
 
-// RandomLookupTable generates a random lookup table with neighbors at random levels.
+// RandomLookupTable generates a full lookup table with neighbors at all levels and directions.
 // All neighbors have random identities (ID, membership vector, and address).
-// The lookup table will have a random number of neighbors (0 to MaxLookupTableLevel)
-// at random levels in random directions.
+// The lookup table will have entries at every level (0 to MaxLookupTableLevel-1) in both
+// left and right directions, ensuring a complete table structure.
 //
 // Options:
 //   - WithIdsGreaterThan: constrains all generated IDs to be greater than the specified ID
@@ -272,7 +272,7 @@ func WithIdsLessThan(id model.Identifier) IdentifierFixtureOption {
 //   - opts: optional configuration options
 //
 // Returns:
-//   - A pointer to a randomly generated lookup.Table
+//   - A pointer to a fully populated lookup.Table
 //
 // Example:
 //
@@ -289,25 +289,27 @@ func WithIdsLessThan(id model.Identifier) IdentifierFixtureOption {
 func RandomLookupTable(t *testing.T, opts ...IdentifierFixtureOption) *lookup.Table {
 	table := &lookup.Table{}
 
-	// Generate a random number of neighbors (0 to MaxLookupTableLevel)
-	maxNeighbors := big.NewInt(int64(core.MaxLookupTableLevel + 1))
-	neighborCountBig, err := rand.Int(rand.Reader, maxNeighbors)
-	require.NoError(t, err, "failed to generate random neighbor count")
-	neighborCount := int(neighborCountBig.Int64())
+	// Populate all levels with neighbors in both directions
+	for level := types.Level(0); level < core.MaxLookupTableLevel; level++ {
+		// Add left neighbor
+		leftID := IdentifierFixture(t, opts...)
+		leftIdentity := model.NewIdentity(
+			leftID,
+			MembershipVectorFixture(t),
+			AddressFixture(t),
+		)
+		err := table.AddEntry(types.DirectionLeft, level, leftIdentity)
+		require.NoError(t, err, "failed to add left entry to lookup table")
 
-	// Generate random neighbors at random levels in random directions
-	for i := 0; i < neighborCount; i++ {
-		level := RandomLevelFixture(t)
-		direction := RandomDirectionFixture(t)
-
-		// Generate identity using IdentifierFixture with the provided options
-		id := IdentifierFixture(t, opts...)
-		memVec := MembershipVectorFixture(t)
-		addr := AddressFixture(t)
-		identity := model.NewIdentity(id, memVec, addr)
-
-		err := table.AddEntry(direction, level, identity)
-		require.NoError(t, err, "failed to add entry to lookup table")
+		// Add right neighbor
+		rightID := IdentifierFixture(t, opts...)
+		rightIdentity := model.NewIdentity(
+			rightID,
+			MembershipVectorFixture(t),
+			AddressFixture(t),
+		)
+		err = table.AddEntry(types.DirectionRight, level, rightIdentity)
+		require.NoError(t, err, "failed to add right entry to lookup table")
 	}
 
 	return table

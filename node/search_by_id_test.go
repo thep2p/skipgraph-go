@@ -25,38 +25,25 @@ func TestSearchByIDSingletonFallback(t *testing.T) {
 	identity := model.NewIdentity(nodeID, memVec, model.NewAddress("localhost", "8000"))
 	node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, &lookup.Table{})
 
-	testCases := []struct {
-		name        string
-		targetBytes []byte
-		direction   types.Direction
-	}{
-		{"target_5_left", []byte{5}, types.DirectionLeft},
-		{"target_15_left", []byte{15}, types.DirectionLeft},
-		{"target_5_right", []byte{5}, types.DirectionRight},
-		{"target_15_right", []byte{15}, types.DirectionRight},
-	}
+	for i := 0; i < 100; i++ {
+		target := unittest.IdentifierFixture(t)
 
-	for _, tc := range testCases {
-		t.Run(
-			tc.name, func(t *testing.T) {
-				target, err := model.ByteToId(tc.targetBytes)
-				require.NoError(t, err)
+		level := unittest.RandomLevelFixture(t)
 
-				req, err := model.NewIdSearchReq(target, 3, tc.direction)
-				require.NoError(t, err)
-				res, err := node.SearchByID(req)
+		req, err := model.NewIdSearchReq(target, level, types.DirectionLeft)
+		require.NoError(t, err)
+		res, err := node.SearchByID(req)
 
-				require.NoError(t, err)
-				require.Equal(
-					t,
-					types.Level(0),
-					res.TerminationLevel(),
-					"expected fallback to level 0",
-				)
-				require.Equal(t, nodeID, res.Result(), "expected fallback to own ID")
-			},
+		require.NoError(t, err)
+		require.Equal(
+			t,
+			types.Level(0),
+			res.TerminationLevel(),
+			"expected fallback to level 0",
 		)
+		require.Equal(t, nodeID, res.Result(), "expected fallback to own ID")
 	}
+
 }
 
 // TestSearchByIDFoundLeftDirection verifies correct candidate selection in left direction

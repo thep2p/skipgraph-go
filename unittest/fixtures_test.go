@@ -72,3 +72,38 @@ func TestRandomLevelWithMaxFixture(t *testing.T) {
 		}
 	})
 }
+
+// TestRandomDirectionFixture tests the RandomDirectionFixture function.
+func TestRandomDirectionFixture(t *testing.T) {
+	t.Run("generates valid directions", func(t *testing.T) {
+		// Generate multiple random directions to ensure they're all valid
+		for i := 0; i < 100; i++ {
+			direction := RandomDirectionFixture(t)
+			// Direction must be either DirectionLeft or DirectionRight
+			require.True(t,
+				direction == types.DirectionLeft || direction == types.DirectionRight,
+				"direction must be either DirectionLeft or DirectionRight")
+		}
+	})
+
+	t.Run("generates both directions", func(t *testing.T) {
+		foundLeft := false
+		foundRight := false
+
+		// Generate enough samples to likely get both directions
+		for i := 0; i < 100 && !(foundLeft && foundRight); i++ {
+			direction := RandomDirectionFixture(t)
+
+			if direction == types.DirectionLeft {
+				foundLeft = true
+			}
+			if direction == types.DirectionRight {
+				foundRight = true
+			}
+		}
+
+		// With 100 samples, we should have seen both directions
+		require.True(t, foundLeft, "should have generated DirectionLeft at least once")
+		require.True(t, foundRight, "should have generated DirectionRight at least once")
+	})
+}

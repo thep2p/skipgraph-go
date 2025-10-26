@@ -110,3 +110,24 @@ func RandomLevelWithMaxFixture(t *testing.T, max types.Level) types.Level {
 
 	return level
 }
+
+// RandomDirectionFixture generates a random direction (either DirectionLeft or DirectionRight).
+// This is useful for testing Skip Graph operations that require direction values.
+// The function uses cryptographic randomness to ensure fair distribution between the two directions.
+//
+// Args:
+//   - t: the testing context
+//
+// Returns:
+//   - Either types.DirectionLeft or types.DirectionRight with equal probability
+func RandomDirectionFixture(t *testing.T) types.Direction {
+	// Generate random bit (0 or 1)
+	maxBig := big.NewInt(2)
+	randomBig, err := rand.Int(rand.Reader, maxBig)
+	require.NoError(t, err, "failed to generate random direction")
+
+	if randomBig.Int64() == 0 {
+		return types.DirectionLeft
+	}
+	return types.DirectionRight
+}

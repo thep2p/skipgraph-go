@@ -1,37 +1,24 @@
 package model
 
-// Level is the type for the level of entries in the lookup table.
-// This is duplicated from core.Level to avoid import cycles.
-type Level int64
-
-// Direction is an enum type for the direction of a neighbor in the lookup table.
-// This is duplicated from core.Direction to avoid import cycles.
-type Direction string
-
-const (
-	// DirectionRight indicates the right direction in the lookup table.
-	DirectionRight = Direction("right")
-	// DirectionLeft indicates the left direction in the lookup table.
-	DirectionLeft = Direction("left")
-)
+import "github.com/thep2p/skipgraph-go/core/types"
 
 // IdSearchReq represents a request to search for an identifier in the lookup table.
 // It specifies the target identifier, the maximum level to search up to, and the search direction.
 type IdSearchReq struct {
-	target    Identifier // The target identifier to search for
-	level     Level      // Maximum level to search (inclusive, 0-indexed)
-	direction Direction  // Search direction (Left or Right)
+	target    Identifier      // The target identifier to search for
+	level     types.Level     // Maximum level to search (inclusive, 0-indexed)
+	direction types.Direction // Search direction (Left or Right)
 }
 
 // NewIdSearchReq creates a new IdSearchReq instance.
 // Args:
 //   - target: the identifier to search for
 //   - level: the maximum level to search up to (inclusive)
-//   - direction: the search direction (DirectionLeft or DirectionRight)
+//   - direction: the search direction (types.DirectionLeft or types.DirectionRight)
 //
 // Returns:
 //   - IdSearchReq: the constructed search request
-func NewIdSearchReq(target Identifier, level Level, direction Direction) IdSearchReq {
+func NewIdSearchReq(target Identifier, level types.Level, direction types.Direction) IdSearchReq {
 	return IdSearchReq{
 		target:    target,
 		level:     level,
@@ -45,12 +32,12 @@ func (r IdSearchReq) Target() Identifier {
 }
 
 // Level returns the maximum level to search up to (inclusive).
-func (r IdSearchReq) Level() Level {
+func (r IdSearchReq) Level() types.Level {
 	return r.level
 }
 
 // Direction returns the search direction (Left or Right).
-func (r IdSearchReq) Direction() Direction {
+func (r IdSearchReq) Direction() types.Direction {
 	return r.direction
 }
 
@@ -58,9 +45,9 @@ func (r IdSearchReq) Direction() Direction {
 // It contains the target identifier, the level where the search terminated,
 // and the identifier found (or own ID as fallback).
 type IdSearchRes struct {
-	target           Identifier // The target identifier that was searched for
-	terminationLevel Level      // The level where the search terminated
-	result           Identifier // The identifier found (or own ID as fallback)
+	target           Identifier  // The target identifier that was searched for
+	terminationLevel types.Level // The level where the search terminated
+	result           Identifier  // The identifier found (or own ID as fallback)
 }
 
 // NewIdSearchRes creates a new IdSearchRes instance.
@@ -71,7 +58,7 @@ type IdSearchRes struct {
 //
 // Returns:
 //   - IdSearchRes: the constructed search result
-func NewIdSearchRes(target Identifier, terminationLevel Level, result Identifier) IdSearchRes {
+func NewIdSearchRes(target Identifier, terminationLevel types.Level, result Identifier) IdSearchRes {
 	return IdSearchRes{
 		target:           target,
 		terminationLevel: terminationLevel,
@@ -85,7 +72,7 @@ func (r IdSearchRes) Target() Identifier {
 }
 
 // TerminationLevel returns the level where the search terminated.
-func (r IdSearchRes) TerminationLevel() Level {
+func (r IdSearchRes) TerminationLevel() types.Level {
 	return r.terminationLevel
 }
 

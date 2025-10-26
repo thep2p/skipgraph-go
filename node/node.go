@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/core/types"
 )
 
 type SkipGraphNode struct {
@@ -23,11 +24,11 @@ func (n *SkipGraphNode) MembershipVector() model.MembershipVector {
 	return n.id.GetMembershipVector()
 }
 
-func (n *SkipGraphNode) GetNeighbor(dir core.Direction, level core.Level) (*model.Identity, error) {
+func (n *SkipGraphNode) GetNeighbor(dir types.Direction, level types.Level) (*model.Identity, error) {
 	return n.lt.GetEntry(dir, level)
 }
 
-func (n *SkipGraphNode) SetNeighbor(dir core.Direction, level core.Level, neighbor model.Identity) error {
+func (n *SkipGraphNode) SetNeighbor(dir types.Direction, level types.Level, neighbor model.Identity) error {
 	return n.lt.AddEntry(dir, level, neighbor)
 }
 
@@ -46,21 +47,13 @@ func (n *SkipGraphNode) SearchByID(req model.IdSearchReq) (model.IdSearchRes, er
 	// Step 1: Collect candidates from levels 0 to req.Level()
 	type candidate struct {
 		id    model.Identifier
-		level model.Level
+		level types.Level
 	}
 
 	var candidates []candidate
 
-	// Convert model.Direction to core.Direction
-	var coreDir core.Direction
-	if req.Direction() == model.DirectionLeft {
-		coreDir = core.LeftDirection
-	} else {
-		coreDir = core.RightDirection
-	}
-
-	for level := model.Level(0); level <= req.Level(); level++ {
-		identity, err := n.lt.GetEntry(coreDir, core.Level(level))
+	for level := types.Level(0); level <= req.Level(); level++ {
+		identity, err := n.lt.GetEntry(req.Direction(), level)
 		if err != nil {
 			return model.IdSearchRes{}, fmt.Errorf("error while searching by id in level %d: %w", level, err)
 		}
@@ -78,7 +71,7 @@ func (n *SkipGraphNode) SearchByID(req model.IdSearchReq) (model.IdSearchRes, er
 	target := req.Target()
 
 	switch req.Direction() {
-	case model.DirectionLeft:
+	case types.DirectionLeft:
 		// Left: find smallest ID >= target
 		for i := range candidates {
 			c := &candidates[i]
@@ -95,7 +88,7 @@ func (n *SkipGraphNode) SearchByID(req model.IdSearchReq) (model.IdSearchRes, er
 			}
 		}
 
-	case model.DirectionRight:
+	case types.DirectionRight:
 		// Right: find greatest ID <= target
 		for i := range candidates {
 			c := &candidates[i]

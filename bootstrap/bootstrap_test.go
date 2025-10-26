@@ -10,11 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/core/types"
 	"github.com/thep2p/skipgraph-go/unittest"
 )
 
 // hasNeighbor checks if a bootstrap entry has a valid neighbor in the given direction and level
-func hasNeighbor(entry *BootstrapEntry, dir core.Direction, level core.Level) bool {
+func hasNeighbor(entry *BootstrapEntry, dir types.Direction, level types.Level) bool {
 	neighbor, err := entry.LookupTable.GetEntry(dir, level)
 	return err == nil && neighbor != nil
 }
@@ -31,11 +32,11 @@ func TestBootstrapSingleNode(t *testing.T) {
 
 	// Single node should have no neighbors
 	entry := entries[0]
-	leftNeighbor, err := entry.LookupTable.GetEntry(core.LeftDirection, 0)
+	leftNeighbor, err := entry.LookupTable.GetEntry(types.DirectionLeft, 0)
 	require.NoError(t, err)
 	assert.Nil(t, leftNeighbor, "Single node should have no left neighbor")
 
-	rightNeighbor, err := entry.LookupTable.GetEntry(core.RightDirection, 0)
+	rightNeighbor, err := entry.LookupTable.GetEntry(types.DirectionRight, 0)
 	require.NoError(t, err)
 	assert.Nil(t, rightNeighbor, "Single node should have no right neighbor")
 }
@@ -152,11 +153,11 @@ func verifyLevel0Ordering(t *testing.T, entries []*BootstrapEntry) {
 	visited[current.Identity.GetIdentifier()] = true
 
 	for {
-		if !hasNeighbor(current, core.RightDirection, 0) {
+		if !hasNeighbor(current, types.DirectionRight, 0) {
 			break // Reached the end
 		}
 
-		rightNeighbor, _ := current.LookupTable.GetEntry(core.RightDirection, 0)
+		rightNeighbor, _ := current.LookupTable.GetEntry(types.DirectionRight, 0)
 		if rightNeighbor != nil {
 			rightId := rightNeighbor.GetIdentifier()
 			assert.False(t, visited[rightId], "Should not visit same entry twice")
@@ -182,13 +183,13 @@ func verifyLevel0Ordering(t *testing.T, entries []*BootstrapEntry) {
 func verifyNeighborConsistency(t *testing.T, entries []*BootstrapEntry) {
 	t.Helper()
 
-	for level := core.Level(0); level <= core.MaxLookupTableLevel; level++ {
+	for level := types.Level(0); level <= core.MaxLookupTableLevel; level++ {
 		for _, e := range entries {
 
 			// Check left neighbor consistency
 			// If entry e has a left neighbor, verify that the left neighbor points back to e as its right neighbor
-			if hasNeighbor(e, core.LeftDirection, level) {
-				leftNeighbor, _ := e.LookupTable.GetEntry(core.LeftDirection, level)
+			if hasNeighbor(e, types.DirectionLeft, level) {
+				leftNeighbor, _ := e.LookupTable.GetEntry(types.DirectionLeft, level)
 				if leftNeighbor != nil {
 					leftId := leftNeighbor.GetIdentifier()
 					// Find the left neighbor entry
@@ -196,9 +197,9 @@ func verifyNeighborConsistency(t *testing.T, entries []*BootstrapEntry) {
 						if other.Identity.GetIdentifier() == leftId {
 							// Verify that the left neighbor points back to this entry as its right neighbor
 							assert.True(
-								t, hasNeighbor(other, core.RightDirection, level), "Left neighbor should have a right neighbor at level %d", level,
+								t, hasNeighbor(other, types.DirectionRight, level), "Left neighbor should have a right neighbor at level %d", level,
 							)
-							rightOfLeft, _ := other.LookupTable.GetEntry(core.RightDirection, level)
+							rightOfLeft, _ := other.LookupTable.GetEntry(types.DirectionRight, level)
 							require.NotNil(t, rightOfLeft, "Right neighbor of left should not be nil")
 							assert.Equal(
 								t, e.Identity.GetIdentifier(), rightOfLeft.GetIdentifier(),
@@ -211,8 +212,8 @@ func verifyNeighborConsistency(t *testing.T, entries []*BootstrapEntry) {
 			}
 
 			// Check right neighbor consistency
-			if hasNeighbor(e, core.RightDirection, level) {
-				rightNeighbor, _ := e.LookupTable.GetEntry(core.RightDirection, level)
+			if hasNeighbor(e, types.DirectionRight, level) {
+				rightNeighbor, _ := e.LookupTable.GetEntry(types.DirectionRight, level)
 				if rightNeighbor != nil {
 					rightId := rightNeighbor.GetIdentifier()
 					// Find the right neighbor entry
@@ -220,10 +221,10 @@ func verifyNeighborConsistency(t *testing.T, entries []*BootstrapEntry) {
 						if other.Identity.GetIdentifier() == rightId {
 							// Verify that the right neighbor points back to this entry as its left neighbor
 							assert.True(
-								t, hasNeighbor(other, core.LeftDirection, level),
+								t, hasNeighbor(other, types.DirectionLeft, level),
 								"Right neighbor should have a left neighbor at level %d", level,
 							)
-							leftOfRight, _ := other.LookupTable.GetEntry(core.LeftDirection, level)
+							leftOfRight, _ := other.LookupTable.GetEntry(types.DirectionLeft, level)
 							require.NotNil(t, leftOfRight, "Left neighbor of right should not be nil")
 							assert.Equal(
 								t, e.Identity.GetIdentifier(), leftOfRight.GetIdentifier(),
@@ -242,14 +243,14 @@ func verifyNeighborConsistency(t *testing.T, entries []*BootstrapEntry) {
 func verifyMembershipVectorPrefixes(t *testing.T, entries []*BootstrapEntry) {
 	t.Helper()
 
-	for level := core.Level(1); level <= core.MaxLookupTableLevel; level++ {
+	for level := types.Level(1); level <= core.MaxLookupTableLevel; level++ {
 		for _, e := range entries {
 			entryMV := e.Identity.GetMembershipVector()
 
 			// Check left neighbor
 			// If entry e has a left neighbor, verify that the left neighbor shares at least 'level' bits of prefix
-			if hasNeighbor(e, core.LeftDirection, level) {
-				leftNeighbor, _ := e.LookupTable.GetEntry(core.LeftDirection, level)
+			if hasNeighbor(e, types.DirectionLeft, level) {
+				leftNeighbor, _ := e.LookupTable.GetEntry(types.DirectionLeft, level)
 				if leftNeighbor != nil {
 					leftMV := leftNeighbor.GetMembershipVector()
 					commonPrefix := entryMV.CommonPrefix(leftMV)
@@ -259,8 +260,8 @@ func verifyMembershipVectorPrefixes(t *testing.T, entries []*BootstrapEntry) {
 
 			// Check right neighbor
 			// If entry e has a right neighbor, verify that the right neighbor shares at least 'level' bits of prefix
-			if hasNeighbor(e, core.RightDirection, level) {
-				rightNeighbor, _ := e.LookupTable.GetEntry(core.RightDirection, level)
+			if hasNeighbor(e, types.DirectionRight, level) {
+				rightNeighbor, _ := e.LookupTable.GetEntry(types.DirectionRight, level)
 				if rightNeighbor != nil {
 					rightMV := rightNeighbor.GetMembershipVector()
 					commonPrefix := entryMV.CommonPrefix(rightMV)
@@ -281,7 +282,7 @@ func verifyConnectedComponents(t *testing.T, entries []*BootstrapEntry) {
 		idToIndex[entry.Identity.GetIdentifier()] = i
 	}
 
-	for level := core.Level(1); level <= core.MaxLookupTableLevel; level++ {
+	for level := types.Level(1); level <= core.MaxLookupTableLevel; level++ {
 		// Group entries by their membership vector prefix at this level
 		prefixGroups := make(map[string][]*BootstrapEntry)
 		for _, e := range entries {
@@ -314,7 +315,7 @@ func verifyConnectedComponents(t *testing.T, entries []*BootstrapEntry) {
 
 // dfsReachable performs DFS to find all reachable entries from a starting identifier at a given level.
 // The idToIndex map is passed in to avoid redundant map creation on each call.
-func dfsReachable(entries []*BootstrapEntry, startId model.Identifier, level core.Level, visited map[model.Identifier]bool, idToIndex map[model.Identifier]int) {
+func dfsReachable(entries []*BootstrapEntry, startId model.Identifier, level types.Level, visited map[model.Identifier]bool, idToIndex map[model.Identifier]int) {
 	// Find the starting entry's index
 	startIndex, exists := idToIndex[startId]
 	if !exists {
@@ -356,7 +357,7 @@ func TestTraversalWithNodeReference(t *testing.T) {
 	// Test traversal at level 0
 	t.Run(
 		"TraverseLevel0", func(t *testing.T) {
-			traversed := traverseLevel(entries, entryRefs[0], core.Level(0))
+			traversed := traverseLevel(entries, entryRefs[0], types.Level(0))
 			assert.Len(t, traversed, len(entries), "Should traverse all entries at level 0")
 
 			// Verify order; identifiers at level zero should be in ascending order
@@ -371,12 +372,12 @@ func TestTraversalWithNodeReference(t *testing.T) {
 
 	// Test traversal at higher levels
 	t.Run("TraverseHigherLevels", func(t *testing.T) {
-		for level := core.Level(1); level <= core.MaxLookupTableLevel; level++ {
+		for level := types.Level(1); level <= core.MaxLookupTableLevel; level++ {
 			// Find an entry that has neighbors at this level
 			var startRef internal.NodeReference
 			hasNeighborAtLevel := false
 			for i, e := range entries {
-				if hasNeighbor(e, core.RightDirection, level) {
+				if hasNeighbor(e, types.DirectionRight, level) {
 					startRef = entryRefs[i]
 					hasNeighborAtLevel = true
 					break
@@ -407,7 +408,7 @@ func TestTraversalWithNodeReference(t *testing.T) {
 }
 
 // traverseLevel traverses all connected entries at a given level starting from a node reference
-func traverseLevel(entries []*BootstrapEntry, start internal.NodeReference, level core.Level) []internal.NodeReference {
+func traverseLevel(entries []*BootstrapEntry, start internal.NodeReference, level types.Level) []internal.NodeReference {
 	visited := make(map[model.Identifier]bool)
 	var result []internal.NodeReference
 
@@ -420,8 +421,8 @@ func traverseLevel(entries []*BootstrapEntry, start internal.NodeReference, leve
 		visited[current.Identifier] = true
 
 		entry := entries[current.ArrayIndex]
-		if hasNeighbor(entry, core.LeftDirection, level) {
-			leftNeighbor, _ := entry.LookupTable.GetEntry(core.LeftDirection, level)
+		if hasNeighbor(entry, types.DirectionLeft, level) {
+			leftNeighbor, _ := entry.LookupTable.GetEntry(types.DirectionLeft, level)
 			if leftNeighbor != nil {
 				leftId := leftNeighbor.GetIdentifier()
 				// Find the array index of this neighbor
@@ -457,8 +458,8 @@ func traverseLevel(entries []*BootstrapEntry, start internal.NodeReference, leve
 		result = append(result, current)
 
 		entry := entries[current.ArrayIndex]
-		if hasNeighbor(entry, core.RightDirection, level) {
-			rightNeighbor, _ := entry.LookupTable.GetEntry(core.RightDirection, level)
+		if hasNeighbor(entry, types.DirectionRight, level) {
+			rightNeighbor, _ := entry.LookupTable.GetEntry(types.DirectionRight, level)
 			if rightNeighbor != nil {
 				rightId := rightNeighbor.GetIdentifier()
 				if visited[rightId] {
@@ -495,7 +496,7 @@ func TestConnectedComponentsConstraint(t *testing.T) {
 	testCases := []struct {
 		name      string
 		nodeCount int
-		maxLevel  core.Level
+		maxLevel  types.Level
 	}{
 		{"Small graph (10 nodes)", 10, 4},
 		{"Medium graph (50 nodes)", 50, 6},
@@ -514,7 +515,7 @@ func TestConnectedComponentsConstraint(t *testing.T) {
 			assert.Len(t, entries, tc.nodeCount)
 
 			// For each level, verify that the number of connected components is at most 2^i
-			for level := core.Level(0); level <= tc.maxLevel && level < core.MaxLookupTableLevel; level++ {
+			for level := types.Level(0); level <= tc.maxLevel && level < core.MaxLookupTableLevel; level++ {
 				componentCount := bootstrapper.CountConnectedComponents(entries, level)
 				maxComponents := 1 << level // 2^level
 
@@ -541,15 +542,15 @@ func TestConnectedComponentsDistribution(t *testing.T) {
 	require.NoError(t, err)
 
 	// Collect statistics about connected components at each level
-	stats := make(map[core.Level]int)
-	for level := core.Level(0); level <= 10 && level < core.MaxLookupTableLevel; level++ {
+	stats := make(map[types.Level]int)
+	for level := types.Level(0); level <= 10 && level < core.MaxLookupTableLevel; level++ {
 		componentCount := bootstrapper.CountConnectedComponents(entries, level)
 		stats[level] = componentCount
 	}
 
 	// Verify the constraint and print distribution
 	t.Log("Connected components distribution:")
-	for level := core.Level(0); level <= 10 && level < core.MaxLookupTableLevel; level++ {
+	for level := types.Level(0); level <= 10 && level < core.MaxLookupTableLevel; level++ {
 		componentCount := stats[level]
 		maxComponents := 1 << level // 2^level
 

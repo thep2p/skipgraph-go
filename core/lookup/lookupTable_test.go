@@ -5,6 +5,7 @@ import (
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/lookup"
 	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/core/types"
 	"github.com/thep2p/skipgraph-go/unittest"
 	"sync"
 	"testing"
@@ -20,19 +21,19 @@ func TestLookupTable_AddEntry(t *testing.T) {
 	identity := model.Identity{}
 
 	// add the identity in a valid position
-	err := lt.AddEntry(core.LeftDirection, 0, identity)
+	err := lt.AddEntry(types.DirectionLeft, 0, identity)
 	require.NoError(t, err)
 
 	// add the identity in a valid position
-	err = lt.AddEntry(core.LeftDirection, core.MaxLookupTableLevel-1, identity)
+	err = lt.AddEntry(types.DirectionLeft, core.MaxLookupTableLevel-1, identity)
 	require.NoError(t, err)
 
 	// add an entry with invalid level
-	err = lt.AddEntry(core.LeftDirection, core.MaxLookupTableLevel, identity)
+	err = lt.AddEntry(types.DirectionLeft, core.MaxLookupTableLevel, identity)
 	require.Error(t, err)
 
 	// add an entry with wrong direction
-	err = lt.AddEntry(core.Direction("no where"), 0, identity)
+	err = lt.AddEntry(types.Direction("no where"), 0, identity)
 	require.Error(t, err)
 }
 
@@ -45,7 +46,7 @@ func TestLookupTable_OverWriteLeftEntry(t *testing.T) {
 	identity := unittest.IdentityFixture(t)
 
 	// add the identity in a valid position
-	err := lt.AddEntry(core.LeftDirection, 0, identity)
+	err := lt.AddEntry(types.DirectionLeft, 0, identity)
 	require.NoError(t, err)
 
 	// create another random identity
@@ -55,11 +56,11 @@ func TestLookupTable_OverWriteLeftEntry(t *testing.T) {
 	require.NotEqual(t, identity1, identity)
 
 	// overwrite the previous entry with the new identity
-	err = lt.AddEntry(core.LeftDirection, 0, identity1)
+	err = lt.AddEntry(types.DirectionLeft, 0, identity1)
 	require.NoError(t, err)
 
 	// check that the new identity has overwritten the previous one
-	retIdentity, err := lt.GetEntry(core.LeftDirection, 0)
+	retIdentity, err := lt.GetEntry(types.DirectionLeft, 0)
 	require.NoError(t, err)
 	require.NotNil(t, retIdentity)
 	require.Equal(t, identity1, *retIdentity)
@@ -74,7 +75,7 @@ func TestLookupTable_OverWriteRightEntry(t *testing.T) {
 	identity := unittest.IdentityFixture(t)
 
 	// add the identity in a valid position
-	err := lt.AddEntry(core.RightDirection, 0, identity)
+	err := lt.AddEntry(types.DirectionRight, 0, identity)
 	require.NoError(t, err)
 
 	// create another random identity
@@ -84,11 +85,11 @@ func TestLookupTable_OverWriteRightEntry(t *testing.T) {
 	require.NotEqual(t, identity1, identity)
 
 	// overwrite the previous entry with the new identity
-	err = lt.AddEntry(core.RightDirection, 0, identity1)
+	err = lt.AddEntry(types.DirectionRight, 0, identity1)
 	require.NoError(t, err)
 
 	// check that the new identity has overwritten the previous one
-	retIdentity, err := lt.GetEntry(core.RightDirection, 0)
+	retIdentity, err := lt.GetEntry(types.DirectionRight, 0)
 	require.NoError(t, err)
 	require.NotNil(t, retIdentity)
 	require.Equal(t, identity1, *retIdentity)
@@ -105,31 +106,31 @@ func TestLookupTable_GetEntry(t *testing.T) {
 	var lt lookup.Table
 
 	// add the identity as a left neighbor into the lookup table
-	err := lt.AddEntry(core.LeftDirection, 0, identity)
+	err := lt.AddEntry(types.DirectionLeft, 0, identity)
 	require.NoError(t, err)
 
 	// add the identity as a right neighbor into the lookup table
-	err = lt.AddEntry(core.RightDirection, 0, identity1)
+	err = lt.AddEntry(types.DirectionRight, 0, identity1)
 	require.NoError(t, err)
 
 	// check that the inserted identity is retrievable
-	retIdentity, err := lt.GetEntry(core.LeftDirection, 0)
+	retIdentity, err := lt.GetEntry(types.DirectionLeft, 0)
 	require.NoError(t, err)
 	require.NotNil(t, retIdentity)
 	require.Equal(t, identity, *retIdentity)
 
 	// check that the inserted identity is retrievable
-	retIdentity1, err := lt.GetEntry(core.RightDirection, 0)
+	retIdentity1, err := lt.GetEntry(types.DirectionRight, 0)
 	require.NoError(t, err)
 	require.NotNil(t, retIdentity1)
 	require.Equal(t, identity1, *retIdentity1)
 
 	// access a wrong level
-	_, err = lt.GetEntry(core.RightDirection, core.MaxLookupTableLevel)
+	_, err = lt.GetEntry(types.DirectionRight, core.MaxLookupTableLevel)
 	require.Error(t, err)
 
 	// access a wrong direction
-	_, err = lt.GetEntry(core.Direction("no where"), 0)
+	_, err = lt.GetEntry(types.Direction("no where"), 0)
 	require.Error(t, err)
 
 }
@@ -156,7 +157,7 @@ func TestLookupTable_Concurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			identity := unittest.IdentityFixture(t)
-			err := lt.AddEntry(core.LeftDirection, core.Level(i), identity)
+			err := lt.AddEntry(types.DirectionLeft, types.Level(i), identity)
 			require.NoError(t, err)
 		}()
 	}
@@ -165,7 +166,7 @@ func TestLookupTable_Concurrency(t *testing.T) {
 		i := i
 		go func() {
 			defer wg.Done()
-			_, err := lt.GetEntry(core.LeftDirection, core.Level(i))
+			_, err := lt.GetEntry(types.DirectionLeft, types.Level(i))
 			require.NoError(t, err)
 		}()
 	}

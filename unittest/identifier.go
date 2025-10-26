@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/core/types"
 	"testing"
 )
 
@@ -51,7 +52,7 @@ func IdentifierLessThan(target model.Identifier) model.Identifier {
 
 // NeighborEntry represents a neighbor at a specific level in the lookup table.
 type NeighborEntry struct {
-	Level    core.Level
+	Level    types.Level
 	Identity model.Identity
 }
 
@@ -59,8 +60,8 @@ type NeighborEntry struct {
 // Returns an error if the lookup table access fails.
 func LeftNeighbors(lt core.ImmutableLookupTable) ([]NeighborEntry, error) {
 	var result []NeighborEntry
-	for level := core.Level(0); level < core.MaxLookupTableLevel; level++ {
-		identity, err := lt.GetEntry(core.LeftDirection, level)
+	for level := types.Level(0); level < core.MaxLookupTableLevel; level++ {
+		identity, err := lt.GetEntry(types.DirectionLeft, level)
 		if err != nil {
 			return nil, err
 		}
@@ -78,8 +79,8 @@ func LeftNeighbors(lt core.ImmutableLookupTable) ([]NeighborEntry, error) {
 // Returns an error if the lookup table access fails.
 func RightNeighbors(lt core.ImmutableLookupTable) ([]NeighborEntry, error) {
 	var result []NeighborEntry
-	for level := core.Level(0); level < core.MaxLookupTableLevel; level++ {
-		identity, err := lt.GetEntry(core.RightDirection, level)
+	for level := types.Level(0); level < core.MaxLookupTableLevel; level++ {
+		identity, err := lt.GetEntry(types.DirectionRight, level)
 		if err != nil {
 			return nil, err
 		}
@@ -98,16 +99,16 @@ func RightNeighbors(lt core.ImmutableLookupTable) ([]NeighborEntry, error) {
 // This is useful for testing edge cases.
 func RandomLookupTableWithExtremes(t *testing.T) core.MutableLookupTable {
 	lt := &mockLookupTable{
-		leftNeighbors:  make(map[core.Level]model.Identity),
-		rightNeighbors: make(map[core.Level]model.Identity),
+		leftNeighbors:  make(map[types.Level]model.Identity),
+		rightNeighbors: make(map[types.Level]model.Identity),
 	}
 
 	// Add random neighbors at all levels
-	for level := core.Level(0); level < core.MaxLookupTableLevel; level++ {
+	for level := types.Level(0); level < core.MaxLookupTableLevel; level++ {
 		leftIdentity := IdentityFixture(t)
 		rightIdentity := IdentityFixture(t)
-		_ = lt.AddEntry(core.LeftDirection, level, leftIdentity)
-		_ = lt.AddEntry(core.RightDirection, level, rightIdentity)
+		_ = lt.AddEntry(types.DirectionLeft, level, leftIdentity)
+		_ = lt.AddEntry(types.DirectionRight, level, rightIdentity)
 	}
 
 	// Add extreme values at level 0
@@ -120,27 +121,27 @@ func RandomLookupTableWithExtremes(t *testing.T) core.MutableLookupTable {
 	zeroIdentity := model.NewIdentity(zeroID, MembershipVectorFixture(t), AddressFixture(t))
 	maxIdentity := model.NewIdentity(maxID, MembershipVectorFixture(t), AddressFixture(t))
 
-	_ = lt.AddEntry(core.LeftDirection, 0, zeroIdentity)
-	_ = lt.AddEntry(core.RightDirection, 0, maxIdentity)
+	_ = lt.AddEntry(types.DirectionLeft, 0, zeroIdentity)
+	_ = lt.AddEntry(types.DirectionRight, 0, maxIdentity)
 
 	return lt
 }
 
 // mockLookupTable is a simple in-memory implementation of MutableLookupTable for testing.
 type mockLookupTable struct {
-	leftNeighbors  map[core.Level]model.Identity
-	rightNeighbors map[core.Level]model.Identity
+	leftNeighbors  map[types.Level]model.Identity
+	rightNeighbors map[types.Level]model.Identity
 }
 
 // GetEntry returns the neighbor at the given direction and level.
-func (m *mockLookupTable) GetEntry(dir core.Direction, lev core.Level) (*model.Identity, error) {
+func (m *mockLookupTable) GetEntry(dir types.Direction, lev types.Level) (*model.Identity, error) {
 	var identity model.Identity
 	var exists bool
 
 	switch dir {
-	case core.LeftDirection:
+	case types.DirectionLeft:
 		identity, exists = m.leftNeighbors[lev]
-	case core.RightDirection:
+	case types.DirectionRight:
 		identity, exists = m.rightNeighbors[lev]
 	}
 
@@ -151,11 +152,11 @@ func (m *mockLookupTable) GetEntry(dir core.Direction, lev core.Level) (*model.I
 }
 
 // AddEntry adds a neighbor at the given direction and level.
-func (m *mockLookupTable) AddEntry(dir core.Direction, level core.Level, identity model.Identity) error {
+func (m *mockLookupTable) AddEntry(dir types.Direction, level types.Level, identity model.Identity) error {
 	switch dir {
-	case core.LeftDirection:
+	case types.DirectionLeft:
 		m.leftNeighbors[level] = identity
-	case core.RightDirection:
+	case types.DirectionRight:
 		m.rightNeighbors[level] = identity
 	}
 	return nil

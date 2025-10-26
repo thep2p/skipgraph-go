@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/core/types"
 	"sort"
 )
 
@@ -72,7 +73,7 @@ func (e *SortedEntryList) InsertAll() ([]*Entry, error) {
 func (e *SortedEntryList) insert(entryIndex int) error {
 	entry := e.Get(entryIndex)
 	// Start at level 0
-	level := core.Level(0)
+	level := types.Level(0)
 
 	// Link at level 0 (all entries are connected in sorted order)
 	if err := e.linkLevel0(entryIndex); err != nil {
@@ -98,12 +99,12 @@ func (e *SortedEntryList) insert(entryIndex int) error {
 		if leftNeighborExists {
 			leftEntry := e.Get(leftNeighborIndex) // left neighbor entry
 			// Add left neighbor to this entry's lookup table
-			if err := entry.LookupTable.AddEntry(core.LeftDirection, level, leftEntry.Identity); err != nil {
+			if err := entry.LookupTable.AddEntry(types.DirectionLeft, level, leftEntry.Identity); err != nil {
 				return fmt.Errorf("failed to add left neighbor: %w", err)
 			}
 
 			// Update left neighbor's right pointer to this entry
-			if err := leftEntry.LookupTable.AddEntry(core.RightDirection, level, entry.Identity); err != nil {
+			if err := leftEntry.LookupTable.AddEntry(types.DirectionRight, level, entry.Identity); err != nil {
 				return fmt.Errorf("failed to update left neighbor's right pointer: %w", err)
 			}
 		}
@@ -111,12 +112,12 @@ func (e *SortedEntryList) insert(entryIndex int) error {
 		if rightNeighborExists {
 			rightEntry := e.Get(rightNeighborIndex) // right neighbor entry
 			// Add right neighbor to this entry's lookup table
-			if err := entry.LookupTable.AddEntry(core.RightDirection, level, rightEntry.Identity); err != nil {
+			if err := entry.LookupTable.AddEntry(types.DirectionRight, level, rightEntry.Identity); err != nil {
 				return fmt.Errorf("failed to add right neighbor: %w", err)
 			}
 
 			// Update right neighbor's left pointer to this entry
-			if err := rightEntry.LookupTable.AddEntry(core.LeftDirection, level, entry.Identity); err != nil {
+			if err := rightEntry.LookupTable.AddEntry(types.DirectionLeft, level, entry.Identity); err != nil {
 				return fmt.Errorf("failed to update right neighbor's left pointer: %w", err)
 			}
 		}
@@ -128,13 +129,13 @@ func (e *SortedEntryList) insert(entryIndex int) error {
 // linkLevel0 links an entry at level 0 with its immediate neighbors in sorted order.
 // Any returned error is fatal and indicates a serious bug in the bootstrap logic; crash if it occurs.
 func (e *SortedEntryList) linkLevel0(entryIndex int) error {
-	level := core.Level(0)
+	level := types.Level(0)
 	entry := e.Get(entryIndex)
 
 	// Link with left neighbor; skip the first entry (no left neighbor)
 	if entryIndex > 0 {
 		leftEntry := e.Get(entryIndex - 1)
-		if err := entry.LookupTable.AddEntry(core.LeftDirection, level, leftEntry.Identity); err != nil {
+		if err := entry.LookupTable.AddEntry(types.DirectionLeft, level, leftEntry.Identity); err != nil {
 			return fmt.Errorf("failed to set left neighbor at level 0: %w", err)
 		}
 	}
@@ -142,7 +143,7 @@ func (e *SortedEntryList) linkLevel0(entryIndex int) error {
 	// Link with right neighbor; skip the last entry (no right neighbor)
 	if entryIndex < e.Len()-1 {
 		rightEntry := e.Get(entryIndex + 1)
-		if err := entry.LookupTable.AddEntry(core.RightDirection, level, rightEntry.Identity); err != nil {
+		if err := entry.LookupTable.AddEntry(types.DirectionRight, level, rightEntry.Identity); err != nil {
 			return fmt.Errorf("failed to set right neighbor at level 0: %w", err)
 		}
 	}

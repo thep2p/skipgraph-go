@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/lookup"
 	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/core/types"
 	"github.com/thep2p/skipgraph-go/unittest"
 )
 
@@ -29,12 +29,12 @@ func TestSearchByIDSingletonFallback(t *testing.T) {
 	testCases := []struct {
 		name        string
 		targetBytes []byte
-		direction   model.Direction
+		direction   types.Direction
 	}{
-		{"target_5_left", []byte{5}, model.DirectionLeft},
-		{"target_15_left", []byte{15}, model.DirectionLeft},
-		{"target_5_right", []byte{5}, model.DirectionRight},
-		{"target_15_right", []byte{15}, model.DirectionRight},
+		{"target_5_left", []byte{5}, types.DirectionLeft},
+		{"target_15_left", []byte{15}, types.DirectionLeft},
+		{"target_5_right", []byte{5}, types.DirectionRight},
+		{"target_15_right", []byte{15}, types.DirectionRight},
 	}
 
 	for _, tc := range testCases {
@@ -46,7 +46,7 @@ func TestSearchByIDSingletonFallback(t *testing.T) {
 			res, err := node.SearchByID(req)
 
 			require.NoError(t, err)
-			require.Equal(t, model.Level(0), res.TerminationLevel(), "expected fallback to level 0")
+			require.Equal(t, types.Level(0), res.TerminationLevel(), "expected fallback to level 0")
 			require.Equal(t, nodeID, res.Result(), "expected fallback to own ID")
 		})
 	}
@@ -56,7 +56,7 @@ func TestSearchByIDSingletonFallback(t *testing.T) {
 // (smallest ID >= target).
 func TestSearchByIDFoundLeftDirection(t *testing.T) {
 	// Test for various levels
-	for testLevel := model.Level(0); testLevel < 5; testLevel++ {
+	for testLevel := types.Level(0); testLevel < 5; testLevel++ {
 		t.Run(fmt.Sprintf("level_%d", testLevel), func(t *testing.T) {
 			// Create node
 			nodeID := unittest.IdentifierFixture(t)
@@ -65,12 +65,12 @@ func TestSearchByIDFoundLeftDirection(t *testing.T) {
 			lt := &lookup.Table{}
 
 			// Populate lookup table with random neighbors
-			neighbors := make(map[model.Level]model.Identifier)
-			for level := model.Level(0); level <= testLevel; level++ {
+			neighbors := make(map[types.Level]model.Identifier)
+			for level := types.Level(0); level <= testLevel; level++ {
 				neighborID := unittest.IdentifierFixture(t)
 				neighbors[level] = neighborID
 				neighborIdentity := model.NewIdentity(neighborID, unittest.MembershipVectorFixture(t), unittest.AddressFixture(t))
-				err := lt.AddEntry(core.LeftDirection, core.Level(level), neighborIdentity)
+				err := lt.AddEntry(types.DirectionLeft, types.Level(level), neighborIdentity)
 				require.NoError(t, err)
 			}
 
@@ -81,7 +81,7 @@ func TestSearchByIDFoundLeftDirection(t *testing.T) {
 
 			// Ensure at least one neighbor >= target exists (add safe neighbor at level 0 if needed)
 			hasValidCandidate := false
-			for level := model.Level(0); level <= testLevel; level++ {
+			for level := types.Level(0); level <= testLevel; level++ {
 				neighborID := neighbors[level]
 				cmp := neighborID.Compare(&target)
 				if cmp.GetComparisonResult() == model.CompareGreater || cmp.GetComparisonResult() == model.CompareEqual {
@@ -94,22 +94,22 @@ func TestSearchByIDFoundLeftDirection(t *testing.T) {
 				// Add a safe neighbor at level 0 that is >= target
 				safeNeighborID := unittest.IdentifierGreaterThan(target)
 				safeIdentity := model.NewIdentity(safeNeighborID, unittest.MembershipVectorFixture(t), unittest.AddressFixture(t))
-				err := lt.AddEntry(core.LeftDirection, core.Level(0), safeIdentity)
+				err := lt.AddEntry(types.DirectionLeft, types.Level(0), safeIdentity)
 				require.NoError(t, err)
 				neighbors[0] = safeNeighborID
 			}
 
 			// Perform search
-			req := model.NewIdSearchReq(target, testLevel, model.DirectionLeft)
+			req := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
 			res, err := node.SearchByID(req)
 			require.NoError(t, err)
 
 			// Manually compute expected result: smallest ID >= target
-			var expectedLevel model.Level
+			var expectedLevel types.Level
 			var expectedID model.Identifier
 			foundCandidate := false
 
-			for level := model.Level(0); level <= testLevel; level++ {
+			for level := types.Level(0); level <= testLevel; level++ {
 				neighborID := neighbors[level]
 				cmp := neighborID.Compare(&target)
 				if cmp.GetComparisonResult() == model.CompareGreater || cmp.GetComparisonResult() == model.CompareEqual {
@@ -139,7 +139,7 @@ func TestSearchByIDFoundLeftDirection(t *testing.T) {
 // (greatest ID <= target).
 func TestSearchByIDFoundRightDirection(t *testing.T) {
 	// Test for various levels
-	for testLevel := model.Level(0); testLevel < 5; testLevel++ {
+	for testLevel := types.Level(0); testLevel < 5; testLevel++ {
 		t.Run(fmt.Sprintf("level_%d", testLevel), func(t *testing.T) {
 			// Create node
 			nodeID := unittest.IdentifierFixture(t)
@@ -148,12 +148,12 @@ func TestSearchByIDFoundRightDirection(t *testing.T) {
 			lt := &lookup.Table{}
 
 			// Populate lookup table with random neighbors
-			neighbors := make(map[model.Level]model.Identifier)
-			for level := model.Level(0); level <= testLevel; level++ {
+			neighbors := make(map[types.Level]model.Identifier)
+			for level := types.Level(0); level <= testLevel; level++ {
 				neighborID := unittest.IdentifierFixture(t)
 				neighbors[level] = neighborID
 				neighborIdentity := model.NewIdentity(neighborID, unittest.MembershipVectorFixture(t), unittest.AddressFixture(t))
-				err := lt.AddEntry(core.RightDirection, core.Level(level), neighborIdentity)
+				err := lt.AddEntry(types.DirectionRight, types.Level(level), neighborIdentity)
 				require.NoError(t, err)
 			}
 
@@ -164,7 +164,7 @@ func TestSearchByIDFoundRightDirection(t *testing.T) {
 
 			// Ensure at least one neighbor <= target exists (add safe neighbor at level 0 if needed)
 			hasValidCandidate := false
-			for level := model.Level(0); level <= testLevel; level++ {
+			for level := types.Level(0); level <= testLevel; level++ {
 				neighborID := neighbors[level]
 				cmp := neighborID.Compare(&target)
 				if cmp.GetComparisonResult() == model.CompareLess || cmp.GetComparisonResult() == model.CompareEqual {
@@ -177,22 +177,22 @@ func TestSearchByIDFoundRightDirection(t *testing.T) {
 				// Add a safe neighbor at level 0 that is <= target
 				safeNeighborID := unittest.IdentifierLessThan(target)
 				safeIdentity := model.NewIdentity(safeNeighborID, unittest.MembershipVectorFixture(t), unittest.AddressFixture(t))
-				err := lt.AddEntry(core.RightDirection, core.Level(0), safeIdentity)
+				err := lt.AddEntry(types.DirectionRight, types.Level(0), safeIdentity)
 				require.NoError(t, err)
 				neighbors[0] = safeNeighborID
 			}
 
 			// Perform search
-			req := model.NewIdSearchReq(target, testLevel, model.DirectionRight)
+			req := model.NewIdSearchReq(target, testLevel, types.DirectionRight)
 			res, err := node.SearchByID(req)
 			require.NoError(t, err)
 
 			// Manually compute expected result: greatest ID <= target
-			var expectedLevel model.Level
+			var expectedLevel types.Level
 			var expectedID model.Identifier
 			foundCandidate := false
 
-			for level := model.Level(0); level <= testLevel; level++ {
+			for level := types.Level(0); level <= testLevel; level++ {
 				neighborID := neighbors[level]
 				cmp := neighborID.Compare(&target)
 				if cmp.GetComparisonResult() == model.CompareLess || cmp.GetComparisonResult() == model.CompareEqual {
@@ -222,7 +222,7 @@ func TestSearchByIDFoundRightDirection(t *testing.T) {
 // All left neighbors have IDs less than target, so should fallback to own ID.
 func TestSearchByIDNotFoundLeftDirection(t *testing.T) {
 	// Test for various levels
-	for testLevel := model.Level(0); testLevel < 5; testLevel++ {
+	for testLevel := types.Level(0); testLevel < 5; testLevel++ {
 		t.Run(fmt.Sprintf("level_%d", testLevel), func(t *testing.T) {
 			// Create node
 			nodeID := unittest.IdentifierFixture(t)
@@ -234,25 +234,25 @@ func TestSearchByIDNotFoundLeftDirection(t *testing.T) {
 			target := unittest.IdentifierFixture(t)
 
 			// Populate ALL left neighbors with IDs less than target
-			for level := model.Level(0); level <= testLevel; level++ {
+			for level := types.Level(0); level <= testLevel; level++ {
 				neighborID := unittest.IdentifierLessThan(target)
 				// Make sure it's actually less than target
 				cmp := neighborID.Compare(&target)
 				require.Equal(t, model.CompareLess, cmp.GetComparisonResult(), "neighbor should be less than target")
 
 				neighborIdentity := model.NewIdentity(neighborID, unittest.MembershipVectorFixture(t), unittest.AddressFixture(t))
-				err := lt.AddEntry(core.LeftDirection, core.Level(level), neighborIdentity)
+				err := lt.AddEntry(types.DirectionLeft, types.Level(level), neighborIdentity)
 				require.NoError(t, err)
 			}
 
 			node := NewSkipGraphNode(identity, lt)
 
 			// Perform search - should fallback to own ID
-			req := model.NewIdSearchReq(target, testLevel, model.DirectionLeft)
+			req := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
 			res, err := node.SearchByID(req)
 
 			require.NoError(t, err)
-			require.Equal(t, model.Level(0), res.TerminationLevel(), "expected fallback to level 0")
+			require.Equal(t, types.Level(0), res.TerminationLevel(), "expected fallback to level 0")
 			require.Equal(t, nodeID, res.Result(), "expected fallback to own ID")
 		})
 	}
@@ -262,7 +262,7 @@ func TestSearchByIDNotFoundLeftDirection(t *testing.T) {
 // All right neighbors have IDs greater than target, so should fallback to own ID.
 func TestSearchByIDNotFoundRightDirection(t *testing.T) {
 	// Test for various levels
-	for testLevel := model.Level(0); testLevel < 5; testLevel++ {
+	for testLevel := types.Level(0); testLevel < 5; testLevel++ {
 		t.Run(fmt.Sprintf("level_%d", testLevel), func(t *testing.T) {
 			// Create node
 			nodeID := unittest.IdentifierFixture(t)
@@ -274,25 +274,25 @@ func TestSearchByIDNotFoundRightDirection(t *testing.T) {
 			target := unittest.IdentifierFixture(t)
 
 			// Populate ALL right neighbors with IDs greater than target
-			for level := model.Level(0); level <= testLevel; level++ {
+			for level := types.Level(0); level <= testLevel; level++ {
 				neighborID := unittest.IdentifierGreaterThan(target)
 				// Make sure it's actually greater than target
 				cmp := neighborID.Compare(&target)
 				require.Equal(t, model.CompareGreater, cmp.GetComparisonResult(), "neighbor should be greater than target")
 
 				neighborIdentity := model.NewIdentity(neighborID, unittest.MembershipVectorFixture(t), unittest.AddressFixture(t))
-				err := lt.AddEntry(core.RightDirection, core.Level(level), neighborIdentity)
+				err := lt.AddEntry(types.DirectionRight, types.Level(level), neighborIdentity)
 				require.NoError(t, err)
 			}
 
 			node := NewSkipGraphNode(identity, lt)
 
 			// Perform search - should fallback to own ID
-			req := model.NewIdSearchReq(target, testLevel, model.DirectionRight)
+			req := model.NewIdSearchReq(target, testLevel, types.DirectionRight)
 			res, err := node.SearchByID(req)
 
 			require.NoError(t, err)
-			require.Equal(t, model.Level(0), res.TerminationLevel(), "expected fallback to level 0")
+			require.Equal(t, types.Level(0), res.TerminationLevel(), "expected fallback to level 0")
 			require.Equal(t, nodeID, res.Result(), "expected fallback to own ID")
 		})
 	}
@@ -308,33 +308,33 @@ func TestSearchByIDExactResult(t *testing.T) {
 	lt := &lookup.Table{}
 
 	// Populate lookup table with random neighbors at all levels
-	const maxTestLevel = model.Level(5)
-	leftNeighbors := make(map[model.Level]model.Identifier)
-	rightNeighbors := make(map[model.Level]model.Identifier)
+	const maxTestLevel = types.Level(5)
+	leftNeighbors := make(map[types.Level]model.Identifier)
+	rightNeighbors := make(map[types.Level]model.Identifier)
 
-	for level := model.Level(0); level < maxTestLevel; level++ {
+	for level := types.Level(0); level < maxTestLevel; level++ {
 		// Left neighbor
 		leftID := unittest.IdentifierFixture(t)
 		leftNeighbors[level] = leftID
 		leftIdentity := model.NewIdentity(leftID, unittest.MembershipVectorFixture(t), unittest.AddressFixture(t))
-		err := lt.AddEntry(core.LeftDirection, core.Level(level), leftIdentity)
+		err := lt.AddEntry(types.DirectionLeft, types.Level(level), leftIdentity)
 		require.NoError(t, err)
 
 		// Right neighbor
 		rightID := unittest.IdentifierFixture(t)
 		rightNeighbors[level] = rightID
 		rightIdentity := model.NewIdentity(rightID, unittest.MembershipVectorFixture(t), unittest.AddressFixture(t))
-		err = lt.AddEntry(core.RightDirection, core.Level(level), rightIdentity)
+		err = lt.AddEntry(types.DirectionRight, types.Level(level), rightIdentity)
 		require.NoError(t, err)
 	}
 
 	node := NewSkipGraphNode(identity, lt)
 
 	// Test left direction - search for each left neighbor's ID
-	for level := model.Level(0); level < maxTestLevel; level++ {
+	for level := types.Level(0); level < maxTestLevel; level++ {
 		t.Run(fmt.Sprintf("left_level_%d", level), func(t *testing.T) {
 			target := leftNeighbors[level]
-			req := model.NewIdSearchReq(target, level, model.DirectionLeft)
+			req := model.NewIdSearchReq(target, level, types.DirectionLeft)
 			res, err := node.SearchByID(req)
 
 			require.NoError(t, err)
@@ -344,10 +344,10 @@ func TestSearchByIDExactResult(t *testing.T) {
 	}
 
 	// Test right direction - search for each right neighbor's ID
-	for level := model.Level(0); level < maxTestLevel; level++ {
+	for level := types.Level(0); level < maxTestLevel; level++ {
 		t.Run(fmt.Sprintf("right_level_%d", level), func(t *testing.T) {
 			target := rightNeighbors[level]
-			req := model.NewIdSearchReq(target, level, model.DirectionRight)
+			req := model.NewIdSearchReq(target, level, types.DirectionRight)
 			res, err := node.SearchByID(req)
 
 			require.NoError(t, err)
@@ -366,8 +366,8 @@ func TestSearchByIDConcurrentFoundLeftDirection(t *testing.T) {
 	lt := &lookup.Table{}
 
 	// Populate lookup table
-	const maxTestLevel = model.Level(10)
-	neighbors := make(map[model.Level]model.Identifier)
+	const maxTestLevel = types.Level(10)
+	neighbors := make(map[types.Level]model.Identifier)
 
 	// Use a fixed target
 	targetBytes := []byte{0x50} // 80 in decimal
@@ -375,7 +375,7 @@ func TestSearchByIDConcurrentFoundLeftDirection(t *testing.T) {
 	require.NoError(t, err)
 
 	// Populate with neighbors, ensuring at least one is >= target
-	for level := model.Level(0); level < maxTestLevel; level++ {
+	for level := types.Level(0); level < maxTestLevel; level++ {
 		var neighborID model.Identifier
 		if level == 0 {
 			// Guarantee level 0 has a neighbor >= target
@@ -385,7 +385,7 @@ func TestSearchByIDConcurrentFoundLeftDirection(t *testing.T) {
 		}
 		neighbors[level] = neighborID
 		neighborIdentity := model.NewIdentity(neighborID, unittest.MembershipVectorFixture(t), unittest.AddressFixture(t))
-		err := lt.AddEntry(core.LeftDirection, core.Level(level), neighborIdentity)
+		err := lt.AddEntry(types.DirectionLeft, types.Level(level), neighborIdentity)
 		require.NoError(t, err)
 	}
 
@@ -403,17 +403,17 @@ func TestSearchByIDConcurrentFoundLeftDirection(t *testing.T) {
 			<-barrier // Wait for all goroutines to be ready
 
 			// Pick random level
-			level := model.Level(rand.Intn(int(maxTestLevel)))
-			req := model.NewIdSearchReq(target, level, model.DirectionLeft)
+			level := types.Level(rand.Intn(int(maxTestLevel)))
+			req := model.NewIdSearchReq(target, level, types.DirectionLeft)
 			res, err := node.SearchByID(req)
 			require.NoError(t, err)
 
 			// Compute expected result: smallest ID >= target from levels 0 to level
-			var expectedLevel model.Level
+			var expectedLevel types.Level
 			var expectedID model.Identifier
 			foundCandidate := false
 
-			for l := model.Level(0); l <= level; l++ {
+			for l := types.Level(0); l <= level; l++ {
 				neighborID := neighbors[l]
 				cmp := neighborID.Compare(&target)
 				if cmp.GetComparisonResult() == model.CompareGreater || cmp.GetComparisonResult() == model.CompareEqual {
@@ -436,7 +436,7 @@ func TestSearchByIDConcurrentFoundLeftDirection(t *testing.T) {
 				require.Equal(t, expectedID, res.Result(), "goroutine %d: result identifier mismatch", goroutineID)
 			} else {
 				// Fallback to own ID
-				require.Equal(t, model.Level(0), res.TerminationLevel(), "goroutine %d: expected fallback to level 0", goroutineID)
+				require.Equal(t, types.Level(0), res.TerminationLevel(), "goroutine %d: expected fallback to level 0", goroutineID)
 				require.Equal(t, nodeID, res.Result(), "goroutine %d: expected fallback to own ID", goroutineID)
 			}
 		}(i)
@@ -457,8 +457,8 @@ func TestSearchByIDConcurrentRightDirection(t *testing.T) {
 	lt := &lookup.Table{}
 
 	// Populate lookup table
-	const maxTestLevel = model.Level(10)
-	neighbors := make(map[model.Level]model.Identifier)
+	const maxTestLevel = types.Level(10)
+	neighbors := make(map[types.Level]model.Identifier)
 
 	// Use a fixed target
 	targetBytes := []byte{0x80} // 128 in decimal
@@ -466,7 +466,7 @@ func TestSearchByIDConcurrentRightDirection(t *testing.T) {
 	require.NoError(t, err)
 
 	// Populate with neighbors, ensuring at least one is <= target
-	for level := model.Level(0); level < maxTestLevel; level++ {
+	for level := types.Level(0); level < maxTestLevel; level++ {
 		var neighborID model.Identifier
 		if level == 0 {
 			// Guarantee level 0 has a neighbor <= target
@@ -476,7 +476,7 @@ func TestSearchByIDConcurrentRightDirection(t *testing.T) {
 		}
 		neighbors[level] = neighborID
 		neighborIdentity := model.NewIdentity(neighborID, unittest.MembershipVectorFixture(t), unittest.AddressFixture(t))
-		err := lt.AddEntry(core.RightDirection, core.Level(level), neighborIdentity)
+		err := lt.AddEntry(types.DirectionRight, types.Level(level), neighborIdentity)
 		require.NoError(t, err)
 	}
 
@@ -494,17 +494,17 @@ func TestSearchByIDConcurrentRightDirection(t *testing.T) {
 			<-barrier // Wait for all goroutines to be ready
 
 			// Pick random level
-			level := model.Level(rand.Intn(int(maxTestLevel)))
-			req := model.NewIdSearchReq(target, level, model.DirectionRight)
+			level := types.Level(rand.Intn(int(maxTestLevel)))
+			req := model.NewIdSearchReq(target, level, types.DirectionRight)
 			res, err := node.SearchByID(req)
 			require.NoError(t, err)
 
 			// Compute expected result: greatest ID <= target from levels 0 to level
-			var expectedLevel model.Level
+			var expectedLevel types.Level
 			var expectedID model.Identifier
 			foundCandidate := false
 
-			for l := model.Level(0); l <= level; l++ {
+			for l := types.Level(0); l <= level; l++ {
 				neighborID := neighbors[l]
 				cmp := neighborID.Compare(&target)
 				if cmp.GetComparisonResult() == model.CompareLess || cmp.GetComparisonResult() == model.CompareEqual {
@@ -527,7 +527,7 @@ func TestSearchByIDConcurrentRightDirection(t *testing.T) {
 				require.Equal(t, expectedID, res.Result(), "goroutine %d: result identifier mismatch", goroutineID)
 			} else {
 				// Fallback to own ID
-				require.Equal(t, model.Level(0), res.TerminationLevel(), "goroutine %d: expected fallback to level 0", goroutineID)
+				require.Equal(t, types.Level(0), res.TerminationLevel(), "goroutine %d: expected fallback to level 0", goroutineID)
 				require.Equal(t, nodeID, res.Result(), "goroutine %d: expected fallback to own ID", goroutineID)
 			}
 		}(i)
@@ -554,7 +554,7 @@ func TestSearchByIDErrorPropagation(t *testing.T) {
 
 	// Try to search - should return error at level 2
 	target := unittest.IdentifierFixture(t)
-	req := model.NewIdSearchReq(target, 5, model.DirectionLeft)
+	req := model.NewIdSearchReq(target, 5, types.DirectionLeft)
 
 	res, err := node.SearchByID(req)
 
@@ -582,16 +582,16 @@ func TestSearchByIDNetworkingIntegration(t *testing.T) {
 
 // mockErrorLookupTable is a mock implementation that returns errors at a specific level.
 type mockErrorLookupTable struct {
-	errorAtLevel core.Level
+	errorAtLevel types.Level
 }
 
-func (m *mockErrorLookupTable) GetEntry(dir core.Direction, level core.Level) (*model.Identity, error) {
+func (m *mockErrorLookupTable) GetEntry(dir types.Direction, level types.Level) (*model.Identity, error) {
 	if level == m.errorAtLevel {
 		return nil, fmt.Errorf("simulated lookup table error")
 	}
 	return nil, nil
 }
 
-func (m *mockErrorLookupTable) AddEntry(dir core.Direction, level core.Level, identity model.Identity) error {
+func (m *mockErrorLookupTable) AddEntry(dir types.Direction, level types.Level, identity model.Identity) error {
 	return nil
 }

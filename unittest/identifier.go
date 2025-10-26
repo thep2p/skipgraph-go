@@ -25,6 +25,8 @@ func IdentifierGreaterThan(target model.Identifier) model.Identifier {
 		byteSlice[i] = 0
 	}
 
+	// Error can be safely ignored: byteSlice is guaranteed to be exactly IdentifierSizeBytes,
+	// and ByteToId only returns an error if the input exceeds IdentifierSizeBytes.
 	id, _ := model.ByteToId(byteSlice)
 	return id
 }
@@ -46,6 +48,8 @@ func IdentifierLessThan(target model.Identifier) model.Identifier {
 		byteSlice[i] = 0xFF
 	}
 
+	// Error can be safely ignored: byteSlice is guaranteed to be exactly IdentifierSizeBytes,
+	// and ByteToId only returns an error if the input exceeds IdentifierSizeBytes.
 	id, _ := model.ByteToId(byteSlice)
 	return id
 }

@@ -43,7 +43,8 @@ func TestSearchByIDSingletonFallback(t *testing.T) {
 			target, err := model.ByteToId(tc.targetBytes)
 			require.NoError(t, err)
 
-			req := model.NewIdSearchReq(target, 3, tc.direction)
+			req, err := model.NewIdSearchReq(target, 3, tc.direction)
+			require.NoError(t, err)
 			res, err := node.SearchByID(req)
 
 			require.NoError(t, err)
@@ -101,7 +102,8 @@ func TestSearchByIDFoundLeftDirection(t *testing.T) {
 			}
 
 			// Perform search
-			req := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
+			req, err := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
+			require.NoError(t, err)
 			res, err := node.SearchByID(req)
 			require.NoError(t, err)
 
@@ -184,7 +186,8 @@ func TestSearchByIDFoundRightDirection(t *testing.T) {
 			}
 
 			// Perform search
-			req := model.NewIdSearchReq(target, testLevel, types.DirectionRight)
+			req, err := model.NewIdSearchReq(target, testLevel, types.DirectionRight)
+			require.NoError(t, err)
 			res, err := node.SearchByID(req)
 			require.NoError(t, err)
 
@@ -249,7 +252,8 @@ func TestSearchByIDNotFoundLeftDirection(t *testing.T) {
 			node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 			// Perform search - should fallback to own ID
-			req := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
+			req, err := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
+			require.NoError(t, err)
 			res, err := node.SearchByID(req)
 
 			require.NoError(t, err)
@@ -289,7 +293,8 @@ func TestSearchByIDNotFoundRightDirection(t *testing.T) {
 			node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 			// Perform search - should fallback to own ID
-			req := model.NewIdSearchReq(target, testLevel, types.DirectionRight)
+			req, err := model.NewIdSearchReq(target, testLevel, types.DirectionRight)
+			require.NoError(t, err)
 			res, err := node.SearchByID(req)
 
 			require.NoError(t, err)
@@ -335,7 +340,8 @@ func TestSearchByIDExactResult(t *testing.T) {
 	for level := types.Level(0); level < maxTestLevel; level++ {
 		t.Run(fmt.Sprintf("left_level_%d", level), func(t *testing.T) {
 			target := leftNeighbors[level]
-			req := model.NewIdSearchReq(target, level, types.DirectionLeft)
+			req, err := model.NewIdSearchReq(target, level, types.DirectionLeft)
+			require.NoError(t, err)
 			res, err := node.SearchByID(req)
 
 			require.NoError(t, err)
@@ -348,7 +354,8 @@ func TestSearchByIDExactResult(t *testing.T) {
 	for level := types.Level(0); level < maxTestLevel; level++ {
 		t.Run(fmt.Sprintf("right_level_%d", level), func(t *testing.T) {
 			target := rightNeighbors[level]
-			req := model.NewIdSearchReq(target, level, types.DirectionRight)
+			req, err := model.NewIdSearchReq(target, level, types.DirectionRight)
+			require.NoError(t, err)
 			res, err := node.SearchByID(req)
 
 			require.NoError(t, err)
@@ -405,7 +412,8 @@ func TestSearchByIDConcurrentFoundLeftDirection(t *testing.T) {
 
 			// Pick random level
 			level := types.Level(rand.Intn(int(maxTestLevel)))
-			req := model.NewIdSearchReq(target, level, types.DirectionLeft)
+			req, err := model.NewIdSearchReq(target, level, types.DirectionLeft)
+			require.NoError(t, err)
 			res, err := node.SearchByID(req)
 			require.NoError(t, err)
 
@@ -496,7 +504,8 @@ func TestSearchByIDConcurrentRightDirection(t *testing.T) {
 
 			// Pick random level
 			level := types.Level(rand.Intn(int(maxTestLevel)))
-			req := model.NewIdSearchReq(target, level, types.DirectionRight)
+			req, err := model.NewIdSearchReq(target, level, types.DirectionRight)
+			require.NoError(t, err)
 			res, err := node.SearchByID(req)
 			require.NoError(t, err)
 
@@ -555,7 +564,8 @@ func TestSearchByIDErrorPropagation(t *testing.T) {
 
 	// Try to search - should return error at level 2
 	target := unittest.IdentifierFixture(t)
-	req := model.NewIdSearchReq(target, 5, types.DirectionLeft)
+	req, err := model.NewIdSearchReq(target, 5, types.DirectionLeft)
+	require.NoError(t, err)
 
 	res, err := node.SearchByID(req)
 

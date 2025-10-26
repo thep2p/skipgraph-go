@@ -1,6 +1,9 @@
 package model
 
-import "github.com/thep2p/skipgraph-go/core/types"
+import (
+	"fmt"
+	"github.com/thep2p/skipgraph-go/core/types"
+)
 
 // IdSearchReq represents a request to search for an identifier in the lookup table.
 // It specifies the target identifier, the maximum level to search up to, and the search direction.
@@ -10,7 +13,7 @@ type IdSearchReq struct {
 	direction types.Direction // Search direction (Left or Right)
 }
 
-// NewIdSearchReq creates a new IdSearchReq instance.
+// NewIdSearchReq creates a new IdSearchReq instance with input validation.
 // Args:
 //   - target: the identifier to search for
 //   - level: the maximum level to search up to (inclusive)
@@ -18,12 +21,32 @@ type IdSearchReq struct {
 //
 // Returns:
 //   - IdSearchReq: the constructed search request
-func NewIdSearchReq(target Identifier, level types.Level, direction types.Direction) IdSearchReq {
+//   - error: validation error if inputs are invalid
+//
+// Validation rules:
+//   - level must be >= 0
+//   - level must be < IdentifierSizeBytes * 8 (MaxLookupTableLevel)
+//   - direction must be either DirectionLeft or DirectionRight
+func NewIdSearchReq(target Identifier, level types.Level, direction types.Direction) (IdSearchReq, error) {
+	// Validate level bounds
+	const maxLookupTableLevel = IdentifierSizeBytes * 8
+	if level < 0 {
+		return IdSearchReq{}, fmt.Errorf("level must be non-negative, got: %d", level)
+	}
+	if level >= maxLookupTableLevel {
+		return IdSearchReq{}, fmt.Errorf("level must be less than %d, got: %d", maxLookupTableLevel, level)
+	}
+
+	// Validate direction
+	if direction != types.DirectionLeft && direction != types.DirectionRight {
+		return IdSearchReq{}, fmt.Errorf("direction must be either DirectionLeft or DirectionRight, got: %s", direction)
+	}
+
 	return IdSearchReq{
 		target:    target,
 		level:     level,
 		direction: direction,
-	}
+	}, nil
 }
 
 // Target returns the target identifier being searched for.

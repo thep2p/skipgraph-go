@@ -53,7 +53,8 @@ func (n *SkipGraphNode) SearchByID(req model.IdSearchReq) (model.IdSearchRes, er
 		level types.Level
 	}
 
-	var candidates []candidate
+	// Pre-allocate capacity for worst case: one candidate per level from 0 to req.Level()
+	candidates := make([]candidate, 0, req.Level()+1)
 
 	for level := types.Level(0); level <= req.Level(); level++ {
 		identity, err := n.lt.GetEntry(req.Direction(), level)

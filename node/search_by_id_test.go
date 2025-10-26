@@ -591,6 +591,54 @@ func TestSearchByIDNetworkingIntegration(t *testing.T) {
 	// 5. Assert response contains correct result
 }
 
+// TestSearchByIDInvalidDirection verifies that NewIdSearchReq rejects invalid direction values.
+func TestSearchByIDInvalidDirection(t *testing.T) {
+	target := unittest.IdentifierFixture(t)
+	invalidDirection := types.Direction("invalid")
+
+	req, err := model.NewIdSearchReq(target, 5, invalidDirection)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "direction must be either DirectionLeft or DirectionRight")
+	require.Equal(t, model.IdSearchReq{}, req, "expected zero value on error")
+}
+
+// TestSearchByIDNegativeLevel verifies that NewIdSearchReq rejects negative level values.
+func TestSearchByIDNegativeLevel(t *testing.T) {
+	target := unittest.IdentifierFixture(t)
+	negativeLevel := types.Level(-1)
+
+	req, err := model.NewIdSearchReq(target, negativeLevel, types.DirectionLeft)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "level must be non-negative")
+	require.Equal(t, model.IdSearchReq{}, req, "expected zero value on error")
+}
+
+// TestSearchByIDLevelExceedsMax verifies that NewIdSearchReq rejects level >= MaxLookupTableLevel.
+func TestSearchByIDLevelExceedsMax(t *testing.T) {
+	target := unittest.IdentifierFixture(t)
+
+	testCases := []struct {
+		name  string
+		level types.Level
+	}{
+		{"exactly_max", model.IdentifierSizeBytes * 8},
+		{"exceeds_max", model.IdentifierSizeBytes*8 + 1},
+		{"far_exceeds_max", model.IdentifierSizeBytes*8 + 100},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := model.NewIdSearchReq(target, tc.level, types.DirectionRight)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "level must be less than")
+			require.Equal(t, model.IdSearchReq{}, req, "expected zero value on error")
+		})
+	}
+}
+
 // mockErrorLookupTable is a mock implementation that returns errors at a specific level.
 type mockErrorLookupTable struct {
 	errorAtLevel types.Level

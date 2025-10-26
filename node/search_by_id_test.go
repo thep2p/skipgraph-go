@@ -31,7 +31,7 @@ func TestSearchByIDSingletonFallback(t *testing.T) {
 
 		level := unittest.RandomLevelFixture(t)
 
-		req, err := model.NewIdSearchReq(target, level, types.DirectionLeft)
+		req, err := model.NewIdSearchReq(target, level, unittest.RandomDirectionFixture(t))
 		require.NoError(t, err)
 		res, err := node.SearchByID(req)
 

@@ -52,162 +52,128 @@ func TestSearchByIDSingletonFallback(t *testing.T) {
 func TestSearchByIDFoundLeftDirection(t *testing.T) {
 	// Test for all levels
 	for testLevel := types.Level(0); testLevel < core.MaxLookupTableLevel; testLevel++ {
-		t.Run(
-			fmt.Sprintf("level_%d", testLevel), func(t *testing.T) {
-				// Create node
-				nodeID := unittest.IdentifierFixture(t)
-				memVec := unittest.MembershipVectorFixture(t)
-				identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
+		// Create node
+		nodeID := unittest.IdentifierFixture(t)
+		memVec := unittest.MembershipVectorFixture(t)
+		identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
 
-				// Generate a random target
-				target := unittest.IdentifierFixture(t)
+		// Generate a random target
+		target := unittest.IdentifierFixture(t)
 
-				// Populate lookup table with random neighbors with IDs greater than target
-				// to guarantee at least one valid candidate exists >= target on left direction
-				lt := unittest.RandomLookupTable(t, unittest.WithIdsGreaterThan(target))
-				node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
+		// Populate lookup table with random neighbors with IDs greater than target
+		// to guarantee at least one valid candidate exists >= target on left direction
+		lt := unittest.RandomLookupTable(t, unittest.WithIdsGreaterThan(target))
+		node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
-				// Perform search
-				req, err := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
-				require.NoError(t, err)
-				res, err := node.SearchByID(req)
-				require.NoError(t, err)
+		// Perform search
+		req, err := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
+		require.NoError(t, err)
+		res, err := node.SearchByID(req)
+		require.NoError(t, err)
 
-				// Manually compute expected result: smallest ID >= target
-				var expectedLevel types.Level
-				var expectedID model.Identifier
-				foundCandidate := false
+		// Manually compute expected result: smallest ID >= target
+		var expectedLevel types.Level
+		var expectedID model.Identifier
+		foundCandidate := false
 
-				for level := types.Level(0); level <= testLevel; level++ {
-					neighbor, err := lt.GetEntry(types.DirectionLeft, level)
-					require.NoError(t, err)
-					neighborId := neighbor.GetIdentifier()
-					cmp := neighborId.Compare(&target)
-					if cmp.GetComparisonResult() == model.CompareGreater || cmp.GetComparisonResult() == model.CompareEqual {
-						if !foundCandidate {
-							expectedID = neighborId
-							expectedLevel = level
-							foundCandidate = true
-						} else {
-							// Check if this neighbor is smaller than current best
-							bestCmp := neighborId.Compare(&expectedID)
-							if bestCmp.GetComparisonResult() == model.CompareLess {
-								expectedID = neighborId
-								expectedLevel = level
-							}
-						}
+		for level := types.Level(0); level <= testLevel; level++ {
+			neighbor, err := lt.GetEntry(types.DirectionLeft, level)
+			require.NoError(t, err)
+			neighborId := neighbor.GetIdentifier()
+			cmp := neighborId.Compare(&target)
+			if cmp.GetComparisonResult() == model.CompareGreater || cmp.GetComparisonResult() == model.CompareEqual {
+				if !foundCandidate {
+					expectedID = neighborId
+					expectedLevel = level
+					foundCandidate = true
+				} else {
+					// Check if this neighbor is smaller than current best
+					bestCmp := neighborId.Compare(&expectedID)
+					if bestCmp.GetComparisonResult() == model.CompareLess {
+						expectedID = neighborId
+						expectedLevel = level
 					}
 				}
+			}
+		}
 
-				require.True(t, foundCandidate, "expected to find a candidate >= target")
-				require.Equal(
-					t,
-					expectedLevel,
-					res.TerminationLevel(),
-					"termination level mismatch",
-				)
-				require.Equal(t, expectedID, res.Result(), "result identifier mismatch")
-			},
+		require.True(t, foundCandidate, "expected to find a candidate >= target")
+		require.Equal(
+			t,
+			expectedLevel,
+			res.TerminationLevel(),
+			"termination level mismatch, expected %d, got %d", expectedLevel,
+			res.TerminationLevel(),
 		)
+		require.Equal(t, expectedID, res.Result(), "result identifier mismatch")
 	}
 }
 
 // TestSearchByIDFoundRightDirection verifies correct candidate selection in right direction
 // (greatest ID <= target).
 func TestSearchByIDFoundRightDirection(t *testing.T) {
-	// Test for various levels
-	for testLevel := types.Level(0); testLevel < 5; testLevel++ {
-		t.Run(
-			fmt.Sprintf("level_%d", testLevel), func(t *testing.T) {
-				// Create node
-				nodeID := unittest.IdentifierFixture(t)
-				memVec := unittest.MembershipVectorFixture(t)
-				identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
-				lt := &lookup.Table{}
+	// Test for all levels
+	for testLevel := types.Level(0); testLevel < core.MaxLookupTableLevel; testLevel++ {
+		// Create node
+		nodeID := unittest.IdentifierFixture(t)
+		memVec := unittest.MembershipVectorFixture(t)
+		identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
 
-				// Populate lookup table with random neighbors
-				neighbors := make(map[types.Level]model.Identifier)
-				for level := types.Level(0); level <= testLevel; level++ {
-					neighborID := unittest.IdentifierFixture(t)
-					neighbors[level] = neighborID
-					neighborIdentity := model.NewIdentity(
-						neighborID,
-						unittest.MembershipVectorFixture(t),
-						unittest.AddressFixture(t),
-					)
-					err := lt.AddEntry(types.DirectionRight, types.Level(level), neighborIdentity)
-					require.NoError(t, err)
-				}
+		// Populate lookup table with random neighbors
+		lt := unittest.RandomLookupTable(t)
 
-				node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
+		// Get one right neighbor and use it to set a baseline for target
+		// This ensures at least one valid candidate exists
+		baseNeighbor, err := lt.GetEntry(types.DirectionRight, types.Level(0))
+		require.NoError(t, err)
+		baseNeighborID := baseNeighbor.GetIdentifier()
 
-				// Generate a random target
-				target := unittest.IdentifierFixture(t)
+		// Generate target that is >= baseNeighborID OR use baseNeighborID itself
+		// This guarantees at least one right neighbor will be <= target
+		target := baseNeighborID
+		node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
-				// Ensure at least one neighbor <= target exists (add safe neighbor at level 0 if needed)
-				hasValidCandidate := false
-				for level := types.Level(0); level <= testLevel; level++ {
-					neighborID := neighbors[level]
-					cmp := neighborID.Compare(&target)
-					if cmp.GetComparisonResult() == model.CompareLess || cmp.GetComparisonResult() == model.CompareEqual {
-						hasValidCandidate = true
-						break
+		// Perform search
+		req, err := model.NewIdSearchReq(target, testLevel, types.DirectionRight)
+		require.NoError(t, err)
+		res, err := node.SearchByID(req)
+		require.NoError(t, err)
+
+		// Manually compute expected result: greatest ID <= target
+		var expectedLevel types.Level
+		var expectedID model.Identifier
+		foundCandidate := false
+
+		for level := types.Level(0); level <= testLevel; level++ {
+			neighbor, err := lt.GetEntry(types.DirectionRight, level)
+			require.NoError(t, err)
+			neighborId := neighbor.GetIdentifier()
+			cmp := neighborId.Compare(&target)
+			if cmp.GetComparisonResult() == model.CompareLess || cmp.GetComparisonResult() == model.CompareEqual {
+				if !foundCandidate {
+					expectedID = neighborId
+					expectedLevel = level
+					foundCandidate = true
+				} else {
+					// Check if this neighbor is greater than current best
+					bestCmp := neighborId.Compare(&expectedID)
+					if bestCmp.GetComparisonResult() == model.CompareGreater {
+						expectedID = neighborId
+						expectedLevel = level
 					}
 				}
+			}
+		}
 
-				if !hasValidCandidate {
-					// Add a safe neighbor at level 0 that is <= target
-					safeNeighborID := unittest.IdentifierLessThan(target)
-					safeIdentity := model.NewIdentity(
-						safeNeighborID,
-						unittest.MembershipVectorFixture(t),
-						unittest.AddressFixture(t),
-					)
-					err := lt.AddEntry(types.DirectionRight, types.Level(0), safeIdentity)
-					require.NoError(t, err)
-					neighbors[0] = safeNeighborID
-				}
-
-				// Perform search
-				req, err := model.NewIdSearchReq(target, testLevel, types.DirectionRight)
-				require.NoError(t, err)
-				res, err := node.SearchByID(req)
-				require.NoError(t, err)
-
-				// Manually compute expected result: greatest ID <= target
-				var expectedLevel types.Level
-				var expectedID model.Identifier
-				foundCandidate := false
-
-				for level := types.Level(0); level <= testLevel; level++ {
-					neighborID := neighbors[level]
-					cmp := neighborID.Compare(&target)
-					if cmp.GetComparisonResult() == model.CompareLess || cmp.GetComparisonResult() == model.CompareEqual {
-						if !foundCandidate {
-							expectedID = neighborID
-							expectedLevel = level
-							foundCandidate = true
-						} else {
-							// Check if this neighbor is greater than current best
-							bestCmp := neighborID.Compare(&expectedID)
-							if bestCmp.GetComparisonResult() == model.CompareGreater {
-								expectedID = neighborID
-								expectedLevel = level
-							}
-						}
-					}
-				}
-
-				require.True(t, foundCandidate, "expected to find a candidate <= target")
-				require.Equal(
-					t,
-					expectedLevel,
-					res.TerminationLevel(),
-					"termination level mismatch",
-				)
-				require.Equal(t, expectedID, res.Result(), "result identifier mismatch")
-			},
+		require.True(t, foundCandidate, "expected to find a candidate <= target")
+		require.Equal(
+			t,
+			expectedLevel,
+			res.TerminationLevel(),
+			"termination level mismatch, expected %d, got %d", expectedLevel,
+			res.TerminationLevel(),
 		)
+		require.Equal(t, expectedID, res.Result(), "result identifier mismatch")
 	}
 }
 

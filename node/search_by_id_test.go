@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"github.com/thep2p/skipgraph-go/core"
 	"math/rand"
 	"sync"
 	"testing"
@@ -49,8 +50,8 @@ func TestSearchByIDSingletonFallback(t *testing.T) {
 // TestSearchByIDFoundLeftDirection verifies correct candidate selection in left direction
 // (smallest ID >= target).
 func TestSearchByIDFoundLeftDirection(t *testing.T) {
-	// Test for various levels
-	for testLevel := types.Level(0); testLevel < 5; testLevel++ {
+	// Test for all levels
+	for testLevel := types.Level(0); testLevel < core.MaxLookupTableLevel; testLevel++ {
 		t.Run(
 			fmt.Sprintf("level_%d", testLevel), func(t *testing.T) {
 				// Create node

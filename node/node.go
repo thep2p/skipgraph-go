@@ -2,18 +2,21 @@ package node
 
 import (
 	"fmt"
+	"github.com/rs/zerolog"
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/model"
 	"github.com/thep2p/skipgraph-go/core/types"
 )
 
 type SkipGraphNode struct {
-	id model.Identity
-	lt core.MutableLookupTable
+	logger zerolog.Logger
+	id     model.Identity
+	lt     core.MutableLookupTable
 }
 
-func NewSkipGraphNode(id model.Identity, lt core.MutableLookupTable) *SkipGraphNode {
-	return &SkipGraphNode{id: id, lt: lt}
+func NewSkipGraphNode(logger zerolog.Logger, id model.Identity, lt core.MutableLookupTable) *SkipGraphNode {
+	logger = logger.With().Str("component", "skip_graph_node").Logger()
+	return &SkipGraphNode{logger: logger, id: id, lt: lt}
 }
 
 func (n *SkipGraphNode) Identifier() model.Identifier {

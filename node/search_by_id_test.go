@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/core/lookup"
 	"github.com/thep2p/skipgraph-go/core/model"
@@ -24,7 +25,7 @@ func TestSearchByIDSingletonFallback(t *testing.T) {
 
 	memVec := unittest.MembershipVectorFixture(t)
 	identity := model.NewIdentity(nodeID, memVec, model.NewAddress("localhost", "8000"))
-	node := NewSkipGraphNode(identity, &lookup.Table{})
+	node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, &lookup.Table{})
 
 	testCases := []struct {
 		name        string
@@ -74,7 +75,7 @@ func TestSearchByIDFoundLeftDirection(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			node := NewSkipGraphNode(identity, lt)
+			node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 			// Generate a random target
 			target := unittest.IdentifierFixture(t)
@@ -157,7 +158,7 @@ func TestSearchByIDFoundRightDirection(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			node := NewSkipGraphNode(identity, lt)
+			node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 			// Generate a random target
 			target := unittest.IdentifierFixture(t)
@@ -245,7 +246,7 @@ func TestSearchByIDNotFoundLeftDirection(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			node := NewSkipGraphNode(identity, lt)
+			node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 			// Perform search - should fallback to own ID
 			req := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
@@ -285,7 +286,7 @@ func TestSearchByIDNotFoundRightDirection(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			node := NewSkipGraphNode(identity, lt)
+			node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 			// Perform search - should fallback to own ID
 			req := model.NewIdSearchReq(target, testLevel, types.DirectionRight)
@@ -328,7 +329,7 @@ func TestSearchByIDExactResult(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	node := NewSkipGraphNode(identity, lt)
+	node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 	// Test left direction - search for each left neighbor's ID
 	for level := types.Level(0); level < maxTestLevel; level++ {
@@ -389,7 +390,7 @@ func TestSearchByIDConcurrentFoundLeftDirection(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	node := NewSkipGraphNode(identity, lt)
+	node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 	// Spawn 20 goroutines
 	const numGoroutines = 20
@@ -480,7 +481,7 @@ func TestSearchByIDConcurrentRightDirection(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	node := NewSkipGraphNode(identity, lt)
+	node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 	// Spawn 20 goroutines
 	const numGoroutines = 20
@@ -550,7 +551,7 @@ func TestSearchByIDErrorPropagation(t *testing.T) {
 	nodeID := unittest.IdentifierFixture(t)
 	memVec := unittest.MembershipVectorFixture(t)
 	identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
-	node := NewSkipGraphNode(identity, mockLT)
+	node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, mockLT)
 
 	// Try to search - should return error at level 2
 	target := unittest.IdentifierFixture(t)

@@ -24,8 +24,103 @@ func TestMessageFixture(t *testing.T) *net.Message {
 	}
 }
 
-// IdentifierFixture generates a random Identifier
-func IdentifierFixture(t *testing.T) model.Identifier {
+// IdentifierFixtureOption is a functional option for configuring IdentifierFixture generation.
+type IdentifierFixtureOption func(*identifierConfig)
+
+// identifierConfig holds configuration for generating random identifiers.
+type identifierConfig struct {
+	minID *model.Identifier // if set, the generated ID must be greater than this
+	maxID *model.Identifier // if set, the generated ID must be less than this
+}
+
+// IdentifierFixture generates a random Identifier.
+// Options allow constraining the generated identifier to a specific range.
+//
+// Options:
+//   - WithIdsGreaterThan: constrains the generated ID to be greater than the specified ID
+//   - WithIdsLessThan: constrains the generated ID to be less than the specified ID
+//
+// Args:
+//   - t: the testing context
+//   - opts: optional configuration options
+//
+// Returns:
+//   - A randomly generated identifier that satisfies all constraints
+//
+// Example:
+//
+//	// Generate any random ID
+//	id := unittest.IdentifierFixture(t)
+//
+//	// Generate an ID greater than someID
+//	id := unittest.IdentifierFixture(t, unittest.WithIdsGreaterThan(someID))
+//
+//	// Generate an ID in a specific range
+//	id := unittest.IdentifierFixture(t,
+//	    unittest.WithIdsGreaterThan(minID),
+//	    unittest.WithIdsLessThan(maxID))
+func IdentifierFixture(t *testing.T, opts ...IdentifierFixtureOption) model.Identifier {
+	// Apply options
+	config := &identifierConfig{}
+	for _, opt := range opts {
+		opt(config)
+	}
+
+	// Validate that minID < maxID if both are set
+	if config.minID != nil && config.maxID != nil {
+		comparison := config.minID.Compare(config.maxID)
+		require.NotEqual(
+			t, model.CompareGreater, comparison.GetComparisonResult(),
+			"minID must be less than maxID",
+		)
+		require.NotEqual(
+			t, model.CompareEqual, comparison.GetComparisonResult(),
+			"minID must be less than maxID (cannot be equal)",
+		)
+	}
+
+	// If we have constraints, generate an ID that satisfies them
+	if config.minID != nil || config.maxID != nil {
+		maxAttempts := 1000
+		for attempt := 0; attempt < maxAttempts; attempt++ {
+			id := generateRandomIdentifier(t)
+
+			// Check if ID satisfies minID constraint
+			if config.minID != nil {
+				comparison := id.Compare(config.minID)
+				if comparison.GetComparisonResult() != model.CompareGreater {
+					continue // ID is not greater than minID, try again
+				}
+			}
+
+			// Check if ID satisfies maxID constraint
+			if config.maxID != nil {
+				comparison := id.Compare(config.maxID)
+				if comparison.GetComparisonResult() != model.CompareLess {
+					continue // ID is not less than maxID, try again
+				}
+			}
+
+			// ID satisfies all constraints
+			return id
+		}
+
+		// If we failed to generate a valid ID after maxAttempts, fail the test
+		require.FailNow(
+			t,
+			"failed to generate identifier within constraints after %d attempts",
+			maxAttempts,
+		)
+		return model.Identifier{} // unreachable
+	}
+
+	// No constraints, generate a completely random ID
+	return generateRandomIdentifier(t)
+}
+
+// generateRandomIdentifier generates a completely random identifier without any constraints.
+// This is an internal helper function used by IdentifierFixture.
+func generateRandomIdentifier(t *testing.T) model.Identifier {
 	var id model.Identifier
 	bytes := RandomBytesFixture(t, model.IdentifierSizeBytes)
 
@@ -133,16 +228,7 @@ func RandomDirectionFixture(t *testing.T) types.Direction {
 	return types.DirectionRight
 }
 
-// LookupTableOption is a functional option for configuring RandomLookupTable generation.
-type LookupTableOption func(*lookupTableConfig)
-
-// lookupTableConfig holds configuration for generating random lookup tables.
-type lookupTableConfig struct {
-	minID *model.Identifier // if set, all generated IDs must be greater than this
-	maxID *model.Identifier // if set, all generated IDs must be less than this
-}
-
-// WithIdsGreaterThan configures the RandomLookupTable to generate all identifiers
+// WithIdsGreaterThan configures IdentifierFixture or RandomLookupTable to generate identifiers
 // greater than the specified ID. This is useful for testing scenarios where nodes
 // must have identifiers within a specific range.
 //
@@ -150,14 +236,14 @@ type lookupTableConfig struct {
 //   - id: the lower bound (exclusive) for generated identifiers
 //
 // Returns:
-//   - A LookupTableOption that can be passed to RandomLookupTable
-func WithIdsGreaterThan(id model.Identifier) LookupTableOption {
-	return func(config *lookupTableConfig) {
+//   - An IdentifierFixtureOption that can be passed to IdentifierFixture or RandomLookupTable
+func WithIdsGreaterThan(id model.Identifier) IdentifierFixtureOption {
+	return func(config *identifierConfig) {
 		config.minID = &id
 	}
 }
 
-// WithIdsLessThan configures the RandomLookupTable to generate all identifiers
+// WithIdsLessThan configures IdentifierFixture or RandomLookupTable to generate identifiers
 // less than the specified ID. This is useful for testing scenarios where nodes
 // must have identifiers within a specific range.
 //
@@ -165,9 +251,9 @@ func WithIdsGreaterThan(id model.Identifier) LookupTableOption {
 //   - id: the upper bound (exclusive) for generated identifiers
 //
 // Returns:
-//   - A LookupTableOption that can be passed to RandomLookupTable
-func WithIdsLessThan(id model.Identifier) LookupTableOption {
-	return func(config *lookupTableConfig) {
+//   - An IdentifierFixtureOption that can be passed to IdentifierFixture or RandomLookupTable
+func WithIdsLessThan(id model.Identifier) IdentifierFixtureOption {
+	return func(config *identifierConfig) {
 		config.maxID = &id
 	}
 }
@@ -200,26 +286,7 @@ func WithIdsLessThan(id model.Identifier) LookupTableOption {
 //	table := unittest.RandomLookupTable(t,
 //	    unittest.WithIdsGreaterThan(minID),
 //	    unittest.WithIdsLessThan(maxID))
-func RandomLookupTable(t *testing.T, opts ...LookupTableOption) *lookup.Table {
-	// Apply options
-	config := &lookupTableConfig{}
-	for _, opt := range opts {
-		opt(config)
-	}
-
-	// Validate that minID < maxID if both are set
-	if config.minID != nil && config.maxID != nil {
-		comparison := config.minID.Compare(config.maxID)
-		require.NotEqual(
-			t, model.CompareGreater, comparison.GetComparisonResult(),
-			"minID must be less than maxID",
-		)
-		require.NotEqual(
-			t, model.CompareEqual, comparison.GetComparisonResult(),
-			"minID must be less than maxID (cannot be equal)",
-		)
-	}
-
+func RandomLookupTable(t *testing.T, opts ...IdentifierFixtureOption) *lookup.Table {
 	table := &lookup.Table{}
 
 	// Generate a random number of neighbors (0 to MaxLookupTableLevel)
@@ -232,69 +299,16 @@ func RandomLookupTable(t *testing.T, opts ...LookupTableOption) *lookup.Table {
 	for i := 0; i < neighborCount; i++ {
 		level := RandomLevelFixture(t)
 		direction := RandomDirectionFixture(t)
-		identity := randomIdentityWithConstraints(t, config)
+
+		// Generate identity using IdentifierFixture with the provided options
+		id := IdentifierFixture(t, opts...)
+		memVec := MembershipVectorFixture(t)
+		addr := AddressFixture(t)
+		identity := model.NewIdentity(id, memVec, addr)
 
 		err := table.AddEntry(direction, level, identity)
 		require.NoError(t, err, "failed to add entry to lookup table")
 	}
 
 	return table
-}
-
-// randomIdentityWithConstraints generates a random identity that satisfies the given constraints.
-func randomIdentityWithConstraints(t *testing.T, config *lookupTableConfig) model.Identity {
-	var id model.Identifier
-
-	// If we have constraints, generate an ID that satisfies them
-	if config.minID != nil || config.maxID != nil {
-		id = randomIdentifierWithConstraints(t, config.minID, config.maxID)
-	} else {
-		// No constraints, generate a completely random ID
-		id = IdentifierFixture(t)
-	}
-
-	memVec := MembershipVectorFixture(t)
-	addr := AddressFixture(t)
-	return model.NewIdentity(id, memVec, addr)
-}
-
-// randomIdentifierWithConstraints generates a random identifier that satisfies min/max constraints.
-// If minID is set, the generated ID will be greater than minID.
-// If maxID is set, the generated ID will be less than maxID.
-// If both are set, the generated ID will be in the range (minID, maxID).
-func randomIdentifierWithConstraints(
-	t *testing.T,
-	minID, maxID *model.Identifier,
-) model.Identifier {
-	maxAttempts := 1000
-	for attempt := 0; attempt < maxAttempts; attempt++ {
-		id := IdentifierFixture(t)
-
-		// Check if ID satisfies minID constraint
-		if minID != nil {
-			comparison := id.Compare(minID)
-			if comparison.GetComparisonResult() != model.CompareGreater {
-				continue // ID is not greater than minID, try again
-			}
-		}
-
-		// Check if ID satisfies maxID constraint
-		if maxID != nil {
-			comparison := id.Compare(maxID)
-			if comparison.GetComparisonResult() != model.CompareLess {
-				continue // ID is not less than maxID, try again
-			}
-		}
-
-		// ID satisfies all constraints
-		return id
-	}
-
-	// If we failed to generate a valid ID after maxAttempts, fail the test
-	require.FailNow(
-		t,
-		"failed to generate identifier within constraints after %d attempts",
-		maxAttempts,
-	)
-	return model.Identifier{} // unreachable
 }

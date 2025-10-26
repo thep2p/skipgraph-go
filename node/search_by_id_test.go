@@ -58,50 +58,14 @@ func TestSearchByIDFoundLeftDirection(t *testing.T) {
 				nodeID := unittest.IdentifierFixture(t)
 				memVec := unittest.MembershipVectorFixture(t)
 				identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
-				lt := &lookup.Table{}
-
-				// Populate lookup table with random neighbors
-				neighbors := make(map[types.Level]model.Identifier)
-				for level := types.Level(0); level <= testLevel; level++ {
-					neighborID := unittest.IdentifierFixture(t)
-					neighbors[level] = neighborID
-					neighborIdentity := model.NewIdentity(
-						neighborID,
-						unittest.MembershipVectorFixture(t),
-						unittest.AddressFixture(t),
-					)
-					err := lt.AddEntry(types.DirectionLeft, types.Level(level), neighborIdentity)
-					require.NoError(t, err)
-				}
-
-				node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 				// Generate a random target
 				target := unittest.IdentifierFixture(t)
 
-				// Ensure at least one neighbor >= target exists (add safe neighbor at level 0 if needed)
-				hasValidCandidate := false
-				for level := types.Level(0); level <= testLevel; level++ {
-					neighborID := neighbors[level]
-					cmp := neighborID.Compare(&target)
-					if cmp.GetComparisonResult() == model.CompareGreater || cmp.GetComparisonResult() == model.CompareEqual {
-						hasValidCandidate = true
-						break
-					}
-				}
-
-				if !hasValidCandidate {
-					// Add a safe neighbor at level 0 that is >= target
-					safeNeighborID := unittest.IdentifierGreaterThan(target)
-					safeIdentity := model.NewIdentity(
-						safeNeighborID,
-						unittest.MembershipVectorFixture(t),
-						unittest.AddressFixture(t),
-					)
-					err := lt.AddEntry(types.DirectionLeft, types.Level(0), safeIdentity)
-					require.NoError(t, err)
-					neighbors[0] = safeNeighborID
-				}
+				// Populate lookup table with random neighbors with IDs greater than target
+				// to guarantee at least one valid candidate exists >= target on left direction
+				lt := unittest.RandomLookupTable(t, unittest.WithIdsGreaterThan(target))
+				node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 				// Perform search
 				req, err := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
@@ -115,18 +79,20 @@ func TestSearchByIDFoundLeftDirection(t *testing.T) {
 				foundCandidate := false
 
 				for level := types.Level(0); level <= testLevel; level++ {
-					neighborID := neighbors[level]
-					cmp := neighborID.Compare(&target)
+					neighbor, err := lt.GetEntry(types.DirectionLeft, level)
+					require.NoError(t, err)
+					neighborId := neighbor.GetIdentifier()
+					cmp := neighborId.Compare(&target)
 					if cmp.GetComparisonResult() == model.CompareGreater || cmp.GetComparisonResult() == model.CompareEqual {
 						if !foundCandidate {
-							expectedID = neighborID
+							expectedID = neighborId
 							expectedLevel = level
 							foundCandidate = true
 						} else {
 							// Check if this neighbor is smaller than current best
-							bestCmp := neighborID.Compare(&expectedID)
+							bestCmp := neighborId.Compare(&expectedID)
 							if bestCmp.GetComparisonResult() == model.CompareLess {
-								expectedID = neighborID
+								expectedID = neighborId
 								expectedLevel = level
 							}
 						}

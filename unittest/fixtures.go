@@ -73,51 +73,32 @@ func IdentifierFixture(t *testing.T, opts ...IdentifierFixtureOption) model.Iden
 		require.NotEqual(t, model.CompareEqual, comparison.GetComparisonResult(), "minID must be less than maxID (cannot be equal)")
 	}
 
-	// Case 1: Both min and max - generate ID in exclusive range (minID, maxID)
-	if config.minID != nil && config.maxID != nil {
-		minBig := new(big.Int).SetBytes(config.minID[:])
-		maxBig := new(big.Int).SetBytes(config.maxID[:])
-		rangeBig := new(big.Int).Sub(maxBig, minBig)
-		require.True(t, rangeBig.Cmp(big.NewInt(2)) >= 0, "range must be at least 2 to generate exclusive values")
+	// Default to full identifier space [0, 2^256 - 1]
+	// Use minBig = -1 to allow inclusive generation of 0 using exclusive formula
+	minBig := big.NewInt(-1)
+	maxBig := new(big.Int).Lsh(big.NewInt(1), model.IdentifierSizeBytes*8)
+	maxBig.Sub(maxBig, big.NewInt(1))
 
-		maxOffset := new(big.Int).Sub(rangeBig, big.NewInt(1))
-		randomOffset, err := rand.Int(rand.Reader, maxOffset)
-		require.NoError(t, err, "failed to generate random offset")
-		offset := new(big.Int).Add(randomOffset, big.NewInt(1))
-		resultBig := new(big.Int).Add(minBig, offset)
-		return bigIntToIdentifier(t, resultBig)
-	}
-
-	// Case 2: Only min - generate ID > minID
+	// Override with constraints if provided
 	if config.minID != nil {
-		minBig := new(big.Int).SetBytes(config.minID[:])
-		maxPossible := new(big.Int).Lsh(big.NewInt(1), model.IdentifierSizeBytes*8)
-		maxPossible.Sub(maxPossible, big.NewInt(1))
-		rangeBig := new(big.Int).Sub(maxPossible, minBig)
-		require.True(t, rangeBig.Cmp(big.NewInt(0)) > 0, "minID is at maximum, cannot generate greater ID")
-
-		randomOffset, err := rand.Int(rand.Reader, rangeBig)
-		require.NoError(t, err, "failed to generate random offset")
-		offset := new(big.Int).Add(randomOffset, big.NewInt(1))
-		resultBig := new(big.Int).Add(minBig, offset)
-		return bigIntToIdentifier(t, resultBig)
+		minBig = new(big.Int).SetBytes(config.minID[:])
 	}
-
-	// Case 3: Only max - generate ID < maxID
 	if config.maxID != nil {
-		maxBig := new(big.Int).SetBytes(config.maxID[:])
-		require.True(t, maxBig.Cmp(big.NewInt(0)) > 0, "maxID must be > 0 to generate smaller ID")
-
-		resultBig, err := rand.Int(rand.Reader, maxBig)
-		require.NoError(t, err, "failed to generate random identifier")
-		return bigIntToIdentifier(t, resultBig)
+		maxBig = new(big.Int).SetBytes(config.maxID[:])
 	}
 
-	// No constraints - generate completely random ID
-	var id model.Identifier
-	bytes := RandomBytesFixture(t, model.IdentifierSizeBytes)
-	copy(id[:], bytes)
-	return id
+	// Generate in exclusive range (minBig, maxBig) using single code path
+	rangeBig := new(big.Int).Sub(maxBig, minBig)
+	require.True(t, rangeBig.Cmp(big.NewInt(1)) > 0, "range must be at least 2 to generate exclusive values")
+
+	// Generate exclusive value: result = minBig + random(1, range-1)
+	maxOffset := new(big.Int).Sub(rangeBig, big.NewInt(1))
+	randomOffset, err := rand.Int(rand.Reader, maxOffset)
+	require.NoError(t, err, "failed to generate random offset")
+	offset := new(big.Int).Add(randomOffset, big.NewInt(1))
+	resultBig := new(big.Int).Add(minBig, offset)
+
+	return bigIntToIdentifier(t, resultBig)
 }
 
 // bigIntToIdentifier converts a big.Int to an Identifier.
@@ -173,8 +154,9 @@ func MembershipVectorFixture(t *testing.T) model.MembershipVector {
 // AddressFixture returns an Address on localhost with a random port number.
 func AddressFixture(t *testing.T) model.Address {
 	// pick a random port
-	max := big.NewInt(65535)
-	randomInt, _ := rand.Int(rand.Reader, max)
+	maxPort := big.NewInt(65535)
+	randomInt, err := rand.Int(rand.Reader, maxPort)
+	require.NoError(t, err)
 	port := randomInt.String()
 	addr := model.NewAddress("localhost", port)
 	return addr

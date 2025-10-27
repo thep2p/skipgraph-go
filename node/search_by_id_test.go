@@ -214,36 +214,32 @@ func TestSearchByIDNotFoundLeftDirection(t *testing.T) {
 // All right neighbors have IDs greater than target, so should fallback to own ID.
 func TestSearchByIDNotFoundRightDirection(t *testing.T) {
 	// Test for various levels
-	for testLevel := types.Level(0); testLevel < 5; testLevel++ {
-		t.Run(
-			fmt.Sprintf("level_%d", testLevel), func(t *testing.T) {
-				// Create node
-				nodeID := unittest.IdentifierFixture(t)
-				memVec := unittest.MembershipVectorFixture(t)
-				identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
+	for testLevel := types.Level(0); testLevel < core.MaxLookupTableLevel; testLevel++ {
+		// Create node
+		nodeID := unittest.IdentifierFixture(t)
+		memVec := unittest.MembershipVectorFixture(t)
+		identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
 
-				// Generate a random target
-				target := unittest.IdentifierFixture(t)
+		// Generate a random target
+		target := unittest.IdentifierFixture(t)
 
-				// Populate ALL right neighbors with IDs greater than target
-				lt := unittest.RandomLookupTable(t, unittest.WithIdsGreaterThan(target))
-				node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
+		// Populate ALL right neighbors with IDs greater than target
+		lt := unittest.RandomLookupTable(t, unittest.WithIdsGreaterThan(target))
+		node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
-				// Perform search - should fallback to own ID
-				req, err := model.NewIdSearchReq(target, testLevel, types.DirectionRight)
-				require.NoError(t, err)
-				res, err := node.SearchByID(req)
+		// Perform search - should fallback to own ID
+		req, err := model.NewIdSearchReq(target, testLevel, types.DirectionRight)
+		require.NoError(t, err)
+		res, err := node.SearchByID(req)
 
-				require.NoError(t, err)
-				require.Equal(
-					t,
-					types.Level(0),
-					res.TerminationLevel(),
-					"expected fallback to level 0",
-				)
-				require.Equal(t, nodeID, res.Result(), "expected fallback to own ID")
-			},
+		require.NoError(t, err)
+		require.Equal(
+			t,
+			types.Level(0),
+			res.TerminationLevel(),
+			"expected fallback to level 0",
 		)
+		require.Equal(t, nodeID, res.Result(), "expected fallback to own ID")
 	}
 }
 
@@ -254,69 +250,36 @@ func TestSearchByIDExactResult(t *testing.T) {
 	nodeID := unittest.IdentifierFixture(t)
 	memVec := unittest.MembershipVectorFixture(t)
 	identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
-	lt := &lookup.Table{}
-
-	// Populate lookup table with random neighbors at all levels
-	const maxTestLevel = types.Level(5)
-	leftNeighbors := make(map[types.Level]model.Identifier)
-	rightNeighbors := make(map[types.Level]model.Identifier)
-
-	for level := types.Level(0); level < maxTestLevel; level++ {
-		// Left neighbor
-		leftID := unittest.IdentifierFixture(t)
-		leftNeighbors[level] = leftID
-		leftIdentity := model.NewIdentity(
-			leftID,
-			unittest.MembershipVectorFixture(t),
-			unittest.AddressFixture(t),
-		)
-		err := lt.AddEntry(types.DirectionLeft, types.Level(level), leftIdentity)
-		require.NoError(t, err)
-
-		// Right neighbor
-		rightID := unittest.IdentifierFixture(t)
-		rightNeighbors[level] = rightID
-		rightIdentity := model.NewIdentity(
-			rightID,
-			unittest.MembershipVectorFixture(t),
-			unittest.AddressFixture(t),
-		)
-		err = lt.AddEntry(types.DirectionRight, types.Level(level), rightIdentity)
-		require.NoError(t, err)
-	}
-
+	lt := unittest.RandomLookupTable(t)
 	node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 	// Test left direction - search for each left neighbor's ID
-	for level := types.Level(0); level < maxTestLevel; level++ {
-		t.Run(
-			fmt.Sprintf("left_level_%d", level), func(t *testing.T) {
-				target := leftNeighbors[level]
-				req, err := model.NewIdSearchReq(target, level, types.DirectionLeft)
-				require.NoError(t, err)
-				res, err := node.SearchByID(req)
+	for level := types.Level(0); level < core.MaxLookupTableLevel; level++ {
+		target, err := lt.GetEntry(types.DirectionLeft, level)
+		require.NoError(t, err)
+		req, err := model.NewIdSearchReq(target.GetIdentifier(), level, types.DirectionLeft)
+		require.NoError(t, err)
+		res, err := node.SearchByID(req)
 
-				require.NoError(t, err)
-				require.Equal(t, level, res.TerminationLevel(), "expected to find at same level")
-				require.Equal(t, target, res.Result(), "expected exact match")
-			},
-		)
+		require.NoError(t, err)
+		require.Equal(t, level, res.TerminationLevel(), "expected to find at same level")
+		require.Equal(t, target.GetIdentifier(), res.Result(), "expected exact match")
 	}
 
 	// Test right direction - search for each right neighbor's ID
-	for level := types.Level(0); level < maxTestLevel; level++ {
-		t.Run(
-			fmt.Sprintf("right_level_%d", level), func(t *testing.T) {
-				target := rightNeighbors[level]
-				req, err := model.NewIdSearchReq(target, level, types.DirectionRight)
-				require.NoError(t, err)
-				res, err := node.SearchByID(req)
-
-				require.NoError(t, err)
-				require.Equal(t, level, res.TerminationLevel(), "expected to find at same level")
-				require.Equal(t, target, res.Result(), "expected exact match")
-			},
+	for level := types.Level(0); level < core.MaxLookupTableLevel; level++ {
+		target, err := lt.GetEntry(types.DirectionRight, level)
+		req, err := model.NewIdSearchReq(
+			target.GetIdentifier(),
+			level,
+			types.DirectionRight,
 		)
+		require.NoError(t, err)
+		res, err := node.SearchByID(req)
+
+		require.NoError(t, err)
+		require.Equal(t, level, res.TerminationLevel(), "expected to find at same level")
+		require.Equal(t, target.GetIdentifier(), res.Result(), "expected exact match")
 	}
 }
 

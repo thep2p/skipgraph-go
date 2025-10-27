@@ -69,64 +69,81 @@ func IdentifierFixture(t *testing.T, opts ...IdentifierFixtureOption) model.Iden
 	// Validate that minID < maxID if both are set
 	if config.minID != nil && config.maxID != nil {
 		comparison := config.minID.Compare(config.maxID)
-		require.NotEqual(
-			t, model.CompareGreater, comparison.GetComparisonResult(),
-			"minID must be less than maxID",
-		)
-		require.NotEqual(
-			t, model.CompareEqual, comparison.GetComparisonResult(),
-			"minID must be less than maxID (cannot be equal)",
-		)
+		require.NotEqual(t, model.CompareGreater, comparison.GetComparisonResult(), "minID must be less than maxID")
+		require.NotEqual(t, model.CompareEqual, comparison.GetComparisonResult(), "minID must be less than maxID (cannot be equal)")
 	}
 
-	// If we have constraints, generate an ID that satisfies them
-	if config.minID != nil || config.maxID != nil {
-		maxAttempts := 10000
-		for attempt := 0; attempt < maxAttempts; attempt++ {
-			id := generateRandomIdentifier(t)
+	// Case 1: Both min and max - generate ID in exclusive range (minID, maxID)
+	if config.minID != nil && config.maxID != nil {
+		minBig := new(big.Int).SetBytes(config.minID[:])
+		maxBig := new(big.Int).SetBytes(config.maxID[:])
+		rangeBig := new(big.Int).Sub(maxBig, minBig)
+		require.True(t, rangeBig.Cmp(big.NewInt(2)) >= 0, "range must be at least 2 to generate exclusive values")
 
-			// Check if ID satisfies minID constraint
-			if config.minID != nil {
-				comparison := id.Compare(config.minID)
-				if comparison.GetComparisonResult() != model.CompareGreater {
-					continue // ID is not greater than minID, try again
-				}
-			}
-
-			// Check if ID satisfies maxID constraint
-			if config.maxID != nil {
-				comparison := id.Compare(config.maxID)
-				if comparison.GetComparisonResult() != model.CompareLess {
-					continue // ID is not less than maxID, try again
-				}
-			}
-
-			// ID satisfies all constraints
-			return id
-		}
-
-		// If we failed to generate a valid ID after maxAttempts, fail the test
-		require.FailNow(
-			t,
-			"failed to generate identifier within constraints after %d attempts",
-			maxAttempts,
-		)
-		return model.Identifier{} // unreachable
+		maxOffset := new(big.Int).Sub(rangeBig, big.NewInt(1))
+		randomOffset, err := rand.Int(rand.Reader, maxOffset)
+		require.NoError(t, err, "failed to generate random offset")
+		offset := new(big.Int).Add(randomOffset, big.NewInt(1))
+		resultBig := new(big.Int).Add(minBig, offset)
+		return bigIntToIdentifier(t, resultBig)
 	}
 
-	// No constraints, generate a completely random ID
-	return generateRandomIdentifier(t)
-}
+	// Case 2: Only min - generate ID > minID
+	if config.minID != nil {
+		minBig := new(big.Int).SetBytes(config.minID[:])
+		maxPossible := new(big.Int).Lsh(big.NewInt(1), model.IdentifierSizeBytes*8)
+		maxPossible.Sub(maxPossible, big.NewInt(1))
+		rangeBig := new(big.Int).Sub(maxPossible, minBig)
+		require.True(t, rangeBig.Cmp(big.NewInt(0)) > 0, "minID is at maximum, cannot generate greater ID")
 
-// generateRandomIdentifier generates a completely random identifier without any constraints.
-// This is an internal helper function used by IdentifierFixture.
-func generateRandomIdentifier(t *testing.T) model.Identifier {
+		randomOffset, err := rand.Int(rand.Reader, rangeBig)
+		require.NoError(t, err, "failed to generate random offset")
+		offset := new(big.Int).Add(randomOffset, big.NewInt(1))
+		resultBig := new(big.Int).Add(minBig, offset)
+		return bigIntToIdentifier(t, resultBig)
+	}
+
+	// Case 3: Only max - generate ID < maxID
+	if config.maxID != nil {
+		maxBig := new(big.Int).SetBytes(config.maxID[:])
+		require.True(t, maxBig.Cmp(big.NewInt(0)) > 0, "maxID must be > 0 to generate smaller ID")
+
+		resultBig, err := rand.Int(rand.Reader, maxBig)
+		require.NoError(t, err, "failed to generate random identifier")
+		return bigIntToIdentifier(t, resultBig)
+	}
+
+	// No constraints - generate completely random ID
 	var id model.Identifier
 	bytes := RandomBytesFixture(t, model.IdentifierSizeBytes)
+	copy(id[:], bytes)
+	return id
+}
 
-	for i := 0; i < model.IdentifierSizeBytes; i++ {
-		id[i] = bytes[i]
-	}
+// bigIntToIdentifier converts a big.Int to an Identifier.
+// The big.Int is treated as a big-endian number and converted to a 32-byte array.
+// If the big.Int requires more than 32 bytes, the test will fail.
+// If the big.Int requires fewer than 32 bytes, it is padded with leading zeros.
+//
+// Args:
+//   - t: the testing context
+//   - value: the big.Int to convert
+//
+// Returns:
+//   - An Identifier representing the big.Int value
+func bigIntToIdentifier(t *testing.T, value *big.Int) model.Identifier {
+	// Get bytes from big.Int (big-endian)
+	bytes := value.Bytes()
+
+	// Ensure the value fits in 32 bytes
+	require.LessOrEqual(t, len(bytes), model.IdentifierSizeBytes,
+		"big.Int value too large to fit in Identifier")
+
+	// Create identifier with leading zeros
+	var id model.Identifier
+	// Copy bytes to the end of the array (padding with zeros at the start)
+	offset := model.IdentifierSizeBytes - len(bytes)
+	copy(id[offset:], bytes)
 
 	return id
 }

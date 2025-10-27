@@ -181,56 +181,32 @@ func TestSearchByIDFoundRightDirection(t *testing.T) {
 // All left neighbors have IDs less than target, so should fallback to own ID.
 func TestSearchByIDNotFoundLeftDirection(t *testing.T) {
 	// Test for various levels
-	for testLevel := types.Level(0); testLevel < 5; testLevel++ {
-		t.Run(
-			fmt.Sprintf("level_%d", testLevel), func(t *testing.T) {
-				// Create node
-				nodeID := unittest.IdentifierFixture(t)
-				memVec := unittest.MembershipVectorFixture(t)
-				identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
-				lt := &lookup.Table{}
+	for testLevel := types.Level(0); testLevel < core.MaxLookupTableLevel; testLevel++ {
+		// Create node
+		nodeID := unittest.IdentifierFixture(t)
+		memVec := unittest.MembershipVectorFixture(t)
+		identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
 
-				// Generate a random target
-				target := unittest.IdentifierFixture(t)
+		// Generate a random target
+		target := unittest.IdentifierFixture(t)
 
-				// Populate ALL left neighbors with IDs less than target
-				for level := types.Level(0); level <= testLevel; level++ {
-					neighborID := unittest.IdentifierLessThan(target)
-					// Make sure it's actually less than target
-					cmp := neighborID.Compare(&target)
-					require.Equal(
-						t,
-						model.CompareLess,
-						cmp.GetComparisonResult(),
-						"neighbor should be less than target",
-					)
+		// Populate ALL left neighbors with IDs less than target
+		lt := unittest.RandomLookupTable(t, unittest.WithIdsLessThan(target))
+		node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
-					neighborIdentity := model.NewIdentity(
-						neighborID,
-						unittest.MembershipVectorFixture(t),
-						unittest.AddressFixture(t),
-					)
-					err := lt.AddEntry(types.DirectionLeft, types.Level(level), neighborIdentity)
-					require.NoError(t, err)
-				}
+		// Perform search - should fallback to own ID
+		req, err := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
+		require.NoError(t, err)
+		res, err := node.SearchByID(req)
 
-				node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
-
-				// Perform search - should fallback to own ID
-				req, err := model.NewIdSearchReq(target, testLevel, types.DirectionLeft)
-				require.NoError(t, err)
-				res, err := node.SearchByID(req)
-
-				require.NoError(t, err)
-				require.Equal(
-					t,
-					types.Level(0),
-					res.TerminationLevel(),
-					"expected fallback to level 0",
-				)
-				require.Equal(t, nodeID, res.Result(), "expected fallback to own ID")
-			},
+		require.NoError(t, err)
+		require.Equal(
+			t,
+			types.Level(0),
+			res.TerminationLevel(),
+			"expected fallback to level 0",
 		)
+		require.Equal(t, nodeID, res.Result(), "expected fallback to own ID")
 	}
 }
 
@@ -245,32 +221,12 @@ func TestSearchByIDNotFoundRightDirection(t *testing.T) {
 				nodeID := unittest.IdentifierFixture(t)
 				memVec := unittest.MembershipVectorFixture(t)
 				identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
-				lt := &lookup.Table{}
 
 				// Generate a random target
 				target := unittest.IdentifierFixture(t)
 
 				// Populate ALL right neighbors with IDs greater than target
-				for level := types.Level(0); level <= testLevel; level++ {
-					neighborID := unittest.IdentifierGreaterThan(target)
-					// Make sure it's actually greater than target
-					cmp := neighborID.Compare(&target)
-					require.Equal(
-						t,
-						model.CompareGreater,
-						cmp.GetComparisonResult(),
-						"neighbor should be greater than target",
-					)
-
-					neighborIdentity := model.NewIdentity(
-						neighborID,
-						unittest.MembershipVectorFixture(t),
-						unittest.AddressFixture(t),
-					)
-					err := lt.AddEntry(types.DirectionRight, types.Level(level), neighborIdentity)
-					require.NoError(t, err)
-				}
-
+				lt := unittest.RandomLookupTable(t, unittest.WithIdsGreaterThan(target))
 				node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 				// Perform search - should fallback to own ID
@@ -386,7 +342,7 @@ func TestSearchByIDConcurrentFoundLeftDirection(t *testing.T) {
 		var neighborID model.Identifier
 		if level == 0 {
 			// Guarantee level 0 has a neighbor >= target
-			neighborID = unittest.IdentifierGreaterThan(target)
+			neighborID = unittest.IdentifierFixture(t, unittest.WithIdsGreaterThan(target))
 		} else {
 			neighborID = unittest.IdentifierFixture(t)
 		}
@@ -511,7 +467,7 @@ func TestSearchByIDConcurrentRightDirection(t *testing.T) {
 		var neighborID model.Identifier
 		if level == 0 {
 			// Guarantee level 0 has a neighbor <= target
-			neighborID = unittest.IdentifierLessThan(target)
+			neighborID = unittest.IdentifierFixture(t, unittest.WithIdsLessThan(target))
 		} else {
 			neighborID = unittest.IdentifierFixture(t)
 		}

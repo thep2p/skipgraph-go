@@ -14,6 +14,7 @@ import (
 	"github.com/thep2p/skipgraph-go/core/model"
 	"github.com/thep2p/skipgraph-go/core/types"
 	"github.com/thep2p/skipgraph-go/unittest"
+	"github.com/thep2p/skipgraph-go/unittest/mock"
 )
 
 // TestSearchByIDSingletonFallback tests fallback behavior when no neighbors exist (empty lookup table).
@@ -453,9 +454,19 @@ func TestSearchByIDConcurrentRightDirection(t *testing.T) {
 
 // TestSearchByIDErrorPropagation verifies errors from lookup table are propagated correctly.
 func TestSearchByIDErrorPropagation(t *testing.T) {
-	// Create mock lookup table that returns error from GetEntry
-	mockLT := &mockErrorLookupTable{
-		errorAtLevel: 2,
+	// Create mock lookup table using testify mock
+	mockLT := mock.NewImmutableLookupTable(t)
+
+	// Configure mock to return error at level 2
+	errorAtLevel := types.Level(2)
+	mockError := fmt.Errorf("simulated lookup table error")
+
+	// Set up expectations: return error at level 2, return nil for other levels
+	mockLT.On("GetEntry", types.DirectionLeft, errorAtLevel).Return(nil, mockError)
+
+	// For levels 0 and 1, return nil (no neighbor)
+	for level := types.Level(0); level < errorAtLevel; level++ {
+		mockLT.On("GetEntry", types.DirectionLeft, level).Return(nil, nil)
 	}
 
 	// Create node
@@ -541,27 +552,4 @@ func TestSearchByIDLevelExceedsMax(t *testing.T) {
 			},
 		)
 	}
-}
-
-// mockErrorLookupTable is a mock implementation that returns errors at a specific level.
-type mockErrorLookupTable struct {
-	errorAtLevel types.Level
-}
-
-func (m *mockErrorLookupTable) GetEntry(dir types.Direction, level types.Level) (
-	*model.Identity,
-	error,
-) {
-	if level == m.errorAtLevel {
-		return nil, fmt.Errorf("simulated lookup table error")
-	}
-	return nil, nil
-}
-
-func (m *mockErrorLookupTable) AddEntry(
-	dir types.Direction,
-	level types.Level,
-	identity model.Identity,
-) error {
-	return nil
 }

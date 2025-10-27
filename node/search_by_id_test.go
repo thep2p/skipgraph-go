@@ -269,6 +269,8 @@ func TestSearchByIDExactResult(t *testing.T) {
 	// Test right direction - search for each right neighbor's ID
 	for level := types.Level(0); level < core.MaxLookupTableLevel; level++ {
 		target, err := lt.GetEntry(types.DirectionRight, level)
+		require.NoError(t, err)
+
 		req, err := model.NewIdSearchReq(
 			target.GetIdentifier(),
 			level,

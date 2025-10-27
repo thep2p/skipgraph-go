@@ -291,40 +291,11 @@ func TestSearchByIDConcurrentFoundLeftDirection(t *testing.T) {
 	nodeID := unittest.IdentifierFixture(t)
 	memVec := unittest.MembershipVectorFixture(t)
 	identity := model.NewIdentity(nodeID, memVec, unittest.AddressFixture(t))
-	lt := &lookup.Table{}
-
-	// Populate lookup table
-	const maxTestLevel = types.Level(10)
-	neighbors := make(map[types.Level]model.Identifier)
-
-	// Use a fixed target
-	targetBytes := []byte{0x50} // 80 in decimal
-	target, err := model.ByteToId(targetBytes)
-	require.NoError(t, err)
-
-	// Populate with neighbors, ensuring at least one is >= target
-	for level := types.Level(0); level < maxTestLevel; level++ {
-		var neighborID model.Identifier
-		if level == 0 {
-			// Guarantee level 0 has a neighbor >= target
-			neighborID = unittest.IdentifierFixture(t, unittest.WithIdsGreaterThan(target))
-		} else {
-			neighborID = unittest.IdentifierFixture(t)
-		}
-		neighbors[level] = neighborID
-		neighborIdentity := model.NewIdentity(
-			neighborID,
-			unittest.MembershipVectorFixture(t),
-			unittest.AddressFixture(t),
-		)
-		err := lt.AddEntry(types.DirectionLeft, types.Level(level), neighborIdentity)
-		require.NoError(t, err)
-	}
-
+	lt := unittest.RandomLookupTable(t)
 	node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
 	// Spawn 20 goroutines
-	const numGoroutines = 20
+	const numGoroutines = 100
 	var wg sync.WaitGroup
 	barrier := make(chan struct{})
 
@@ -335,34 +306,21 @@ func TestSearchByIDConcurrentFoundLeftDirection(t *testing.T) {
 			<-barrier // Wait for all goroutines to be ready
 
 			// Pick random level
-			level := types.Level(rand.Intn(int(maxTestLevel)))
+			level := types.Level(rand.Intn(int(core.MaxLookupTableLevel)))
+			target := unittest.IdentifierFixture(t)
 			req, err := model.NewIdSearchReq(target, level, types.DirectionLeft)
 			require.NoError(t, err)
 			res, err := node.SearchByID(req)
 			require.NoError(t, err)
 
 			// Compute expected result: smallest ID >= target from levels 0 to level
-			var expectedLevel types.Level
-			var expectedID model.Identifier
-			foundCandidate := false
-
-			for l := types.Level(0); l <= level; l++ {
-				neighborID := neighbors[l]
-				cmp := neighborID.Compare(&target)
-				if cmp.GetComparisonResult() == model.CompareGreater || cmp.GetComparisonResult() == model.CompareEqual {
-					if !foundCandidate {
-						expectedID = neighborID
-						expectedLevel = l
-						foundCandidate = true
-					} else {
-						bestCmp := neighborID.Compare(&expectedID)
-						if bestCmp.GetComparisonResult() == model.CompareLess {
-							expectedID = neighborID
-							expectedLevel = l
-						}
-					}
-				}
-			}
+			expectedID, expectedLevel, foundCandidate := unittest.SmallestIdLessThanOrEqualTo(
+				t,
+				target,
+				level,
+				types.DirectionLeft,
+				lt,
+			)
 
 			if foundCandidate {
 				require.Equal(

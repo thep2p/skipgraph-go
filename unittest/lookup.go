@@ -9,14 +9,14 @@ import (
 )
 
 // SmallestIdLessThanOrEqualTo finds the smallest identifier >= target across levels 0 to level in the given direction.
-// Returns (found, level, identifier) where found indicates if a candidate was found.
+// Returns (identifier, level, found) where found indicates if a candidate was found.
 func SmallestIdLessThanOrEqualTo(
 	t *testing.T,
 	target model.Identifier,
 	level types.Level,
 	dir types.Direction,
 	table core.ImmutableLookupTable,
-) (bool, types.Level, model.Identifier) {
+) (model.Identifier, types.Level, bool) {
 	var expectedLevel types.Level
 	var expectedID model.Identifier
 	foundCandidate := false
@@ -41,5 +41,5 @@ func SmallestIdLessThanOrEqualTo(
 		}
 	}
 
-	return foundCandidate, expectedLevel, expectedID
+	return expectedID, expectedLevel, foundCandidate
 }

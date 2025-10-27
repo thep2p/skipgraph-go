@@ -315,7 +315,7 @@ func TestSearchByIDConcurrentFoundLeftDirection(t *testing.T) {
 			require.NoError(t, err)
 
 			// Compute expected result: smallest ID >= target from levels 0 to level
-			expectedID, expectedLevel, foundCandidate := unittest.SmallestIdLessThanOrEqualTo(
+			expectedID, expectedLevel, foundCandidate := unittest.SmallestIdGreaterThanOrEqualTo(
 				t,
 				target,
 				level,

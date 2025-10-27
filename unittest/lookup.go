@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-// SmallestIdLessThanOrEqualTo finds the smallest identifier >= target across levels 0 to level in the given direction.
+// SmallestIdGreaterThanOrEqualTo finds the smallest identifier >= target across levels 0 to level in the given direction.
 // Returns (found, level, identifier) where found indicates if a candidate was found.
-func SmallestIdLessThanOrEqualTo(
+func SmallestIdGreaterThanOrEqualTo(
 	t *testing.T,
 	target model.Identifier,
 	level types.Level,

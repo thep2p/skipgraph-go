@@ -378,7 +378,7 @@ func TestSearchByIDConcurrentRightDirection(t *testing.T) {
 	lt := unittest.RandomLookupTable(t)
 	node := NewSkipGraphNode(unittest.Logger(zerolog.TraceLevel), identity, lt)
 
-	// Spawn 20 goroutines
+	// Spawn 100 goroutines
 	const numGoroutines = 100
 	var wg sync.WaitGroup
 	barrier := make(chan struct{})

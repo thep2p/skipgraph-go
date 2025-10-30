@@ -45,10 +45,10 @@ func ToBinaryString(b byte) string {
 // Returns an error if numBits is negative or exceeds the length of the binary representation (256 bits).
 func (m MembershipVector) GetPrefixBits(numBits int) (string, error) {
 	if numBits < 0 {
-		return "", fmt.Errorf("numBits must be non-negative; found: %d", numBits)
+		return "", fmt.Errorf("%w: found %d", ErrNegativeNumBits, numBits)
 	}
 	if numBits > MembershipVectorSize*8 {
-		return "", fmt.Errorf("numBits (%d) exceeds membership vector size (%d bits)", numBits, MembershipVectorSize*8)
+		return "", fmt.Errorf("%w: %d exceeds %d bits", ErrNumBitsExceedsMax, numBits, MembershipVectorSize*8)
 	}
 
 	// Optimize by generating only the required prefix bits
@@ -90,7 +90,7 @@ func (m MembershipVector) CommonPrefix(other MembershipVector) int {
 func ToMembershipVector(s []byte) (MembershipVector, error) {
 	res := MembershipVector{0}
 	if len(s) > MembershipVectorSize {
-		return res, fmt.Errorf("input length must be at most %d bytes; found: %d", MembershipVectorSize, len(s))
+		return res, fmt.Errorf("%w: must be at most %d bytes, found %d", ErrMembershipVectorTooLarge, MembershipVectorSize, len(s))
 	}
 	index := MembershipVectorSize - 1
 	for i := len(s) - 1; i >= 0; i-- {
@@ -106,7 +106,7 @@ func StringToMembershipVector(s string) (MembershipVector, error) {
 	b := []byte(s)
 	res := MembershipVector{0}
 	if len(b) > MembershipVectorSize {
-		return res, fmt.Errorf("input length must be at most %d bytes; found: %d", MembershipVectorSize, len(b))
+		return res, fmt.Errorf("%w: must be at most %d bytes, found %d", ErrMembershipVectorTooLarge, MembershipVectorSize, len(b))
 	}
 	index := MembershipVectorSize - 1
 	for i := len(b) - 1; i >= 0; i-- {

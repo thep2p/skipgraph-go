@@ -156,7 +156,7 @@ func (i *Identifier) Compare(other *Identifier) Comparison {
 func ByteToId(b []byte) (Identifier, error) {
 	res := Identifier{0}
 	if len(b) > IdentifierSizeBytes {
-		return res, fmt.Errorf("input length must be at most %d bytes; found: %d", IdentifierSizeBytes, len(b))
+		return res, fmt.Errorf("%w: must be at most %d bytes, found %d", ErrIdentifierTooLarge, IdentifierSizeBytes, len(b))
 	}
 	offset := IdentifierSizeBytes - len(b)
 	copy(res[offset:], b)
@@ -169,7 +169,7 @@ func StrToId(s string) (Identifier, error) {
 	// converts string to byte
 	b, err := hex.DecodeString(s)
 	if err != nil {
-		return Identifier{}, fmt.Errorf("failed to decode hex string: %s", err)
+		return Identifier{}, fmt.Errorf("%w: %s", ErrInvalidHexString, err)
 	}
 	return ByteToId(b)
 }

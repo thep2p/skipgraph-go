@@ -84,6 +84,57 @@ This is a Skip Graph middleware implementation in Go. The system follows a layer
 - Update godoc comments when modifying existing code
 - Always follow the guidelines outlined in `AGENTS.md` for code style, testing, and contribution standards
 
+### Import Cycle Management
+
+**CRITICAL**: Code duplication to avoid import cycles is strictly prohibited. This is a serious architectural violation that must be prevented.
+
+**The Problem:**
+Import cycles occur when packages depend on each other in a circular manner (e.g., package A imports B, and B imports A). Never solve import cycles by duplicating types, constants, or code between packages.
+
+**Correct Solution - Shared Types Package:**
+When encountering import cycles, create a dedicated types package to hold shared primitive types and constants. This breaks the cycle by establishing a proper dependency hierarchy.
+
+**Example:**
+```go
+// ❌ INCORRECT: Duplicating types to avoid import cycle
+// In core/model/search.go:
+type Level int64  // Duplicated from core.Level
+type Direction string  // Duplicated from core.Direction
+
+// ✅ CORRECT: Shared types package breaks the cycle
+// In core/types/types.go:
+package types
+
+type Level int64
+type Direction string
+
+const (
+    DirectionRight = Direction("right")
+    DirectionLeft  = Direction("left")
+)
+
+// Now both core and core/model can import core/types without cycles
+```
+
+**Architecture Pattern:**
+- Create `core/types` or similar package for shared primitive types
+- Keep types package free of dependencies on other internal packages
+- Both higher-level packages can then import the types package
+- This establishes a clear dependency hierarchy: `core` → `core/types` ← `core/model`
+
+**When You Encounter Import Cycles:**
+1. Identify the shared types causing the cycle
+2. Create or use an existing shared types package
+3. Move the shared types to the types package
+4. Update all references to use the types package
+5. Run tests and linter to verify the refactoring
+6. Never duplicate code as a workaround
+
+**Detection:**
+- Review any comments containing "duplicated to avoid import cycle"
+- Check for identical type definitions across multiple packages
+- Watch for copy-pasted constants or types
+
 ### Logger Dependency Injection
 
 **MANDATORY**: Components with state or logic must use dependency injection for logging. Loggers must never be initialized internally.

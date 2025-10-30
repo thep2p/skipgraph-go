@@ -8,6 +8,7 @@ import (
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/lookup"
 	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/core/types"
 )
 
 const (
@@ -185,7 +186,7 @@ func (b *Bootstrapper) createBootstrapEntries() (*internal.SortedEntryList, erro
 func (b *Bootstrapper) TraverseConnectedEntries(
 	entries []*BootstrapEntry,
 	startIndex int,
-	level core.Level,
+	level types.Level,
 	visited map[int]bool,
 	idToIndex map[model.Identifier]int,
 ) {
@@ -203,19 +204,19 @@ func (b *Bootstrapper) TraverseConnectedEntries(
 	}
 
 	// Check left neighbor
-	if leftNeighbor, err := currentEntry.LookupTable.GetEntry(core.LeftDirection, level); err == nil {
+	if leftNeighbor, err := currentEntry.LookupTable.GetEntry(types.DirectionLeft, level); err == nil {
 		visitNeighbor(leftNeighbor)
 	}
 
 	// Check right neighbor
-	if rightNeighbor, err := currentEntry.LookupTable.GetEntry(core.RightDirection, level); err == nil {
+	if rightNeighbor, err := currentEntry.LookupTable.GetEntry(types.DirectionRight, level); err == nil {
 		visitNeighbor(rightNeighbor)
 	}
 }
 
 // CountConnectedComponents counts the number of connected components at a given level.
 // This is useful for verifying skip graph properties during testing.
-func (b *Bootstrapper) CountConnectedComponents(entries []*BootstrapEntry, level core.Level) int {
+func (b *Bootstrapper) CountConnectedComponents(entries []*BootstrapEntry, level types.Level) int {
 	// Create identifier to index map for O(1) lookups
 	idToIndex := make(map[model.Identifier]int)
 	for i, entry := range entries {

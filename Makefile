@@ -1,6 +1,7 @@
 # Minimum Go version
 GO_MIN_VERSION := 1.24.0
 LINT_VERSION := v1.64.5
+MOCKERY_VERSION := v2.43.0
 
 # Dynamically detect OS (e.g., darwin, linux) and architecture (amd64, arm64)
 GO_OS := $(shell uname -s | tr A-Z a-z)
@@ -47,6 +48,19 @@ install-tools: check-go-version
 			echo "✅ golangci-lint $(LINT_VERSION) is already installed."; \
 		fi; \
 	fi
+	@if ! command -v mockery >/dev/null 2>&1; then \
+		echo "🔧 Installing mockery..."; \
+		go install github.com/vektra/mockery/v2@$(MOCKERY_VERSION); \
+	else \
+		VERSION=$$(mockery --version | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' | head -n1); \
+		if [[ "$${VERSION}" != "$(MOCKERY_VERSION)" ]]; then \
+			echo "🔄 Updating/Downgrading mockery to $(MOCKERY_VERSION)..."; \
+			go clean -i github.com/vektra/mockery/v2; \
+			go install github.com/vektra/mockery/v2@$(MOCKERY_VERSION); \
+		else \
+			echo "✅ mockery $(MOCKERY_VERSION) is already installed."; \
+		fi; \
+	fi
 	@echo "✅ All tools installed successfully."
 
 
@@ -69,6 +83,19 @@ tidy: check-go-version
 build: check-go-version tidy
 	@go build ./...
 
+# Generate mocks for all interfaces
+# Note: Currently mocks are manually maintained in unittest/mock/
+# Future enhancement: automate with mockery when package loading issues are resolved
+.PHONY: generate-mocks
+generate-mocks: check-go-version
+	@echo "Checking for required mocks..."
+	@if [ ! -f ./unittest/mock/immutable_lookup_table.go ]; then \
+		echo "❌ Missing mock file: unittest/mock/immutable_lookup_table.go"; \
+		echo "   Please regenerate mocks manually or check the codebase."; \
+		exit 1; \
+	fi
+	@echo "✅ All mocks are present."
+
 .PHONY: test
-test: check-go-version tidy
+test: check-go-version tidy generate-mocks
 	@go test -v ./...

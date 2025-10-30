@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/thep2p/skipgraph-go/core"
 	"github.com/thep2p/skipgraph-go/core/model"
+	"github.com/thep2p/skipgraph-go/core/types"
 	"sync"
 )
 
@@ -16,7 +17,7 @@ type Table struct {
 
 // AddEntry inserts the supplied Identity in the lth level of lookup table either as the left or right neighbor depending on the dir.
 // lev runs from 0...MaxLookupTableLevel-1.
-func (l *Table) AddEntry(dir core.Direction, level core.Level, identity model.Identity) error {
+func (l *Table) AddEntry(dir types.Direction, level types.Level, identity model.Identity) error {
 	// lock the lookup table for write access
 	l.lock.Lock()
 	// unlock the lookup table at the end
@@ -28,9 +29,9 @@ func (l *Table) AddEntry(dir core.Direction, level core.Level, identity model.Id
 	}
 
 	switch dir {
-	case core.RightDirection:
+	case types.DirectionRight:
 		l.rightNeighbors[level] = identity
-	case core.LeftDirection:
+	case types.DirectionLeft:
 		l.leftNeighbors[level] = identity
 	default:
 		return fmt.Errorf("invalid direction: %s", dir)
@@ -42,7 +43,7 @@ func (l *Table) AddEntry(dir core.Direction, level core.Level, identity model.Id
 // GetEntry returns the lth left/right neighbor in the lookup table depending on the dir.
 // Returns nil if no neighbor exists at that position.
 // lev runs from 0...MaxLookupTableLevel-1.
-func (l *Table) GetEntry(dir core.Direction, lev core.Level) (*model.Identity, error) {
+func (l *Table) GetEntry(dir types.Direction, lev types.Level) (*model.Identity, error) {
 	// lock the lookup table for read only
 	l.lock.RLock()
 	// release the read-only lock at the end
@@ -55,9 +56,9 @@ func (l *Table) GetEntry(dir core.Direction, lev core.Level) (*model.Identity, e
 
 	var res model.Identity
 	switch dir {
-	case core.RightDirection:
+	case types.DirectionRight:
 		res = l.rightNeighbors[lev]
-	case core.LeftDirection:
+	case types.DirectionLeft:
 		res = l.leftNeighbors[lev]
 	default:
 		return nil, fmt.Errorf("invalid direction: %s", dir)

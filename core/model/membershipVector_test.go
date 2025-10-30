@@ -1,6 +1,7 @@
 package model_test
 
 import (
+	"errors"
 	"github.com/stretchr/testify/require"
 	"github.com/thep2p/skipgraph-go/core/model"
 	"testing"
@@ -99,13 +100,13 @@ func TestMembershipVector_GetPrefixBits(t *testing.T) {
 	result, err = mv.GetPrefixBits(300)
 	require.Error(t, err)
 	require.Equal(t, "", result)
-	require.Contains(t, err.Error(), "exceeds membership vector size")
+	require.True(t, errors.Is(err, model.ErrNumBitsExceedsMax), "expected ErrNumBitsExceedsMax")
 
 	// Test getting negative bits (should return error)
 	result, err = mv.GetPrefixBits(-1)
 	require.Error(t, err)
 	require.Equal(t, "", result)
-	require.Contains(t, err.Error(), "must be non-negative")
+	require.True(t, errors.Is(err, model.ErrNegativeNumBits), "expected ErrNegativeNumBits")
 
 	// Test with all zeros
 	mvZero := model.MembershipVector{}

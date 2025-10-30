@@ -1,6 +1,7 @@
 package node
 
 import (
+	"errors"
 	"fmt"
 	"github.com/thep2p/skipgraph-go/core"
 	"math/rand"
@@ -512,7 +513,7 @@ func TestSearchByIDInvalidDirection(t *testing.T) {
 	req, err := model.NewIdSearchReq(target, 5, invalidDirection)
 
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "direction must be either DirectionLeft or DirectionRight")
+	require.True(t, errors.Is(err, model.ErrInvalidDirection), "expected ErrInvalidDirection")
 	require.Equal(t, model.IdSearchReq{}, req, "expected zero value on error")
 }
 
@@ -524,7 +525,7 @@ func TestSearchByIDNegativeLevel(t *testing.T) {
 	req, err := model.NewIdSearchReq(target, negativeLevel, types.DirectionLeft)
 
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "level must be non-negative")
+	require.True(t, errors.Is(err, model.ErrInvalidLevel), "expected ErrInvalidLevel")
 	require.Equal(t, model.IdSearchReq{}, req, "expected zero value on error")
 }
 
@@ -547,7 +548,7 @@ func TestSearchByIDLevelExceedsMax(t *testing.T) {
 				req, err := model.NewIdSearchReq(target, tc.level, types.DirectionRight)
 
 				require.Error(t, err)
-				require.Contains(t, err.Error(), "level must be less than")
+				require.True(t, errors.Is(err, model.ErrLevelExceedsMax), "expected ErrLevelExceedsMax")
 				require.Equal(t, model.IdSearchReq{}, req, "expected zero value on error")
 			},
 		)

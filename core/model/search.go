@@ -34,11 +34,12 @@ func NewIdSearchReq(target Identifier, level types.Level, direction types.Direct
 	// Validate level bounds
 	const maxLookupTableLevel = IdentifierSizeBytes * 8
 	if level < 0 {
-		return IdSearchReq{}, fmt.Errorf("level must be non-negative, got: %d", level)
+		return IdSearchReq{}, fmt.Errorf("%w: got %d", ErrInvalidLevel, level)
 	}
 	if level >= maxLookupTableLevel {
 		return IdSearchReq{}, fmt.Errorf(
-			"level must be less than %d, got: %d",
+			"%w: must be less than %d, got %d",
+			ErrLevelExceedsMax,
 			maxLookupTableLevel,
 			level,
 		)
@@ -46,10 +47,7 @@ func NewIdSearchReq(target Identifier, level types.Level, direction types.Direct
 
 	// Validate direction
 	if direction != types.DirectionLeft && direction != types.DirectionRight {
-		return IdSearchReq{}, fmt.Errorf(
-			"direction must be either DirectionLeft or DirectionRight, got: %s",
-			direction,
-		)
+		return IdSearchReq{}, fmt.Errorf("%w: got %s", ErrInvalidDirection, direction)
 	}
 
 	return IdSearchReq{

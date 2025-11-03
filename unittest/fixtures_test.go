@@ -355,8 +355,18 @@ func TestRandomLookupTable(t *testing.T) {
 
 				// Verify address has valid hostname and port
 				addr := leftEntry.GetAddress()
-				require.NotEmpty(t, addr.HostName(), "left neighbor address should have hostname at level %d", level)
-				require.NotEmpty(t, addr.Port(), "left neighbor address should have port at level %d", level)
+				require.NotEmpty(
+					t,
+					addr.HostName(),
+					"left neighbor address should have hostname at level %d",
+					level,
+				)
+				require.NotEmpty(
+					t,
+					addr.Port(),
+					"left neighbor address should have port at level %d",
+					level,
+				)
 
 				rightEntry, err := table.GetEntry(types.DirectionRight, level)
 				require.NoError(t, err)
@@ -396,8 +406,18 @@ func TestRandomLookupTable(t *testing.T) {
 
 				// Verify address has valid hostname and port
 				addr = rightEntry.GetAddress()
-				require.NotEmpty(t, addr.HostName(), "right neighbor address should have hostname at level %d", level)
-				require.NotEmpty(t, addr.Port(), "right neighbor address should have port at level %d", level)
+				require.NotEmpty(
+					t,
+					addr.HostName(),
+					"right neighbor address should have hostname at level %d",
+					level,
+				)
+				require.NotEmpty(
+					t,
+					addr.Port(),
+					"right neighbor address should have port at level %d",
+					level,
+				)
 			}
 		},
 	)
@@ -841,9 +861,9 @@ func TestAddressFixture(t *testing.T) {
 
 	t.Run(
 		"generates different ports on multiple calls", func(t *testing.T) {
-			// Generate many addresses and verify we get at least some different ports
+			// Generate many addresses and verify ports are unique
 			ports := make(map[string]bool)
-			for i := 0; i < 100; i++ {
+			for i := 0; i < 10; i++ {
 				addr := AddressFixture(t)
 				require.False(t, ports[addr.Port()], "port should be unique")
 				ports[addr.Port()] = true

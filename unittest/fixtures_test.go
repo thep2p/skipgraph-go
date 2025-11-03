@@ -516,35 +516,35 @@ func BenchmarkIdentifierFixture(b *testing.B) {
 	b.Run(
 		"unconstrained", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				_ = IdentifierFixture(&testing.T{})
+				_ = IdentifierFixture(b)
 			}
 		},
 	)
 
 	b.Run(
 		"with_greater_than", func(b *testing.B) {
-			minID := IdentifierFixture(&testing.T{})
+			minID := IdentifierFixture(b)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = IdentifierFixture(&testing.T{}, WithIdsGreaterThan(minID))
+				_ = IdentifierFixture(b, WithIdsGreaterThan(minID))
 			}
 		},
 	)
 
 	b.Run(
 		"with_less_than", func(b *testing.B) {
-			maxID := IdentifierFixture(&testing.T{})
+			maxID := IdentifierFixture(b)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = IdentifierFixture(&testing.T{}, WithIdsLessThan(maxID))
+				_ = IdentifierFixture(b, WithIdsLessThan(maxID))
 			}
 		},
 	)
 
 	b.Run(
 		"with_range", func(b *testing.B) {
-			minID := IdentifierFixture(&testing.T{})
-			maxID := IdentifierFixture(&testing.T{})
+			minID := IdentifierFixture(b)
+			maxID := IdentifierFixture(b)
 
 			// Ensure minID < maxID
 			comparison := minID.Compare(&maxID)
@@ -555,7 +555,7 @@ func BenchmarkIdentifierFixture(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = IdentifierFixture(
-					&testing.T{},
+					b,
 					WithIdsGreaterThan(minID),
 					WithIdsLessThan(maxID),
 				)

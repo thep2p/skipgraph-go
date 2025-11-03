@@ -241,9 +241,18 @@ func TestRandomLookupTable(t *testing.T) {
 				// Swap them
 				minID, maxID = maxID, minID
 			} else if comparison.GetComparisonResult() == model.CompareEqual {
-				// Generate a new maxID that's greater
-				// We'll use a simple approach: increment the last byte
-				maxID[len(maxID)-1]++
+				// Generate a completely new ID instead of incrementing
+				maxID = IdentifierFixture(t)
+				// Ensure it's different
+				newComparison := maxID.Compare(&minID)
+				for newComparison.GetComparisonResult() == model.CompareEqual {
+					maxID = IdentifierFixture(t)
+					newComparison = maxID.Compare(&minID)
+				}
+				// Ensure minID < maxID by swapping if needed
+				if newComparison.GetComparisonResult() == model.CompareLess {
+					minID, maxID = maxID, minID
+				}
 			}
 
 			// Generate multiple lookup tables with both constraints
@@ -444,10 +453,19 @@ func TestIdentifierFixtureConstraints(t *testing.T) {
 				minID = id2
 				maxID = id1
 			} else {
-				// IDs are equal, increment the last byte to create maxID
-				maxID = id2
-				maxID[len(maxID)-1]++
+				// IDs are equal, generate a completely new ID instead of incrementing
 				minID = id1
+				maxID = IdentifierFixture(t)
+				// Ensure it's different
+				newComparison := maxID.Compare(&minID)
+				for newComparison.GetComparisonResult() == model.CompareEqual {
+					maxID = IdentifierFixture(t)
+					newComparison = maxID.Compare(&minID)
+				}
+				// Ensure minID < maxID by swapping if needed
+				if newComparison.GetComparisonResult() == model.CompareLess {
+					minID, maxID = maxID, minID
+				}
 			}
 
 			// Generate 100 IDs and verify all are in range
@@ -646,10 +664,19 @@ func TestIdentifierFixture(t *testing.T) {
 				minID = id2
 				maxID = id1
 			} else {
-				// IDs are equal, increment the last byte to create maxID
-				maxID = id2
-				maxID[len(maxID)-1]++
+				// IDs are equal, generate a completely new ID instead of incrementing
 				minID = id1
+				maxID = IdentifierFixture(t)
+				// Ensure it's different
+				newComparison := maxID.Compare(&minID)
+				for newComparison.GetComparisonResult() == model.CompareEqual {
+					maxID = IdentifierFixture(t)
+					newComparison = maxID.Compare(&minID)
+				}
+				// Ensure minID < maxID by swapping if needed
+				if newComparison.GetComparisonResult() == model.CompareLess {
+					minID, maxID = maxID, minID
+				}
 			}
 
 			// Generate multiple IDs and verify all are in range

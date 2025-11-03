@@ -1,7 +1,7 @@
 package unittest
 
 import (
-	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -831,8 +831,7 @@ func TestAddressFixture(t *testing.T) {
 				require.NotEmpty(t, port, "port should not be empty")
 
 				// Parse port as integer to verify it's in valid range
-				var portNum int
-				_, err := fmt.Sscanf(port, "%d", &portNum)
+				portNum, err := strconv.Atoi(port)
 				require.NoError(t, err, "port should be a valid integer")
 				require.GreaterOrEqual(t, portNum, 0, "port should be >= 0")
 				require.LessOrEqual(t, portNum, 65534, "port should be <= 65534")

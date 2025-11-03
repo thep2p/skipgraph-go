@@ -168,7 +168,7 @@ func TestRandomLookupTable(t *testing.T) {
 					id := leftEntry.GetIdentifier()
 					comparison := id.Compare(&constraintID)
 					require.Equal(
-						t, "compare-greater", comparison.GetComparisonResult(),
+						t, model.CompareGreater, comparison.GetComparisonResult(),
 						"left neighbor ID at level %d should be greater than constraint: %s",
 						level, comparison.DebugInfo(),
 					)
@@ -180,7 +180,7 @@ func TestRandomLookupTable(t *testing.T) {
 					id = rightEntry.GetIdentifier()
 					comparison = id.Compare(&constraintID)
 					require.Equal(
-						t, "compare-greater", comparison.GetComparisonResult(),
+						t, model.CompareGreater, comparison.GetComparisonResult(),
 						"right neighbor ID at level %d should be greater than constraint: %s",
 						level, comparison.DebugInfo(),
 					)
@@ -208,7 +208,7 @@ func TestRandomLookupTable(t *testing.T) {
 					id := leftEntry.GetIdentifier()
 					comparison := id.Compare(&constraintID)
 					require.Equal(
-						t, "compare-less", comparison.GetComparisonResult(),
+						t, model.CompareLess, comparison.GetComparisonResult(),
 						"left neighbor ID at level %d should be less than constraint: %s",
 						level, comparison.DebugInfo(),
 					)
@@ -220,7 +220,7 @@ func TestRandomLookupTable(t *testing.T) {
 					id = rightEntry.GetIdentifier()
 					comparison = id.Compare(&constraintID)
 					require.Equal(
-						t, "compare-less", comparison.GetComparisonResult(),
+						t, model.CompareLess, comparison.GetComparisonResult(),
 						"right neighbor ID at level %d should be less than constraint: %s",
 						level, comparison.DebugInfo(),
 					)
@@ -237,10 +237,10 @@ func TestRandomLookupTable(t *testing.T) {
 
 			// Ensure minID < maxID
 			comparison := minID.Compare(&maxID)
-			if comparison.GetComparisonResult() == "compare-greater" {
+			if comparison.GetComparisonResult() == model.CompareGreater {
 				// Swap them
 				minID, maxID = maxID, minID
-			} else if comparison.GetComparisonResult() == "compare-equal" {
+			} else if comparison.GetComparisonResult() == model.CompareEqual {
 				// Generate a new maxID that's greater
 				// We'll use a simple approach: increment the last byte
 				maxID[len(maxID)-1]++
@@ -262,7 +262,7 @@ func TestRandomLookupTable(t *testing.T) {
 					// Check greater than minID
 					minComparison := id.Compare(&minID)
 					require.Equal(
-						t, "compare-greater", minComparison.GetComparisonResult(),
+						t, model.CompareGreater, minComparison.GetComparisonResult(),
 						"left neighbor ID at level %d should be greater than minID: %s",
 						level, minComparison.DebugInfo(),
 					)
@@ -270,7 +270,7 @@ func TestRandomLookupTable(t *testing.T) {
 					// Check less than maxID
 					maxComparison := id.Compare(&maxID)
 					require.Equal(
-						t, "compare-less", maxComparison.GetComparisonResult(),
+						t, model.CompareLess, maxComparison.GetComparisonResult(),
 						"left neighbor ID at level %d should be less than maxID: %s",
 						level, maxComparison.DebugInfo(),
 					)
@@ -284,7 +284,7 @@ func TestRandomLookupTable(t *testing.T) {
 					// Check greater than minID
 					minComparison = id.Compare(&minID)
 					require.Equal(
-						t, "compare-greater", minComparison.GetComparisonResult(),
+						t, model.CompareGreater, minComparison.GetComparisonResult(),
 						"right neighbor ID at level %d should be greater than minID: %s",
 						level, minComparison.DebugInfo(),
 					)
@@ -292,7 +292,7 @@ func TestRandomLookupTable(t *testing.T) {
 					// Check less than maxID
 					maxComparison = id.Compare(&maxID)
 					require.Equal(
-						t, "compare-less", maxComparison.GetComparisonResult(),
+						t, model.CompareLess, maxComparison.GetComparisonResult(),
 						"right neighbor ID at level %d should be less than maxID: %s",
 						level, maxComparison.DebugInfo(),
 					)
@@ -353,7 +353,7 @@ func TestIdentifierFixtureConstraints(t *testing.T) {
 				id := IdentifierFixture(t, WithIdsGreaterThan(minID))
 				comparison := id.Compare(&minID)
 				require.Equal(
-					t, "compare-greater", comparison.GetComparisonResult(),
+					t, model.CompareGreater, comparison.GetComparisonResult(),
 					"generated ID should be greater than minID: %s", comparison.DebugInfo(),
 				)
 			}
@@ -369,7 +369,7 @@ func TestIdentifierFixtureConstraints(t *testing.T) {
 				id := IdentifierFixture(t, WithIdsLessThan(maxID))
 				comparison := id.Compare(&maxID)
 				require.Equal(
-					t, "compare-less", comparison.GetComparisonResult(),
+					t, model.CompareLess, comparison.GetComparisonResult(),
 					"generated ID should be less than maxID: %s", comparison.DebugInfo(),
 				)
 			}
@@ -384,10 +384,10 @@ func TestIdentifierFixtureConstraints(t *testing.T) {
 
 			comparison := id1.Compare(&id2)
 			var minID, maxID model.Identifier
-			if comparison.GetComparisonResult() == "compare-less" {
+			if comparison.GetComparisonResult() == model.CompareLess {
 				minID = id1
 				maxID = id2
-			} else if comparison.GetComparisonResult() == "compare-greater" {
+			} else if comparison.GetComparisonResult() == model.CompareGreater {
 				minID = id2
 				maxID = id1
 			} else {
@@ -404,14 +404,14 @@ func TestIdentifierFixtureConstraints(t *testing.T) {
 				// Verify ID > minID
 				minComparison := id.Compare(&minID)
 				require.Equal(
-					t, "compare-greater", minComparison.GetComparisonResult(),
+					t, model.CompareGreater, minComparison.GetComparisonResult(),
 					"generated ID should be greater than minID: %s", minComparison.DebugInfo(),
 				)
 
 				// Verify ID < maxID
 				maxComparison := id.Compare(&maxID)
 				require.Equal(
-					t, "compare-less", maxComparison.GetComparisonResult(),
+					t, model.CompareLess, maxComparison.GetComparisonResult(),
 					"generated ID should be less than maxID: %s", maxComparison.DebugInfo(),
 				)
 			}
@@ -457,7 +457,7 @@ func BenchmarkIdentifierFixture(b *testing.B) {
 
 			// Ensure minID < maxID
 			comparison := minID.Compare(&maxID)
-			if comparison.GetComparisonResult() != "compare-less" {
+			if comparison.GetComparisonResult() != model.CompareLess {
 				minID, maxID = maxID, minID
 			}
 

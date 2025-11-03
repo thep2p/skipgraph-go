@@ -312,30 +312,83 @@ func TestRandomLookupTable(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, leftEntry, "left entry should exist at level %d", level)
 
-				// Identity should have non-zero ID, membership vector, and address
+				// Verify identifier is not all zeros
 				id := leftEntry.GetIdentifier()
-				memVec := leftEntry.GetMembershipVector()
-				addr := leftEntry.GetAddress()
+				idAllZeros := true
+				for _, b := range id {
+					if b != 0 {
+						idAllZeros = false
+						break
+					}
+				}
+				require.False(
+					t,
+					idAllZeros,
+					"left neighbor identifier at level %d should not be all zeros",
+					level,
+				)
 
-				// Verify these are not zero values
-				_ = id
-				_ = memVec
-				require.NotEmpty(t, addr.HostName(), "address should have hostname")
-				require.NotEmpty(t, addr.Port(), "address should have port")
+				// Verify membership vector is not all zeros
+				memVec := leftEntry.GetMembershipVector()
+				mvAllZeros := true
+				for _, b := range memVec {
+					if b != 0 {
+						mvAllZeros = false
+						break
+					}
+				}
+				require.False(
+					t,
+					mvAllZeros,
+					"left neighbor membership vector at level %d should not be all zeros",
+					level,
+				)
+
+				// Verify address has valid hostname and port
+				addr := leftEntry.GetAddress()
+				require.NotEmpty(t, addr.HostName(), "left neighbor address should have hostname at level %d", level)
+				require.NotEmpty(t, addr.Port(), "left neighbor address should have port at level %d", level)
 
 				rightEntry, err := table.GetEntry(types.DirectionRight, level)
 				require.NoError(t, err)
 				require.NotNil(t, rightEntry, "right entry should exist at level %d", level)
 
-				// Identity should have non-zero ID, membership vector, and address
+				// Verify identifier is not all zeros
 				id = rightEntry.GetIdentifier()
-				memVec = rightEntry.GetMembershipVector()
-				addr = rightEntry.GetAddress()
+				idAllZeros = true
+				for _, b := range id {
+					if b != 0 {
+						idAllZeros = false
+						break
+					}
+				}
+				require.False(
+					t,
+					idAllZeros,
+					"right neighbor identifier at level %d should not be all zeros",
+					level,
+				)
 
-				_ = id
-				_ = memVec
-				require.NotEmpty(t, addr.HostName(), "address should have hostname")
-				require.NotEmpty(t, addr.Port(), "address should have port")
+				// Verify membership vector is not all zeros
+				memVec = rightEntry.GetMembershipVector()
+				mvAllZeros = true
+				for _, b := range memVec {
+					if b != 0 {
+						mvAllZeros = false
+						break
+					}
+				}
+				require.False(
+					t,
+					mvAllZeros,
+					"right neighbor membership vector at level %d should not be all zeros",
+					level,
+				)
+
+				// Verify address has valid hostname and port
+				addr = rightEntry.GetAddress()
+				require.NotEmpty(t, addr.HostName(), "right neighbor address should have hostname at level %d", level)
+				require.NotEmpty(t, addr.Port(), "right neighbor address should have port at level %d", level)
 			}
 		},
 	)

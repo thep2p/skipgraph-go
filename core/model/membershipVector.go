@@ -16,6 +16,16 @@ func (m MembershipVector) String() string {
 	return hex.EncodeToString(m[:])
 }
 
+// IsZero returns true if all bytes in the MembershipVector are zero, false otherwise.
+func (m MembershipVector) IsZero() bool {
+	for _, b := range m {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // ToBinaryString returns binary representation of a MembershipVector.
 func (m MembershipVector) ToBinaryString() string {
 	var s string

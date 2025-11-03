@@ -91,6 +91,16 @@ func (i *Identifier) Bytes() []byte {
 	return i[:]
 }
 
+// IsZero returns true if all bytes in the Identifier are zero, false otherwise.
+func (i *Identifier) IsZero() bool {
+	for _, b := range i {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // DebugInfo returns a human-readable debug info for the comparison result.
 func (c *Comparison) DebugInfo() string {
 	switch c.GetComparisonResult() {

@@ -188,3 +188,78 @@ func TestIdentifier_Bytes(t *testing.T) {
 	require.Error(t, err)
 
 }
+
+// TestIdentifier_IsZero tests the IsZero method for Identifier.
+func TestIdentifier_IsZero(t *testing.T) {
+	t.Run("all zeros returns true", func(t *testing.T) {
+		// Create identifier with all zeros
+		id := model.Identifier{}
+		require.True(t, id.IsZero(), "expected IsZero to return true for all-zero identifier")
+	})
+
+	t.Run("all zeros via ByteToId returns true", func(t *testing.T) {
+		// Create identifier with all zeros using ByteToId
+		b := bytes.Repeat([]byte{0}, model.IdentifierSizeBytes)
+		id, err := model.ByteToId(b)
+		require.NoError(t, err)
+		require.True(t, id.IsZero(), "expected IsZero to return true for all-zero identifier")
+	})
+
+	t.Run("all non-zero bytes returns false", func(t *testing.T) {
+		// Create identifier with all bytes set to 255
+		b := bytes.Repeat([]byte{255}, model.IdentifierSizeBytes)
+		id, err := model.ByteToId(b)
+		require.NoError(t, err)
+		require.False(t, id.IsZero(), "expected IsZero to return false for all-255 identifier")
+	})
+
+	t.Run("single non-zero byte at beginning returns false", func(t *testing.T) {
+		// Create identifier with only first byte non-zero
+		id := model.Identifier{}
+		id[0] = 1
+		require.False(t, id.IsZero(), "expected IsZero to return false when first byte is non-zero")
+	})
+
+	t.Run("single non-zero byte in middle returns false", func(t *testing.T) {
+		// Create identifier with only middle byte non-zero
+		id := model.Identifier{}
+		id[model.IdentifierSizeBytes/2] = 1
+		require.False(t, id.IsZero(), "expected IsZero to return false when middle byte is non-zero")
+	})
+
+	t.Run("single non-zero byte at end returns false", func(t *testing.T) {
+		// Create identifier with only last byte non-zero
+		id := model.Identifier{}
+		id[model.IdentifierSizeBytes-1] = 1
+		require.False(t, id.IsZero(), "expected IsZero to return false when last byte is non-zero")
+	})
+
+	t.Run("random non-zero identifier returns false", func(t *testing.T) {
+		// Create identifier with random bytes (extremely unlikely to be all zeros)
+		b := unittest.RandomBytesFixture(t, model.IdentifierSizeBytes)
+		id, err := model.ByteToId(b)
+		require.NoError(t, err)
+		// Only assert false if we know there's at least one non-zero byte
+		hasNonZero := false
+		for _, byte := range b {
+			if byte != 0 {
+				hasNonZero = true
+				break
+			}
+		}
+		if hasNonZero {
+			require.False(t, id.IsZero(), "expected IsZero to return false for identifier with non-zero bytes")
+		}
+	})
+
+	t.Run("partial zero identifier returns false", func(t *testing.T) {
+		// Create identifier with first half zeros, second half non-zero
+		b := make([]byte, model.IdentifierSizeBytes)
+		for i := model.IdentifierSizeBytes / 2; i < model.IdentifierSizeBytes; i++ {
+			b[i] = byte(i)
+		}
+		id, err := model.ByteToId(b)
+		require.NoError(t, err)
+		require.False(t, id.IsZero(), "expected IsZero to return false for partially zero identifier")
+	})
+}

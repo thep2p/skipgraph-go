@@ -766,11 +766,9 @@ func TestAddressFixture(t *testing.T) {
 			ports := make(map[string]bool)
 			for i := 0; i < 100; i++ {
 				addr := AddressFixture(t)
+				require.False(t, ports[addr.Port()], "port should be unique")
 				ports[addr.Port()] = true
 			}
-
-			// With 100 random ports in range [0, 65535), we should get multiple unique values
-			require.Greater(t, len(ports), 1, "should generate different ports on multiple calls")
 		},
 	)
 

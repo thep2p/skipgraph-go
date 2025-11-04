@@ -17,7 +17,7 @@ A utility module to generate random values of some certain type
 */
 
 // TestMessageFixture generates a random Message.
-func TestMessageFixture(t *testing.T) *net.Message {
+func TestMessageFixture(t testing.TB) *net.Message {
 
 	return &net.Message{
 		Payload: RandomBytesFixture(t, 100),
@@ -59,7 +59,7 @@ type identifierConfig struct {
 //	id := unittest.IdentifierFixture(t,
 //	    unittest.WithIdsGreaterThan(minID),
 //	    unittest.WithIdsLessThan(maxID))
-func IdentifierFixture(t *testing.T, opts ...IdentifierFixtureOption) model.Identifier {
+func IdentifierFixture(t testing.TB, opts ...IdentifierFixtureOption) model.Identifier {
 	// Apply options
 	config := &identifierConfig{}
 	for _, opt := range opts {
@@ -112,7 +112,7 @@ func IdentifierFixture(t *testing.T, opts ...IdentifierFixtureOption) model.Iden
 //
 // Returns:
 //   - An Identifier representing the big.Int value
-func bigIntToIdentifier(t *testing.T, value *big.Int) model.Identifier {
+func bigIntToIdentifier(t testing.TB, value *big.Int) model.Identifier {
 	// Get bytes from big.Int (big-endian)
 	bytes := value.Bytes()
 
@@ -130,7 +130,7 @@ func bigIntToIdentifier(t *testing.T, value *big.Int) model.Identifier {
 }
 
 // RandomBytesFixture generates a random byte array of the supplied size.
-func RandomBytesFixture(t *testing.T, size int) []byte {
+func RandomBytesFixture(t testing.TB, size int) []byte {
 	bytes := make([]byte, size)
 	n, err := rand.Read(bytes[:])
 
@@ -142,7 +142,7 @@ func RandomBytesFixture(t *testing.T, size int) []byte {
 }
 
 // MembershipVectorFixture creates and returns a random MemberShipVector.
-func MembershipVectorFixture(t *testing.T) model.MembershipVector {
+func MembershipVectorFixture(t testing.TB) model.MembershipVector {
 	bytes := RandomBytesFixture(t, model.MembershipVectorSize)
 
 	var mv model.MembershipVector
@@ -152,7 +152,7 @@ func MembershipVectorFixture(t *testing.T) model.MembershipVector {
 }
 
 // AddressFixture returns an Address on localhost with a random port number.
-func AddressFixture(t *testing.T) model.Address {
+func AddressFixture(t testing.TB) model.Address {
 	// pick a random port
 	maxPort := big.NewInt(65535)
 	randomInt, err := rand.Int(rand.Reader, maxPort)
@@ -164,7 +164,7 @@ func AddressFixture(t *testing.T) model.Address {
 }
 
 // IdentityFixture generates a random Identity with an address on localhost.
-func IdentityFixture(t *testing.T) model.Identity {
+func IdentityFixture(t testing.TB) model.Identity {
 	id := IdentifierFixture(t)
 	memVec := MembershipVectorFixture(t)
 	addr := AddressFixture(t)
@@ -175,7 +175,7 @@ func IdentityFixture(t *testing.T) model.Identity {
 // RandomLevelFixture generates a random level between 0 and MaxLookupTableLevel-1 (inclusive).
 // This is useful for testing Skip Graph operations that require valid level values.
 // The returned level is guaranteed to be within the valid range for Skip Graph lookup tables.
-func RandomLevelFixture(t *testing.T) types.Level {
+func RandomLevelFixture(t testing.TB) types.Level {
 	return RandomLevelWithMaxFixture(t, core.MaxLookupTableLevel)
 }
 
@@ -189,7 +189,7 @@ func RandomLevelFixture(t *testing.T) types.Level {
 //
 // Returns:
 //   - A random level in the range [0, max-1]
-func RandomLevelWithMaxFixture(t *testing.T, max types.Level) types.Level {
+func RandomLevelWithMaxFixture(t testing.TB, max types.Level) types.Level {
 	require.Greater(t, max, types.Level(0), "max must be greater than 0")
 
 	// Generate random number in range [0, max-1]
@@ -215,7 +215,7 @@ func RandomLevelWithMaxFixture(t *testing.T, max types.Level) types.Level {
 //
 // Returns:
 //   - Either types.DirectionLeft or types.DirectionRight with equal probability
-func RandomDirectionFixture(t *testing.T) types.Direction {
+func RandomDirectionFixture(t testing.TB) types.Direction {
 	// Generate random bit (0 or 1)
 	maxBig := big.NewInt(2)
 	randomBig, err := rand.Int(rand.Reader, maxBig)

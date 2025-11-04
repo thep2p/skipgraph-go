@@ -333,32 +333,18 @@ func TestRandomLookupTable(t *testing.T) {
 
 				// Verify identifier is not all zeros
 				id := leftEntry.GetIdentifier()
-				idAllZeros := true
-				for _, b := range id {
-					if b != 0 {
-						idAllZeros = false
-						break
-					}
-				}
 				require.False(
 					t,
-					idAllZeros,
+					id.IsZero(),
 					"left neighbor identifier at level %d should not be all zeros",
 					level,
 				)
 
 				// Verify membership vector is not all zeros
 				memVec := leftEntry.GetMembershipVector()
-				mvAllZeros := true
-				for _, b := range memVec {
-					if b != 0 {
-						mvAllZeros = false
-						break
-					}
-				}
 				require.False(
 					t,
-					mvAllZeros,
+					memVec.IsZero(),
 					"left neighbor membership vector at level %d should not be all zeros",
 					level,
 				)
@@ -384,32 +370,18 @@ func TestRandomLookupTable(t *testing.T) {
 
 				// Verify identifier is not all zeros
 				id = rightEntry.GetIdentifier()
-				idAllZeros = true
-				for _, b := range id {
-					if b != 0 {
-						idAllZeros = false
-						break
-					}
-				}
 				require.False(
 					t,
-					idAllZeros,
+					id.IsZero(),
 					"right neighbor identifier at level %d should not be all zeros",
 					level,
 				)
 
 				// Verify membership vector is not all zeros
 				memVec = rightEntry.GetMembershipVector()
-				mvAllZeros = true
-				for _, b := range memVec {
-					if b != 0 {
-						mvAllZeros = false
-						break
-					}
-				}
 				require.False(
 					t,
-					mvAllZeros,
+					memVec.IsZero(),
 					"right neighbor membership vector at level %d should not be all zeros",
 					level,
 				)
@@ -816,16 +788,9 @@ func TestMembershipVectorFixture(t *testing.T) {
 			mv := MembershipVectorFixture(t)
 
 			// Check that the membership vector is not all zeros
-			allZeros := true
-			for _, b := range mv {
-				if b != 0 {
-					allZeros = false
-					break
-				}
-			}
 			require.False(
 				t,
-				allZeros,
+				mv.IsZero(),
 				"membership vector should not be all zeros (highly unlikely)",
 			)
 		},
@@ -928,27 +893,13 @@ func TestIdentityFixture(t *testing.T) {
 
 			// Check identifier is not all zeros
 			id := identity.GetIdentifier()
-			idAllZeros := true
-			for _, b := range id {
-				if b != 0 {
-					idAllZeros = false
-					break
-				}
-			}
-			require.False(t, idAllZeros, "identifier should not be all zeros (highly unlikely)")
+			require.False(t, id.IsZero(), "identifier should not be all zeros (highly unlikely)")
 
 			// Check membership vector is not all zeros
 			memVec := identity.GetMembershipVector()
-			mvAllZeros := true
-			for _, b := range memVec {
-				if b != 0 {
-					mvAllZeros = false
-					break
-				}
-			}
 			require.False(
 				t,
-				mvAllZeros,
+				memVec.IsZero(),
 				"membership vector should not be all zeros (highly unlikely)",
 			)
 

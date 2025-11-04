@@ -843,6 +843,11 @@ func TestAddressFixture(t *testing.T) {
 	t.Run(
 		"generates different ports on multiple calls", func(t *testing.T) {
 			// Generate many addresses and verify ports are unique
+			// Statistical note: With 65,535 possible ports, the probability of
+			// collision in 10 samples is ~0.07% (birthday paradox). This test
+			// verifies the RNG is working properly, not absolute uniqueness.
+			// A collision would be extremely rare and would indicate a bug in
+			// the random number generator rather than bad luck.
 			ports := make(map[string]bool)
 			for i := 0; i < 10; i++ {
 				addr := AddressFixture(t)

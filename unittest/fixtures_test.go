@@ -10,6 +10,13 @@ import (
 	"github.com/thep2p/skipgraph-go/core/types"
 )
 
+// maxUniquenessAttempts is the maximum number of attempts to generate a unique identifier
+// before failing the test. Given the 256-bit identifier space (2^256 possible values),
+// the probability of generating the same ID even twice randomly is astronomically small.
+// Therefore, if we hit this limit, it indicates a bug in IdentifierFixture rather than
+// bad luck. A limit of 10 is more than sufficient to catch such bugs while failing fast.
+const maxUniquenessAttempts = 10
+
 // TestRandomLevelFixture tests the RandomLevelFixture function.
 func TestRandomLevelFixture(t *testing.T) {
 	// Generate multiple random levels to ensure they're all valid
@@ -243,9 +250,12 @@ func TestRandomLookupTable(t *testing.T) {
 			} else if comparison.GetComparisonResult() == model.CompareEqual {
 				// Generate a completely new ID instead of incrementing
 				maxID = IdentifierFixture(t)
-				// Ensure it's different
+				// Ensure it's different (with maximum attempts to prevent infinite loop)
 				newComparison := maxID.Compare(&minID)
+				attempts := 0
 				for newComparison.GetComparisonResult() == model.CompareEqual {
+					attempts++
+					require.Less(t, attempts, maxUniquenessAttempts, "IdentifierFixture returned equal IDs too many times - possible bug")
 					maxID = IdentifierFixture(t)
 					newComparison = maxID.Compare(&minID)
 				}
@@ -476,9 +486,12 @@ func TestIdentifierFixtureConstraints(t *testing.T) {
 				// IDs are equal, generate a completely new ID instead of incrementing
 				minID = id1
 				maxID = IdentifierFixture(t)
-				// Ensure it's different
+				// Ensure it's different (with maximum attempts to prevent infinite loop)
 				newComparison := maxID.Compare(&minID)
+				attempts := 0
 				for newComparison.GetComparisonResult() == model.CompareEqual {
+					attempts++
+					require.Less(t, attempts, maxUniquenessAttempts, "IdentifierFixture returned equal IDs too many times - possible bug")
 					maxID = IdentifierFixture(t)
 					newComparison = maxID.Compare(&minID)
 				}
@@ -687,9 +700,12 @@ func TestIdentifierFixture(t *testing.T) {
 				// IDs are equal, generate a completely new ID instead of incrementing
 				minID = id1
 				maxID = IdentifierFixture(t)
-				// Ensure it's different
+				// Ensure it's different (with maximum attempts to prevent infinite loop)
 				newComparison := maxID.Compare(&minID)
+				attempts := 0
 				for newComparison.GetComparisonResult() == model.CompareEqual {
+					attempts++
+					require.Less(t, attempts, maxUniquenessAttempts, "IdentifierFixture returned equal IDs too many times - possible bug")
 					maxID = IdentifierFixture(t)
 					newComparison = maxID.Compare(&minID)
 				}

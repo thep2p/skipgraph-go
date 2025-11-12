@@ -26,6 +26,12 @@ Where:
 - **scope** (optional) identifies the affected component or area
 - **Summary** is a clear, concise description in present tense
 
+**IMPORTANT - NO CLAUDE ATTRIBUTION:**
+- **NEVER** add "🤖 Generated with [Claude Code]" or any similar attribution to commit messages
+- **NEVER** add "Co-Authored-By: Claude <noreply@anthropic.com>" or any co-author lines
+- **NEVER** add any footers or metadata that attribute work to Claude or AI tools
+- Commit messages should be clean, professional, and contain ONLY the semantic format above
+
 Examples:
 - `[feat][network] Add gRPC connection pooling`
 - `[fix][skipgraph] Correct membership vector level calculation`
@@ -45,8 +51,8 @@ Examples:
    - Missing documentation updates
    - Incomplete refactoring (files not properly updated)
 4. **Stage all changes** using `git add .` (or specific files if only partial commit is appropriate)
-5. **Create commit message** following the semantic format
-6. **Commit changes** using `git commit -m "[type][scope] Summary"`
+5. **Create commit message** following the semantic format (NO Claude attribution or co-author lines)
+6. **Commit changes** using `git commit -m "[type][scope] Summary"` with ONLY the semantic message
 7. **Confirm success** and provide a summary of what was committed
 
 ## Scope Guidelines
@@ -83,6 +89,16 @@ Before committing, verify:
 - If changes seem incomplete: Ask the user for confirmation before proceeding
 - If commit fails: Report the error and suggest corrective actions
 - If you're unsure about the scope or type: Ask the user for clarification
+
+## Pull Request Guidelines
+
+If this agent is also responsible for creating pull requests:
+
+**IMPORTANT - NO CLAUDE ATTRIBUTION IN PRs:**
+- **NEVER** add "🤖 Generated with [Claude Code]" to PR descriptions
+- **NEVER** add any AI tool attribution to PR titles or descriptions
+- PR descriptions should be professional and focused on the technical changes
+- Do not include co-author or attribution footers in PR descriptions
 
 ## Output Format
 

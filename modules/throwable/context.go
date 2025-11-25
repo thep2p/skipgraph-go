@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/thep2p/skipgraph-go/modules"
 )
 
 // Context is a context that can propagate irrecoverable errors up the context chain.
@@ -25,8 +27,8 @@ var _ context.Context = (*Context)(nil)
 // ThrowIrrecoverable propagates an irrecoverable error up the context chain.
 // When it reaches the top-level context, it panics with the error.
 func (t *Context) ThrowIrrecoverable(err error) {
-	// Propagate the error to the parent context if it exists
-	if parent, ok := t.ctx.(*Context); ok {
+	// Propagate the error to the parent context if it implements ThrowableContext
+	if parent, ok := t.ctx.(modules.ThrowableContext); ok {
 		parent.ThrowIrrecoverable(err)
 		return
 	}

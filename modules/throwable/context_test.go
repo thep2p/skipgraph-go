@@ -12,10 +12,6 @@ import (
 // TestThrowIrrecoverableWithMockContext verifies that ThrowIrrecoverable
 // properly delegates to parent contexts that implement the ThrowableContext
 // interface (not just concrete *Context types).
-//
-// This test reproduces the bug from issue #59 where wrapping a
-// MockThrowableContext with throwable.NewContext() would cause panics
-// instead of delegating to the parent's ThrowIrrecoverable implementation.
 func TestThrowIrrecoverableWithMockContext(t *testing.T) {
 	t.Parallel()
 
